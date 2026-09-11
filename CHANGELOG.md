@@ -2,11 +2,17 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.0.7] - 2026-09-12
+
+### 修正 (Fixed)
+- pre-commit での `Executable npm not found` エラー対応
+  - `.pre-commit-config.yaml` の `entry` を `node_modules/.bin/eslint src` および `node_modules/.bin/tsc --noEmit` に直接指定する構成に変更
+
 ## [1.0.6] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit の `AssertionError: language: node must have package.json or additional_dependencies` 完全解消
-  - `.pre-commit-config.yaml` 内の `eslint` および `check-types` フックの `language` を `system` に設定し、`npm run lint` / `npm run check-types` を直接実行する構成に変更
+  - `.pre-commit-config.yaml` 内の `eslint` および `check-types` フックの `language` を `system` に設定
 
 ## [1.0.5] - 2026-09-12
 
