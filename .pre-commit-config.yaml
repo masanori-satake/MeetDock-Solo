@@ -6,28 +6,17 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
-        args: [--allow-comments]
   - repo: local
     hooks:
       - id: eslint
         name: eslint
-        entry: npx eslint src
-        language: node
-        types: [ts]
+        entry: bash -c "npm install --no-audit --no-fund && npm run lint"
+        language: system
+        pass_filenames: false
         files: ^src/
-        additional_dependencies:
-          - eslint@^10.5.0
-          - typescript-eslint@^8.61.1
-          - typescript@^6.0.3
-          - '@types/vscode@^1.137.0'
       - id: check-types
         name: check-types
-        entry: npx tsc --noEmit
-        language: node
-        types: [ts]
+        entry: bash -c "npm install --no-audit --no-fund && npm run check-types"
+        language: system
+        pass_filenames: false
         files: ^src/
-        additional_dependencies:
-          - typescript@^6.0.3
-          - '@types/vscode@^1.137.0'
-          - '@types/node@24.x'
-          - '@types/mocha@^10.0.10'
