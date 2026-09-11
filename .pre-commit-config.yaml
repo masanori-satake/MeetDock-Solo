@@ -10,13 +10,23 @@ repos:
     hooks:
       - id: eslint
         name: eslint
-        entry: node_modules/.bin/eslint src
-        language: system
+        entry: eslint src
+        language: node
+        additional_dependencies:
+          - eslint@10.5.0
+          - typescript-eslint@8.61.1
+          - typescript@6.0.3
+          - '@types/vscode@1.137.0'
         pass_filenames: false
         files: ^src/
       - id: check-types
         name: check-types
-        entry: node_modules/.bin/tsc --noEmit
-        language: system
+        entry: tsc --noEmit
+        language: node
+        additional_dependencies:
+          - typescript@6.0.3
+          - '@types/vscode@1.137.0'
+          - '@types/node@24.1.0'
+          - '@types/mocha@10.0.10'
         pass_filenames: false
         files: ^src/

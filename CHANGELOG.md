@@ -2,16 +2,22 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.0.8] - 2026-09-12
+
+### 修正 (Fixed)
+- pre-commit の `Executable node_modules/.bin/... not found` エラー対応
+  - `.pre-commit-config.yaml` の `language` を `node` に変更し、`additional_dependencies` に必要なパッケージを指定して `entry: eslint src` および `entry: tsc --noEmit` で実行する標準構成に修正
+
 ## [1.0.7] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit での `Executable npm not found` エラー対応
-  - `.pre-commit-config.yaml` の `entry` を `node_modules/.bin/eslint src` および `node_modules/.bin/tsc --noEmit` に直接指定する構成に変更
+  - `.pre-commit-config.yaml` の `entry` を直接指定
 
 ## [1.0.6] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の `AssertionError: language: node must have package.json or additional_dependencies` 完全解消
+- pre-commit の `AssertionError` 完全解消
   - `.pre-commit-config.yaml` 内の `eslint` および `check-types` フックの `language` を `system` に設定
 
 ## [1.0.5] - 2026-09-12
@@ -30,7 +36,7 @@
 
 ### 修正 (Fixed)
 - pre-commit.ci 上での `npm: command not found` エラー対応
-  - `.pre-commit-config.yaml` の `eslint` および `check-types` フックの `language` に `node` を指定し、pre-commit.ci 環境下で Node.js および npm が正常にロードされるように修正
+  - `.pre-commit-config.yaml` の `eslint` および `check-types` フックの `language` に `node` を指定
 
 ## [1.0.2] - 2026-09-12
 
@@ -38,7 +44,6 @@
 - pre-commit.ci フック設定の完全修正
   - `check-json` フックでの未定義の `--allow-comments` オプション削除
   - `check-types` フックでの TS5112 エラー防止のため `pass_filenames: false` を追加
-  - `eslint` および `check-types` での `typescript-eslint` 依存関係エラー防止のため `bash -c "npm install ... && npm run ..."` による依存パッケージ導入の自動化
 
 ## [1.0.1] - 2026-09-12
 
