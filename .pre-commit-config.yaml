@@ -11,12 +11,12 @@ repos:
       - id: eslint
         name: eslint
         entry: bash -c "npm install --no-audit --no-fund && npm run lint"
-        language: system
+        language: node
         pass_filenames: false
         files: ^src/
       - id: check-types
         name: check-types
         entry: bash -c "npm install --no-audit --no-fund && npm run check-types"
-        language: system
+        language: node
         pass_filenames: false
         files: ^src/

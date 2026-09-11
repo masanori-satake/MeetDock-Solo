@@ -2,6 +2,12 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.0.3] - 2026-09-12
+
+### 修正 (Fixed)
+- pre-commit.ci 上での `npm: command not found` エラー対応
+  - `.pre-commit-config.yaml` の `eslint` および `check-types` フックの `language` に `node` を指定し、pre-commit.ci 環境下で Node.js および npm が正常にロードされるように修正
+
 ## [1.0.2] - 2026-09-12
 
 ### 修正 (Fixed)
