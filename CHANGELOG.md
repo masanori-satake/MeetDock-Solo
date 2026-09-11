@@ -2,6 +2,12 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.0.4] - 2026-09-12
+
+### 修正 (Fixed)
+- pre-commit での `AssertionError: language: node must have package.json or additional_dependencies` 対応
+  - `.pre-commit-config.yaml` の `language: node` local フックに `additional_dependencies: []` を記述
+
 ## [1.0.3] - 2026-09-12
 
 ### 修正 (Fixed)
