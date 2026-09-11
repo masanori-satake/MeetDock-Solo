@@ -2,7 +2,7 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
-## [1.0.2] - 2026-03-31
+## [1.0.2] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit.ci フック設定の完全修正
@@ -10,13 +10,13 @@
   - `check-types` フックでの TS5112 エラー防止のため `pass_filenames: false` を追加
   - `eslint` および `check-types` での `typescript-eslint` 依存関係エラー防止のため `bash -c "npm install ... && npm run ..."` による依存パッケージ導入の自動化
 
-## [1.0.1] - 2026-03-31
+## [1.0.1] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit.ci でのエラー対応
   - `.vscode/*.json` および `tsconfig.json` のコメント削除と表記の正規化
 
-## [1.0.0] - 2026-03-31
+## [1.0.0] - 2026-09-12
 
 ### 追加 (Added)
 - MeetDock-Solo の初版リリース (v1.0.0)
