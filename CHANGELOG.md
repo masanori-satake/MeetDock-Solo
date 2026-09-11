@@ -2,6 +2,14 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.0.1] - 2026-03-31
+
+### 修正 (Fixed)
+- pre-commit.ci でのエラー対応
+  - `.vscode/*.json` および `tsconfig.json` のコメント削除と表記の正規化
+  - `.pre-commit-config.yaml` での `check-json` への `--allow-comments` 引数の追加
+  - `eslint` および `check-types` フックの `language: node` および `additional_dependencies` の追加による pre-commit.ci 環境での実行エラー解消
+
 ## [1.0.0] - 2026-03-31
 
 ### 追加 (Added)
