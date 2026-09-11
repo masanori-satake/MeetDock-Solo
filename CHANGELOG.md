@@ -2,16 +2,22 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.0.6] - 2026-09-12
+
+### 修正 (Fixed)
+- pre-commit の `AssertionError: language: node must have package.json or additional_dependencies` 完全解消
+  - `.pre-commit-config.yaml` 内の `eslint` および `check-types` フックの `language` を `system` に設定し、`npm run lint` / `npm run check-types` を直接実行する構成に変更
+
 ## [1.0.5] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の `AssertionError: language: node must have package.json or additional_dependencies` 完全対応
-  - `.pre-commit-config.yaml` の `language: node` フックに非空の `additional_dependencies`（eslint, typescript-eslint, typescript 等）を明示的に指定し、`npx` コマンドで実行する構成に変更
+- pre-commit の `AssertionError` 対応
+  - `.pre-commit-config.yaml` の `language: node` フックに `additional_dependencies` を設定
 
 ## [1.0.4] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit での `AssertionError: language: node must have package.json or additional_dependencies` 対応
+- pre-commit での `AssertionError` 対応
   - `.pre-commit-config.yaml` の `language: node` local フックに `additional_dependencies` を記述
 
 ## [1.0.3] - 2026-09-12
