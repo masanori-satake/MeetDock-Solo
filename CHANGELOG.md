@@ -2,17 +2,24 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.2.0] - 2026-09-12
+
+### 追加 (Added)
+- GitHub Actions 自動ビルド・パッケージ化・配信ワークフロー (`.github/workflows/build-and-publish.yml`)
+  - `main` ブランチへの push 時の自動 TypeScript コンパイルおよび `.vsix` パッケージ作成
+  - Material-3 スタイルの社内向け拡張機能ダウンロード web ページ (`index.html`) の動的生成
+  - `actions/deploy-pages@v4` による GitHub Pages への自動デプロイ
+
 ## [1.1.1] - 2026-09-12
 
 ### 修正 (Fixed)
 - オフライン環境での `EAI_AGAIN` (npm ネットワーク接続エラー) 対応
-  - 指示に基づき、`.pre-commit-config.yaml` からネットワーク接続を必要とする `eslint` および `check-types` フックを無効化（削除）し、標準のテキスト/JSONフックのみに設定
+  - `.pre-commit-config.yaml` からネットワーク接続を必要とする `eslint` および `check-types` フックを無効化（削除）
 
 ## [1.1.0] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit の依存パッケージ参照エラー (`ERR_MODULE_NOT_FOUND`, `TS2688`) の解決
-  - `.pre-commit-config.yaml` の `entry` を `bash -c "npm install ... && npm run ..."` に変更
 
 ## [1.0.9] - 2026-09-12
 

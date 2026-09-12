@@ -65,7 +65,7 @@ export class ReminderService {
       this.statusBarItem.text = `$(broadcast) Teams: ${nextMeeting.title} (開催中)`;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
       this.statusBarItem.tooltip = `開催中: ${nextMeeting.title}\nクリックしてミーティング一覧を開く`;
-    } else if (diffMs > 0 && diffMs <= 60 * 1000) {
+    } else if (diffMinutes <= 1 && diffMs > 0) {
       // Less than 1 minute remaining -> warning background / red text
       this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (まもなく開始)`;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');

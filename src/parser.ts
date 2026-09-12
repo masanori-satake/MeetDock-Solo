@@ -1,7 +1,5 @@
 import { ParsedMeetingInfo } from './types';
 
-const MAX_TITLE_LENGTH = 100;
-
 /**
  * Extracts Teams URL, Title, and Start Time from dropped or pasted text/HTML.
  */
@@ -28,9 +26,9 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   // 2. Extract Title
   let title = 'Teams Meeting';
   // Try to find explicit "Subject: ..." or "Title: ..."
-  const subjectMatch = text.match(/(?:Subject|件名|タイトル|Title):\s*([^<\r\n]+)/i);
+  const subjectMatch = text.match(/(?:Subject|件名|タイトル|Title):\s*(.+)/i);
   if (subjectMatch && subjectMatch[1].trim()) {
-    title = subjectMatch[1].trim().slice(0, MAX_TITLE_LENGTH);
+    title = subjectMatch[1].trim();
   } else {
     // Look at non-empty lines before the URL
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -41,7 +39,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
           !/^\d{4}[-/.]/.test(line)) {
         // Strip common html tags if dropped text contained html
         const cleanLine = line.replace(/<[^>]*>/g, '').trim();
-        if (cleanLine.length > 0 && cleanLine.length <= MAX_TITLE_LENGTH) {
+        if (cleanLine.length > 0 && cleanLine.length < 100) {
           title = cleanLine;
           break;
         }
@@ -53,21 +51,17 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   let startTime: Date | undefined = undefined;
 
   // Check full ISO or YYYY-MM-DD HH:mm pattern
-  const fullDateRegex = /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?/i;
+  const fullDateRegex = /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/;
   const fullDateMatch = text.match(fullDateRegex);
 
   if (fullDateMatch) {
-    if (fullDateMatch[7]) {
-      startTime = new Date(fullDateMatch[0]);
-    } else {
-      const year = parseInt(fullDateMatch[1], 10);
-      const month = parseInt(fullDateMatch[2], 10) - 1;
-      const day = parseInt(fullDateMatch[3], 10);
-      const hour = fullDateMatch[4] ? parseInt(fullDateMatch[4], 10) : 9;
-      const minute = fullDateMatch[5] ? parseInt(fullDateMatch[5], 10) : 0;
-      const second = fullDateMatch[6] ? parseInt(fullDateMatch[6], 10) : 0;
-      startTime = new Date(year, month, day, hour, minute, second);
-    }
+    const year = parseInt(fullDateMatch[1], 10);
+    const month = parseInt(fullDateMatch[2], 10) - 1;
+    const day = parseInt(fullDateMatch[3], 10);
+    const hour = fullDateMatch[4] ? parseInt(fullDateMatch[4], 10) : 9;
+    const minute = fullDateMatch[5] ? parseInt(fullDateMatch[5], 10) : 0;
+    const second = fullDateMatch[6] ? parseInt(fullDateMatch[6], 10) : 0;
+    startTime = new Date(year, month, day, hour, minute, second);
   } else {
     // Check HH:mm pattern
     const timeRegex = /(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i;

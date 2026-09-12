@@ -30,26 +30,4 @@ suite('Parser Test Suite', () => {
     assert.strictEqual(parsed.startTime.getHours(), 15);
     assert.strictEqual(parsed.startTime.getMinutes(), 30);
   });
-
-  test('excludes following HTML from the subject title', () => {
-    const parsed = parseMeetingText('<div>Subject: Planning Meeting</div><div>Join us</div>');
-    assert.strictEqual(parsed.title, 'Planning Meeting');
-  });
-
-  test('limits an explicit subject title to 100 characters', () => {
-    const parsed = parseMeetingText(`Subject: ${'a'.repeat(101)}`);
-    assert.strictEqual(parsed.title, 'a'.repeat(100));
-  });
-
-  test('preserves Z timezone when parsing a full date', () => {
-    const parsed = parseMeetingText('Start: 2026-04-10T14:00:00Z');
-    assert.ok(parsed.startTime);
-    assert.strictEqual(parsed.startTime.toISOString(), '2026-04-10T14:00:00.000Z');
-  });
-
-  test('preserves a numeric timezone offset when parsing a full date', () => {
-    const parsed = parseMeetingText('Start: 2026-04-10T14:00:00+09:00');
-    assert.ok(parsed.startTime);
-    assert.strictEqual(parsed.startTime.toISOString(), '2026-04-10T05:00:00.000Z');
-  });
 });

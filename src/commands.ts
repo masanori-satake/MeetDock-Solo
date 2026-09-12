@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
 import { RecurrenceType } from './types';
-import { parseDateTimeInput } from './dateTimeInput';
 
 export async function addFromClipboardCommand(meetingManager: MeetingManager): Promise<void> {
   const clipboardText = await vscode.env.clipboard.readText();
@@ -68,19 +67,47 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   const inputTimeStr = await vscode.window.showInputBox({
     prompt: '開始日時を入力してください (形式: YYYY-MM-DD HH:mm または HH:mm)',
     value: defaultTimeStr,
-    validateInput: (val) => parseDateTimeInput(val).error
+    validateInput: (val) => {
+      if (!val || !val.trim()) {
+        return '開始日時は必須です。';
+      }
+      const timeRegex = /^(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+)?(\d{1,2}):(\d{2})$/;
+      if (!timeRegex.test(val.trim())) {
+        return '正しい日時形式 (例: 2026-04-01 14:00 または 14:00) で入力してください。';
+      }
+      return null;
+    }
   });
 
   if (!inputTimeStr) {
     return; // User canceled
   }
 
-  const parsedTime = parseDateTimeInput(inputTimeStr);
-  if (parsedTime.date === null) {
-    vscode.window.showErrorMessage(parsedTime.error);
+  // Parse specified start time string
+  const timeMatch = inputTimeStr.trim().match(/^(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+)?(\d{1,2}):(\d{2})$/);
+  let finalStartTime: Date;
+  const now = new Date();
+
+  if (timeMatch) {
+    const hour = parseInt(timeMatch[4], 10);
+    const minute = parseInt(timeMatch[5], 10);
+
+    if (timeMatch[1] && timeMatch[2] && timeMatch[3]) {
+      const year = parseInt(timeMatch[1], 10);
+      const month = parseInt(timeMatch[2], 10) - 1;
+      const day = parseInt(timeMatch[3], 10);
+      finalStartTime = new Date(year, month, day, hour, minute, 0);
+    } else {
+      finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+      if (finalStartTime < now) {
+        // If the time today has already passed, set for tomorrow
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      }
+    }
+  } else {
+    vscode.window.showErrorMessage('開始日時の解析に失敗しました。');
     return;
   }
-  const finalStartTime = parsedTime.date;
 
   // Prompt for Recurrence Selection QuickPick
   const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
