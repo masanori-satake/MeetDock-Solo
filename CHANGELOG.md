@@ -2,11 +2,17 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.1.0] - 2026-09-12
+
+### 修正 (Fixed)
+- pre-commit の依存パッケージ参照エラー (`ERR_MODULE_NOT_FOUND`, `TS2688`) の完全解決
+  - `.pre-commit-config.yaml` の `entry` を `bash -c "npm install --no-audit --no-fund && npm run ..."` に変更し、リポジトリローカルの全 `devDependencies` を自動参照する構成へ変更
+
 ## [1.0.9] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の `ERR_MODULE_NOT_FOUND` (typescript-eslint) および `TS2688` (@types/node, @types/mocha) エラー完全対応
-  - `.pre-commit-config.yaml` の `additional_dependencies` に `typescript-eslint`, `@types/node`, `@types/mocha` 等のすべての依存パッケージを追加
+- pre-commit の `ERR_MODULE_NOT_FOUND` (typescript-eslint) および `TS2688` (@types/node, @types/mocha) エラー対応
+  - `.pre-commit-config.yaml` の `additional_dependencies` を指定
 
 ## [1.0.8] - 2026-09-12
 
