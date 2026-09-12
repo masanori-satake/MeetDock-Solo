@@ -162,4 +162,30 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
       global.Date = originalDate;
     }
   });
+  test('keeps 09:00–12:00 dropped at 10:00 on the current day (in progress)', () => {
+    const originalDate = global.Date;
+    const frozenNow = new originalDate(2026, 8, 7, 10, 0, 0);
+
+    global.Date = new Proxy(originalDate, {
+      construct(target, args) {
+        return args.length === 0
+          ? new target(frozenNow.getTime())
+          : Reflect.construct(target, args);
+      }
+    });
+
+    try {
+      const parsed = parseMeetingText('09:00 - 12:00');
+
+      assert.ok(parsed.startTime);
+      assert.ok(parsed.endTime);
+      assert.strictEqual(parsed.startTime.getDate(), 7);
+      assert.strictEqual(parsed.startTime.getHours(), 9);
+      assert.strictEqual(parsed.endTime.getDate(), 7);
+      assert.strictEqual(parsed.endTime.getHours(), 12);
+    } finally {
+      global.Date = originalDate;
+    }
+  });
+
 });
