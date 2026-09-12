@@ -179,10 +179,8 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
 
       assert.ok(parsed.startTime);
       assert.ok(parsed.endTime);
-      assert.strictEqual(parsed.startTime.getDate(), 7);
-      assert.strictEqual(parsed.startTime.getHours(), 9);
-      assert.strictEqual(parsed.endTime.getDate(), 7);
-      assert.strictEqual(parsed.endTime.getHours(), 12);
+      assert.strictEqual(parsed.startTime.getTime(), new originalDate(2026, 8, 7, 9, 0, 0).getTime());
+      assert.strictEqual(parsed.endTime.getTime(), new originalDate(2026, 8, 7, 12, 0, 0).getTime());
     } finally {
       global.Date = originalDate;
     }

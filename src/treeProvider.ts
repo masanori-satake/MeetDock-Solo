@@ -109,10 +109,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
     let defaultTimeStr = '';
     if (parsed.startTime) {
       const st = new Date(parsed.startTime.getTime());
-      const et = parsed.endTime ? new Date(parsed.endTime.getTime()) : null;
 
-      if (et) {
-        const duration = et.getTime() - st.getTime();
+      if (parsed.startTime && parsed.endTime) {
+        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
         while (new Date(st.getTime() + duration).getTime() <= now.getTime()) {
           st.setDate(st.getDate() + 1);
         }
@@ -173,8 +172,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
         finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
       }
 
-      if (parsed.endTime) {
-        const duration = parsed.endTime.getTime() - parsed.startTime!.getTime();
+      if (parsed.startTime && parsed.endTime) {
+        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
         while (new Date(finalStartTime.getTime() + duration).getTime() <= now.getTime()) {
           finalStartTime.setDate(finalStartTime.getDate() + 1);
         }
@@ -204,17 +203,10 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
 
     const recurrence: RecurrenceType = selectedRecurrence.type;
     const validationNow = new Date();
-    if (parsed.endTime) {
-      if (parsed.startTime) {
-        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
-        while (new Date(finalStartTime.getTime() + duration).getTime() <= validationNow.getTime()) {
-          finalStartTime.setDate(finalStartTime.getDate() + 1);
-        }
-      } else {
-        while (parsed.endTime.getTime() <= validationNow.getTime()) {
-          finalStartTime.setDate(finalStartTime.getDate() + 1);
-          parsed.endTime.setDate(parsed.endTime.getDate() + 1);
-        }
+    if (parsed.startTime && parsed.endTime) {
+      const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+      while (new Date(finalStartTime.getTime() + duration).getTime() <= validationNow.getTime()) {
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
       }
     } else {
       while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
