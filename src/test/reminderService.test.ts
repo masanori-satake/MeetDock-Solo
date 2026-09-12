@@ -189,11 +189,10 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     assert.ok(text.includes('broadcast'), `Got: "${text}"`);
     assert.ok(text.includes(m.title), `Expected title in text but got: "${text}"`);
     assert.ok(!text.includes('Teams:'), `Should not contain "Teams:" but got: "${text}"`);
-    // Ongoing uses prominentBackground
-    // NOTE: VS Code's StatusBarItem setter strictly drops ThemeColors that aren't errorBackground or warningBackground.
-    // So reading it back yields undefined in the extension host.
-    assert.strictEqual(statusBg(service), undefined, 'Expected undefined because VS Code drops unsupported background colors');
-    assert.strictEqual((service as any).statusBarItem.color, undefined, 'Expected no text color');
+    assert.strictEqual(statusBg(service), undefined, 'Expected no background color');
+    const color = (service as any).statusBarItem.color;
+    assert.ok(color instanceof vscode.ThemeColor, 'Expected ThemeColor text color');
+    assert.strictEqual((color as vscode.ThemeColor).id, 'charts.green', 'Expected charts.green text color');
   });
 });
 
