@@ -187,9 +187,24 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
 
     const recurrence: RecurrenceType = selectedRecurrence.type;
     const validationNow = new Date();
-    while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
-      finalStartTime.setDate(finalStartTime.getDate() + 1);
+    if (parsed.endTime) {
+      if (parsed.startTime) {
+        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+        while (new Date(finalStartTime.getTime() + duration).getTime() <= validationNow.getTime()) {
+          finalStartTime.setDate(finalStartTime.getDate() + 1);
+        }
+      } else {
+        while (parsed.endTime.getTime() <= validationNow.getTime()) {
+          finalStartTime.setDate(finalStartTime.getDate() + 1);
+          parsed.endTime.setDate(parsed.endTime.getDate() + 1);
+        }
+      }
+    } else {
+      while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      }
     }
+
     if (recurrence === 'weekdays') {
       while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
         finalStartTime.setDate(finalStartTime.getDate() + 1);
