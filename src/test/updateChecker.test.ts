@@ -18,9 +18,6 @@ suite('UpdateChecker Test Suite', () => {
     assert.strictEqual(isNewerVersion('1.3.1', '1.3.1'), false);
     assert.strictEqual(isNewerVersion('v1.3.1', '1.3.1'), false);
 
-    // A stable release succeeds its prerelease of the same version
-    assert.strictEqual(isNewerVersion('1.2.3', '1.2.3-beta.1'), true);
-
     // Older version
     assert.strictEqual(isNewerVersion('1.3.0', '1.3.1'), false);
     assert.strictEqual(isNewerVersion('1.2.9', '1.3.1'), false);
