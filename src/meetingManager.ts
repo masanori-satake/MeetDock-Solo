@@ -69,6 +69,7 @@ export class MeetingManager {
     for (const meeting of meetings) {
       const startTime = new Date(meeting.startTime);
       const endTime = getMeetingEndTime(meeting);
+      const duration = endTime.getTime() - startTime.getTime();
 
       if (now > endTime) {
         updated = true;
@@ -77,10 +78,9 @@ export class MeetingManager {
           continue;
         } else if (meeting.recurrence === 'weekly') {
           let nextStart = new Date(startTime.getTime());
-          while (now > getMeetingEndTime({ ...meeting, startTime: nextStart.toISOString() })) {
+          while (now.getTime() > nextStart.getTime() + duration) {
             nextStart.setDate(nextStart.getDate() + 7);
           }
-          const duration = endTime.getTime() - startTime.getTime();
           result.push({
             ...meeting,
             startTime: nextStart.toISOString(),
@@ -90,14 +90,13 @@ export class MeetingManager {
           });
         } else if (meeting.recurrence === 'weekdays') {
           let nextStart = new Date(startTime.getTime());
-          while (now > getMeetingEndTime({ ...meeting, startTime: nextStart.toISOString() })) {
+          while (now.getTime() > nextStart.getTime() + duration) {
             nextStart.setDate(nextStart.getDate() + 1);
             // Skip weekends (0 = Sunday, 6 = Saturday)
             while (nextStart.getDay() === 0 || nextStart.getDay() === 6) {
               nextStart.setDate(nextStart.getDate() + 1);
             }
           }
-          const duration = endTime.getTime() - startTime.getTime();
           result.push({
             ...meeting,
             startTime: nextStart.toISOString(),

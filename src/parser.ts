@@ -139,18 +139,19 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
       let sMinute = parseInt(timeRangeMatch[2], 10);
       let candidateStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sHour, sMinute, 0);
 
-      // If missing date and candidate is already passed, maybe it's tomorrow
-      if (candidateStart.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-        candidateStart.setDate(candidateStart.getDate() + 1);
-      }
-      startTime = candidateStart;
-
       let eHour = applyAmPm(parseInt(timeRangeMatch[5], 10), timeRangeMatch[8]);
       let eMinute = parseInt(timeRangeMatch[6], 10);
       endTime = new Date(candidateStart.getFullYear(), candidateStart.getMonth(), candidateStart.getDate(), eHour, eMinute, 0);
-      if (endTime < startTime) {
+      if (endTime < candidateStart) {
         endTime.setDate(endTime.getDate() + 1);
       }
+
+      // If the full range has ended, treat it as the following day's range.
+      if (endTime <= now) {
+        candidateStart.setDate(candidateStart.getDate() + 1);
+        endTime.setDate(endTime.getDate() + 1);
+      }
+      startTime = candidateStart;
     } else if (timeMatch) {
       let sHour = applyAmPm(parseInt(timeMatch[1], 10), timeMatch[4]);
       let sMinute = parseInt(timeMatch[2], 10);

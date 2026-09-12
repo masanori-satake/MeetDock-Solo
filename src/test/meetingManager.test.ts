@@ -164,3 +164,52 @@ suite('MeetingManager - getNextMeeting', () => {
     assert.strictEqual(manager.getNextMeeting(), undefined);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test suite: processExpirations with explicit end times
+// ---------------------------------------------------------------------------
+
+suite('MeetingManager - processExpirations', () => {
+  test('advances an expired weekly meeting while preserving its explicit duration', async () => {
+    const now = Date.now();
+    const start = new Date(now - 15 * 24 * 60 * 60 * 1000);
+    const duration = 60 * 60 * 1000;
+    const meeting: Meeting = {
+      ...makeMeeting('weekly', 0, 'weekly'),
+      startTime: start.toISOString(),
+      endTime: new Date(start.getTime() + duration).toISOString(),
+    };
+    const manager = new MeetingManager(createMockContext([meeting]));
+
+    await manager.processExpirations();
+
+    const [updated] = manager.getMeetings();
+    const updatedStart = new Date(updated.startTime);
+    const updatedEnd = new Date(updated.endTime!);
+    assert.ok(updatedStart > start, 'Weekly meeting should advance to a later occurrence');
+    assert.ok(updatedEnd.getTime() >= now, 'Weekly meeting should advance to an unexpired occurrence');
+    assert.strictEqual(updatedEnd.getTime() - updatedStart.getTime(), duration);
+  });
+
+  test('advances an expired weekdays meeting while preserving its explicit duration', async () => {
+    const now = Date.now();
+    const start = new Date(now - 10 * 24 * 60 * 60 * 1000);
+    const duration = 45 * 60 * 1000;
+    const meeting: Meeting = {
+      ...makeMeeting('weekdays', 0, 'weekdays'),
+      startTime: start.toISOString(),
+      endTime: new Date(start.getTime() + duration).toISOString(),
+    };
+    const manager = new MeetingManager(createMockContext([meeting]));
+
+    await manager.processExpirations();
+
+    const [updated] = manager.getMeetings();
+    const updatedStart = new Date(updated.startTime);
+    const updatedEnd = new Date(updated.endTime!);
+    assert.ok(updatedStart > start, 'Weekdays meeting should advance to a later occurrence');
+    assert.ok(updatedEnd.getTime() >= now, 'Weekdays meeting should advance to an unexpired occurrence');
+    assert.ok(updatedStart.getDay() !== 0 && updatedStart.getDay() !== 6, 'Occurrence should be on a weekday');
+    assert.strictEqual(updatedEnd.getTime() - updatedStart.getTime(), duration);
+  });
+});

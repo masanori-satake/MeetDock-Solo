@@ -9,6 +9,12 @@ import { Meeting } from '../types';
 // ---------------------------------------------------------------------------
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
+type Clock = () => Date;
+
+function createFixedClock(): Clock {
+  const fixedNow = new Date(2026, 8, 7, 12, 0, 0);
+  return () => new Date(fixedNow.getTime());
+}
 
 // ---------------------------------------------------------------------------
 // Mock MeetingManager
@@ -24,6 +30,8 @@ class MockMeetingManager {
   private _emitter = new vscode.EventEmitter<void>();
   readonly onDidChangeMeetings = this._emitter.event;
 
+  constructor(private readonly now: Clock = () => new Date()) {}
+
   setMeetings(meetings: Meeting[]): void {
     this._meetings = meetings.map(m => ({ ...m }));
   }
@@ -33,7 +41,7 @@ class MockMeetingManager {
   }
 
   getRelevantMeetings(withinMs: number): Meeting[] {
-    const now = new Date();
+    const now = this.now();
     return [...this._meetings]
       .filter(m => {
         const start = new Date(m.startTime);
@@ -45,7 +53,7 @@ class MockMeetingManager {
   }
 
   getNextMeeting(): Meeting | undefined {
-    const now = new Date();
+    const now = this.now();
     return [...this._meetings]
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
       .find(m => {
@@ -82,6 +90,7 @@ class MockMeetingManager {
  * @param offsetMinutes positive = future, negative = past
  */
 function makeMeeting(
+  now: Clock,
   id: string,
   offsetMinutes: number,
   recurrence: Meeting['recurrence'] = 'once'
@@ -90,7 +99,7 @@ function makeMeeting(
     id,
     title: `会議 ${id}`,
     url: `https://teams.microsoft.com/meet/${id}`,
-    startTime: new Date(Date.now() + offsetMinutes * 60 * 1000).toISOString(),
+    startTime: new Date(now().getTime() + offsetMinutes * 60 * 1000).toISOString(),
     recurrence,
     notified5m: false,
     notifiedStart: false,
@@ -114,10 +123,12 @@ function statusBg(service: ReminderService): vscode.ThemeColor | undefined {
 suite('ReminderService - Status Bar (single meeting)', () => {
   let mockManager: MockMeetingManager;
   let service: ReminderService;
+  let now: Clock;
 
   setup(() => {
-    mockManager = new MockMeetingManager();
-    service = new ReminderService(mockManager as unknown as MeetingManager);
+    now = createFixedClock();
+    mockManager = new MockMeetingManager(now);
+    service = new ReminderService(mockManager as unknown as MeetingManager, now);
   });
 
   teardown(() => {
@@ -132,7 +143,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
   });
 
   test('shows countdown with no index suffix for a meeting more than 5 min away', async () => {
-    mockManager.setMeetings([makeMeeting('a', 60)]);
+    mockManager.setMeetings([makeMeeting(now, 'a', 60)]);
     await service.update();
     const text = statusText(service);
     assert.ok(text.includes('Next Teams'), `Got: "${text}"`);
@@ -143,7 +154,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
   });
 
   test('shows warning display (in Xm) for a meeting 3 min away', async () => {
-    const m = makeMeeting('b', 3);
+    const m = makeMeeting(now, 'b', 3);
     mockManager.setMeetings([m]);
     await service.update();
     const text = statusText(service);
@@ -157,8 +168,8 @@ suite('ReminderService - Status Bar (single meeting)', () => {
   test('shows error display (まもなく開始) for a meeting less than 1 min away', async () => {
     // 30 seconds from now
     const meeting: Meeting = {
-      ...makeMeeting('c', 0),
-      startTime: new Date(Date.now() + 30 * 1000).toISOString(),
+      ...makeMeeting(now, 'c', 0),
+      startTime: new Date(now().getTime() + 30 * 1000).toISOString(),
     };
     mockManager.setMeetings([meeting]);
     await service.update();
@@ -170,7 +181,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
   });
 
   test('shows 開催中 with broadcast icon for an ongoing meeting', async () => {
-    const m = makeMeeting('d', -10); // started 10 min ago
+    const m = makeMeeting(now, 'd', -10); // started 10 min ago
     mockManager.setMeetings([m]);
     await service.update();
     const text = statusText(service);
@@ -193,10 +204,12 @@ suite('ReminderService - Status Bar (single meeting)', () => {
 suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
   let mockManager: MockMeetingManager;
   let service: ReminderService;
+  let now: Clock;
 
   setup(() => {
-    mockManager = new MockMeetingManager();
-    service = new ReminderService(mockManager as unknown as MeetingManager);
+    now = createFixedClock();
+    mockManager = new MockMeetingManager(now);
+    service = new ReminderService(mockManager as unknown as MeetingManager, now);
   });
 
   teardown(() => {
@@ -205,8 +218,8 @@ suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
 
   test('shows [1/2] suffix when two meetings are relevant', async () => {
     mockManager.setMeetings([
-      makeMeeting('a', -5), // ongoing
-      makeMeeting('b', 3),  // 3 min away
+      makeMeeting(now, 'a', -5), // ongoing
+      makeMeeting(now, 'b', 3),  // 3 min away
     ]);
     await service.update();
     const text = statusText(service);
@@ -216,8 +229,8 @@ suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
 
   test('shows [2/2] suffix when rotationIndex is manually advanced to 1', async () => {
     mockManager.setMeetings([
-      makeMeeting('a', -5), // ongoing
-      makeMeeting('b', 3),  // 3 min away
+      makeMeeting(now, 'a', -5), // ongoing
+      makeMeeting(now, 'b', 3),  // 3 min away
     ]);
     await service.update();
 
@@ -232,8 +245,8 @@ suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
   });
 
   test('resets rotationIndex to 0 when meeting list composition changes', async () => {
-    const m1 = makeMeeting('j', -5);
-    const m2 = makeMeeting('k', 3);
+    const m1 = makeMeeting(now, 'j', -5);
+    const m2 = makeMeeting(now, 'k', 3);
     mockManager.setMeetings([m1, m2]);
     await service.update();
 
@@ -248,8 +261,8 @@ suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
   });
 
   test('clamps stale rotationIndex without crashing when meeting is deleted between rotation tick and update', async () => {
-    const m1 = makeMeeting('l', -5);
-    const m2 = makeMeeting('m', 3);
+    const m1 = makeMeeting(now, 'l', -5);
+    const m2 = makeMeeting(now, 'm', 3);
     mockManager.setMeetings([m1, m2]);
     await service.update();
 
@@ -264,18 +277,18 @@ suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
   });
 
   test('currentRelevantMeetings reflects addition of a new meeting', async () => {
-    mockManager.setMeetings([makeMeeting('n', 3)]);
+    mockManager.setMeetings([makeMeeting(now, 'n', 3)]);
     await service.update();
     assert.strictEqual((service as any).currentRelevantMeetings.length, 1);
 
     // Add another meeting within the window
-    mockManager.setMeetings([makeMeeting('n', 3), makeMeeting('o', 4)]);
+    mockManager.setMeetings([makeMeeting(now, 'n', 3), makeMeeting(now, 'o', 4)]);
     await service.update();
     assert.strictEqual((service as any).currentRelevantMeetings.length, 2);
   });
 
   test('currentRelevantMeetings is cleared when all relevant meetings are removed', async () => {
-    mockManager.setMeetings([makeMeeting('p', 3)]);
+    mockManager.setMeetings([makeMeeting(now, 'p', 3)]);
     await service.update();
     assert.strictEqual((service as any).currentRelevantMeetings.length, 1);
 
@@ -292,10 +305,12 @@ suite('ReminderService - Status Bar Rotation (multiple meetings)', () => {
 suite('ReminderService - Reminder Flags', () => {
   let mockManager: MockMeetingManager;
   let service: ReminderService;
+  let now: Clock;
 
   setup(() => {
-    mockManager = new MockMeetingManager();
-    service = new ReminderService(mockManager as unknown as MeetingManager);
+    now = createFixedClock();
+    mockManager = new MockMeetingManager(now);
+    service = new ReminderService(mockManager as unknown as MeetingManager, now);
   });
 
   teardown(() => {
@@ -303,8 +318,8 @@ suite('ReminderService - Reminder Flags', () => {
   });
 
   test('sets notified5m=true for ALL meetings within the 5-min window', async () => {
-    const m1: Meeting = { ...makeMeeting('q', 3), notified5m: false };
-    const m2: Meeting = { ...makeMeeting('r', 4), notified5m: false };
+    const m1: Meeting = { ...makeMeeting(now, 'q', 3), notified5m: false };
+    const m2: Meeting = { ...makeMeeting(now, 'r', 4), notified5m: false };
     mockManager.setMeetings([m1, m2]);
     await service.update();
 
@@ -314,7 +329,7 @@ suite('ReminderService - Reminder Flags', () => {
   });
 
   test('does not re-set notified5m for meetings already flagged', async () => {
-    const meeting: Meeting = { ...makeMeeting('s', 3), notified5m: true };
+    const meeting: Meeting = { ...makeMeeting(now, 's', 3), notified5m: true };
     mockManager.setMeetings([meeting]);
     // Verify update completes without error; flag stays true
     await assert.doesNotReject(service.update());
@@ -325,13 +340,13 @@ suite('ReminderService - Reminder Flags', () => {
   test('sets notifiedStart=true for ALL meetings at or just past their start time', async () => {
     // Both meetings started within the last 2 minutes
     const m1: Meeting = {
-      ...makeMeeting('t', 0),
-      startTime: new Date(Date.now() - 30 * 1000).toISOString(),  // 30s ago
+      ...makeMeeting(now, 't', 0),
+      startTime: new Date(now().getTime() - 30 * 1000).toISOString(),  // 30s ago
       notifiedStart: false,
     };
     const m2: Meeting = {
-      ...makeMeeting('u', 0),
-      startTime: new Date(Date.now() - 60 * 1000).toISOString(),  // 1 min ago
+      ...makeMeeting(now, 'u', 0),
+      startTime: new Date(now().getTime() - 60 * 1000).toISOString(),  // 1 min ago
       notifiedStart: false,
     };
     mockManager.setMeetings([m1, m2]);
@@ -344,8 +359,8 @@ suite('ReminderService - Reminder Flags', () => {
 
   test('does not set notifiedStart for a meeting started more than 2 min ago', async () => {
     const meeting: Meeting = {
-      ...makeMeeting('v', 0),
-      startTime: new Date(Date.now() - 3 * 60 * 1000).toISOString(), // 3 min ago
+      ...makeMeeting(now, 'v', 0),
+      startTime: new Date(now().getTime() - 3 * 60 * 1000).toISOString(), // 3 min ago
       notifiedStart: false,
     };
     mockManager.setMeetings([meeting]);
@@ -360,7 +375,7 @@ suite('ReminderService - Reminder Flags', () => {
   });
 
   test('does not set notified5m for a meeting outside the 5-min window (10 min away)', async () => {
-    const meeting: Meeting = { ...makeMeeting('w', 10), notified5m: false };
+    const meeting: Meeting = { ...makeMeeting(now, 'w', 10), notified5m: false };
     mockManager.setMeetings([meeting]);
     await service.update();
 

@@ -110,4 +110,56 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
       global.Date = originalDate;
     }
   });
+
+  test('keeps a date-less time range on the current day while it is in progress', () => {
+    const originalDate = global.Date;
+    const frozenNow = new originalDate(2026, 8, 7, 12, 0, 0);
+
+    global.Date = new Proxy(originalDate, {
+      construct(target, args) {
+        return args.length === 0
+          ? new target(frozenNow.getTime())
+          : Reflect.construct(target, args);
+      }
+    });
+
+    try {
+      const parsed = parseMeetingText('11:00 - 13:00');
+
+      assert.ok(parsed.startTime);
+      assert.ok(parsed.endTime);
+      assert.strictEqual(parsed.startTime.getDate(), 7);
+      assert.strictEqual(parsed.startTime.getHours(), 11);
+      assert.strictEqual(parsed.endTime.getDate(), 7);
+      assert.strictEqual(parsed.endTime.getHours(), 13);
+    } finally {
+      global.Date = originalDate;
+    }
+  });
+
+  test('advances both ends of an expired date-less time range to tomorrow', () => {
+    const originalDate = global.Date;
+    const frozenNow = new originalDate(2026, 8, 7, 12, 0, 0);
+
+    global.Date = new Proxy(originalDate, {
+      construct(target, args) {
+        return args.length === 0
+          ? new target(frozenNow.getTime())
+          : Reflect.construct(target, args);
+      }
+    });
+
+    try {
+      const parsed = parseMeetingText('10:00 - 11:00');
+
+      assert.ok(parsed.startTime);
+      assert.ok(parsed.endTime);
+      assert.strictEqual(parsed.startTime.getDate(), 8);
+      assert.strictEqual(parsed.startTime.getHours(), 10);
+      assert.strictEqual(parsed.endTime.getDate(), 8);
+      assert.strictEqual(parsed.endTime.getHours(), 11);
+    } finally {
+      global.Date = originalDate;
+    }
+  });
 });
