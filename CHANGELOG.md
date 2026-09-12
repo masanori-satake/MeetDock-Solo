@@ -2,66 +2,62 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.1.1] - 2026-09-12
+
+### 修正 (Fixed)
+- オフライン環境での `EAI_AGAIN` (npm ネットワーク接続エラー) 対応
+  - 指示に基づき、`.pre-commit-config.yaml` からネットワーク接続を必要とする `eslint` および `check-types` フックを無効化（削除）し、標準のテキスト/JSONフックのみに設定
+
 ## [1.1.0] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の依存パッケージ参照エラー (`ERR_MODULE_NOT_FOUND`, `TS2688`) の完全解決
-  - `.pre-commit-config.yaml` の `entry` を `bash -c "npm install --no-audit --no-fund && npm run ..."` に変更し、リポジトリローカルの全 `devDependencies` を自動参照する構成へ変更
+- pre-commit の依存パッケージ参照エラー (`ERR_MODULE_NOT_FOUND`, `TS2688`) の解決
+  - `.pre-commit-config.yaml` の `entry` を `bash -c "npm install ... && npm run ..."` に変更
 
 ## [1.0.9] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の `ERR_MODULE_NOT_FOUND` (typescript-eslint) および `TS2688` (@types/node, @types/mocha) エラー対応
-  - `.pre-commit-config.yaml` の `additional_dependencies` を指定
+- pre-commit の依存パッケージ設定追加
 
 ## [1.0.8] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の `Executable node_modules/.bin/... not found` エラー対応
-  - `.pre-commit-config.yaml` の `language` を `node` に変更
+- pre-commit の実行形式修正
 
 ## [1.0.7] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit での `Executable npm not found` エラー対応
-  - `.pre-commit-config.yaml` の `entry` を直接指定
+- pre-commit の `Executable npm not found` エラー対応
 
 ## [1.0.6] - 2026-09-12
 
 ### 修正 (Fixed)
-- pre-commit の `AssertionError` 完全解消
-  - `.pre-commit-config.yaml` 内の `eslint` および `check-types` フックの `language` を `system` に設定
+- pre-commit の `AssertionError` 解消
 
 ## [1.0.5] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit の `AssertionError` 対応
-  - `.pre-commit-config.yaml` の `language: node` フックに `additional_dependencies` を設定
 
 ## [1.0.4] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit での `AssertionError` 対応
-  - `.pre-commit-config.yaml` の `language: node` local フックに `additional_dependencies` を記述
 
 ## [1.0.3] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit.ci 上での `npm: command not found` エラー対応
-  - `.pre-commit-config.yaml` の `eslint` および `check-types` フックの `language` に `node` を指定
 
 ## [1.0.2] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit.ci フック設定の完全修正
-  - `check-json` フックでの未定義の `--allow-comments` オプション削除
-  - `check-types` フックでの TS5112 エラー防止のため `pass_filenames: false` を追加
 
 ## [1.0.1] - 2026-09-12
 
 ### 修正 (Fixed)
 - pre-commit.ci でのエラー対応
-  - `.vscode/*.json` および `tsconfig.json` のコメント削除と表記の正規化
 
 ## [1.0.0] - 2026-09-12
 
