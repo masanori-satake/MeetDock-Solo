@@ -2,8 +2,19 @@ import * as vscode from 'vscode';
 import { Meeting } from './types';
 
 const STORAGE_KEY = 'meetdock-solo.meetings';
-// Assume default meeting duration is 30 minutes before considering it completed/expired
+// Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
+
+/**
+ * Returns the effective end time of a meeting.
+ * Uses meeting.endTime if present; otherwise falls back to startTime + 30 minutes.
+ */
+function getMeetingEndTime(meeting: Meeting): Date {
+  if (meeting.endTime) {
+    return new Date(meeting.endTime);
+  }
+  return new Date(new Date(meeting.startTime).getTime() + MEETING_DURATION_MS);
+}
 
 export class MeetingManager {
   private context: vscode.ExtensionContext;
@@ -57,7 +68,7 @@ export class MeetingManager {
 
     for (const meeting of meetings) {
       const startTime = new Date(meeting.startTime);
-      const endTime = new Date(startTime.getTime() + MEETING_DURATION_MS);
+      const endTime = getMeetingEndTime(meeting);
 
       if (now > endTime) {
         updated = true;
@@ -66,27 +77,31 @@ export class MeetingManager {
           continue;
         } else if (meeting.recurrence === 'weekly') {
           let nextStart = new Date(startTime.getTime());
-          while (now > new Date(nextStart.getTime() + MEETING_DURATION_MS)) {
+          while (now > getMeetingEndTime({ ...meeting, startTime: nextStart.toISOString() })) {
             nextStart.setDate(nextStart.getDate() + 7);
           }
+          const duration = endTime.getTime() - startTime.getTime();
           result.push({
             ...meeting,
             startTime: nextStart.toISOString(),
+            endTime: new Date(nextStart.getTime() + duration).toISOString(),
             notified5m: false,
             notifiedStart: false,
           });
         } else if (meeting.recurrence === 'weekdays') {
           let nextStart = new Date(startTime.getTime());
-          while (now > new Date(nextStart.getTime() + MEETING_DURATION_MS)) {
+          while (now > getMeetingEndTime({ ...meeting, startTime: nextStart.toISOString() })) {
             nextStart.setDate(nextStart.getDate() + 1);
             // Skip weekends (0 = Sunday, 6 = Saturday)
             while (nextStart.getDay() === 0 || nextStart.getDay() === 6) {
               nextStart.setDate(nextStart.getDate() + 1);
             }
           }
+          const duration = endTime.getTime() - startTime.getTime();
           result.push({
             ...meeting,
             startTime: nextStart.toISOString(),
+            endTime: new Date(nextStart.getTime() + duration).toISOString(),
             notified5m: false,
             notifiedStart: false,
           });
@@ -117,8 +132,7 @@ export class MeetingManager {
     const sorted = this.getSortedMeetings();
     const now = new Date();
     for (const m of sorted) {
-      const start = new Date(m.startTime);
-      const end = new Date(start.getTime() + MEETING_DURATION_MS);
+      const end = getMeetingEndTime(m);
       if (now <= end) {
         return m;
       }
@@ -135,7 +149,7 @@ export class MeetingManager {
     const now = new Date();
     return sorted.filter(m => {
       const start = new Date(m.startTime);
-      const end = new Date(start.getTime() + MEETING_DURATION_MS);
+      const end = getMeetingEndTime(m);
       const diffMs = start.getTime() - now.getTime();
       // Include if currently ongoing OR starting within withinMs
       return now < end && diffMs <= withinMs;

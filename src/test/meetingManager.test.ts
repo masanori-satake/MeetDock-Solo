@@ -164,3 +164,4 @@ suite('MeetingManager - getNextMeeting', () => {
     assert.strictEqual(manager.getNextMeeting(), undefined);
   });
 });
+

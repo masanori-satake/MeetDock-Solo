@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
-import { RecurrenceType } from './types';
+import { Meeting, RecurrenceType } from './types';
 
 /**
  * Prompts for meeting details parsed from the clipboard and saves the meeting.
@@ -142,11 +142,20 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     }
   }
 
-  const newMeeting = {
+  let finalEndTime: Date | undefined;
+  if (parsed.startTime && parsed.endTime) {
+    const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+    finalEndTime = new Date(finalStartTime.getTime() + duration);
+  } else if (parsed.endTime) {
+    finalEndTime = parsed.endTime;
+  }
+
+  const newMeeting: Meeting = {
     id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
     title: inputTitle.trim(),
     url: inputUrl.trim(),
     startTime: finalStartTime.toISOString(),
+    endTime: finalEndTime?.toISOString(),
     recurrence
   };
 
