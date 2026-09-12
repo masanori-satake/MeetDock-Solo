@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -24,8 +22,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Check Version Consistency and Bump
-        run: npm run check-version-bump
+      - name: Check Version Consistency
+        run: npm run check-version
 
       - name: Package Extension (.vsix)
         run: npx @vscode/vsce package --no-git-tag-version

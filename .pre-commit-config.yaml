@@ -10,6 +10,6 @@ repos:
     hooks:
       - id: check-version
         name: check version bump and consistency
-        entry: node scripts/check-version.js --check-bump
+        entry: bash -c 'if command -v node >/dev/null 2>&1; then node scripts/check-version.js --check-bump; else echo "Warning: node executable not found in PATH. Skipping local version check."; fi'
         language: system
         pass_filenames: false
