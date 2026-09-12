@@ -59,7 +59,11 @@ if (fs.existsSync(readmePath)) {
   errors.push('README.md does not exist');
 }
 
-// Semver comparison helper: returns >0 if v1 > v2, 0 if v1 == v2, <0 if v1 < v2
+/**
+ * Compares two semantic version strings.
+ *
+ * @returns A positive number when v1 is newer, zero when equal, or a negative number when v2 is newer.
+ */
 function compareSemver(v1, v2) {
   const p1 = v1.replace(/^v/i, '').split('.').map(Number);
   const p2 = v2.replace(/^v/i, '').split('.').map(Number);
@@ -72,6 +76,11 @@ function compareSemver(v1, v2) {
   return 0;
 }
 
+/**
+ * Determines the Git reference to use as the base of the version bump check.
+ *
+ * @returns The first available base reference, or null when none can be resolved.
+ */
 function getGitBaseRef() {
   if (process.env.BASE_BRANCH) return process.env.BASE_BRANCH;
   if (process.env.GITHUB_BASE_REF) return `origin/${process.env.GITHUB_BASE_REF}`;
