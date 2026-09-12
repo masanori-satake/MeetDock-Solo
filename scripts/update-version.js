@@ -12,7 +12,7 @@ if (!rawVersion) {
 }
 
 const cleanVersion = rawVersion.replace(/^v/i, '').trim();
-if (!/^\d+\.\d+\.\d+$/.test(cleanVersion)) {
+if (!/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(cleanVersion)) {
   console.error(`Invalid semver format: "${rawVersion}". Expected format: X.Y.Z (e.g., 1.4.0)`);
   process.exit(1);
 }
@@ -44,7 +44,7 @@ const readmePath = path.join(rootDir, 'README.md');
 if (fs.existsSync(readmePath)) {
   let readme = fs.readFileSync(readmePath, 'utf8');
   readme = readme.replace(new RegExp(`version-v${oldVersion.replace(/\./g, '\\.')}-blue\\.svg`, 'g'), `version-v${cleanVersion}-blue.svg`);
-  readme = readme.replace(new RegExp(`v${oldVersion.replace(/\./g, '\\.')}`, 'g'), `v${cleanVersion}`);
+  readme = readme.replace(new RegExp(`v${oldVersion.replace(/\./g, '\\.')}(?!\\d)`, 'g'), `v${cleanVersion}`);
   readme = readme.replace(new RegExp(`meetdock-solo-${oldVersion.replace(/\./g, '\\.')}\\.vsix`, 'g'), `meetdock-solo-${cleanVersion}.vsix`);
   fs.writeFileSync(readmePath, readme, 'utf8');
   console.log(`Updated README.md references to v${cleanVersion}`);
