@@ -2,22 +2,94 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "description": "Prevent missing Teams meetings while coding.",
-  "version": "0.0.1",
+  "version": "1.2.0",
   "engines": {
     "vscode": "^1.137.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onView:meetdock-view"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "meetdock-container",
+          "title": "MeetDock",
+          "icon": "$(calendar)"
+        }
+      ]
+    },
+    "views": {
+      "meetdock-container": [
+        {
+          "id": "meetdock-view",
+          "name": "MeetDock Meetings"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "meetdock-solo.helloWorld",
-        "title": "Hello World"
+        "command": "meetdock-solo.addFromClipboard",
+        "title": "MeetDock: クリップボードから会議を追加",
+        "icon": "$(add)"
+      },
+      {
+        "command": "meetdock-solo.openMeeting",
+        "title": "Teamsに参加",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "meetdock-solo.deleteMeeting",
+        "title": "会議を削除",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "meetdock-solo.refreshView",
+        "title": "更新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "meetdock-solo.selectMeeting",
+        "title": "MeetDock: ミーティング一覧から選択"
       }
-    ]
+    ],
+    "keybindings": [
+      {
+        "command": "meetdock-solo.addFromClipboard",
+        "key": "alt+m",
+        "mac": "option+m"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "meetdock-solo.addFromClipboard",
+          "when": "view == meetdock-view",
+          "group": "navigation"
+        },
+        {
+          "command": "meetdock-solo.refreshView",
+          "when": "view == meetdock-view",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "meetdock-solo.openMeeting",
+          "when": "view == meetdock-view",
+          "group": "inline"
+        },
+        {
+          "command": "meetdock-solo.deleteMeeting",
+          "when": "view == meetdock-view",
+          "group": "inline"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

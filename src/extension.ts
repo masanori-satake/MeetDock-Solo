@@ -1,26 +1,95 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { MeetingManager } from './meetingManager';
+import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
+import { ReminderService } from './reminderService';
+import { addFromClipboardCommand } from './commands';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+/**
+ * Activates MeetDock and registers its tree view, reminders, and commands.
+ */
 export function activate(context: vscode.ExtensionContext) {
+  console.log('MeetDock-Solo is now active!');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "meetdock-solo" is now active!');
+  const meetingManager = new MeetingManager(context);
+  const treeDataProvider = new MeetingTreeDataProvider(meetingManager);
+  const reminderService = new ReminderService(meetingManager);
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('meetdock-solo.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from MeetDock-Solo!');
-	});
+  // Register TreeView with Drag & Drop support
+  const treeView = vscode.window.createTreeView('meetdock-view', {
+    treeDataProvider,
+    dragAndDropController: treeDataProvider
+  });
 
-	context.subscriptions.push(disposable);
+  // Start Reminder Service
+  reminderService.start();
+
+  // Register Commands
+  const addClipboardDisposable = vscode.commands.registerCommand('meetdock-solo.addFromClipboard', async () => {
+    await addFromClipboardCommand(meetingManager);
+  });
+
+  const openMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.openMeeting', (item?: MeetingTreeItem) => {
+    if (item && item.meeting) {
+      vscode.env.openExternal(vscode.Uri.parse(item.meeting.url));
+    }
+  });
+
+  const deleteMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.deleteMeeting', async (item?: MeetingTreeItem) => {
+    if (item && item.meeting) {
+      await meetingManager.removeMeeting(item.meeting.id);
+      vscode.window.showInformationMessage(`MeetDock: ミーティング「${item.meeting.title}」を削除しました。`);
+    }
+  });
+
+  const refreshViewDisposable = vscode.commands.registerCommand('meetdock-solo.refreshView', () => {
+    treeDataProvider.refresh();
+  });
+
+  const selectMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.selectMeeting', async () => {
+    const sortedMeetings = meetingManager.getSortedMeetings();
+    if (sortedMeetings.length === 0) {
+      const choice = await vscode.window.showInformationMessage(
+        '登録された Teams ミーティングはありません。クリップボードから追加しますか？',
+        '追加する'
+      );
+      if (choice === '追加する') {
+        await addFromClipboardCommand(meetingManager);
+      }
+      return;
+    }
+
+    const items = sortedMeetings.map(m => {
+      const start = new Date(m.startTime);
+      const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      return {
+        label: `$(calendar) ${m.title}`,
+        description: `${timeStr} (${m.recurrence})`,
+        detail: m.url,
+        meeting: m
+      };
+    });
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: 'Teams ミーティングを選択してブラウザ/アプリで開きます'
+    });
+
+    if (selected) {
+      vscode.env.openExternal(vscode.Uri.parse(selected.meeting.url));
+    }
+  });
+
+  context.subscriptions.push(
+    treeView,
+    reminderService,
+    addClipboardDisposable,
+    openMeetingDisposable,
+    deleteMeetingDisposable,
+    refreshViewDisposable,
+    selectMeetingDisposable
+  );
 }
 
-// This method is called when your extension is deactivated
+/**
+ * Deactivates the extension after VS Code disposes its registered resources.
+ */
 export function deactivate() {}
