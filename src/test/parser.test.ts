@@ -72,4 +72,18 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
     assert.strictEqual(parsed.startTime.getHours(), 10);
     assert.strictEqual(parsed.startTime.getMinutes(), 0);
   });
+
+  test('advances candidate date to tomorrow if time-only is in the past', () => {
+    const now = new Date();
+    // Pick an hour/minute earlier today (e.g. 0:01)
+    const pastHour = 0;
+    const pastMinute = 1;
+    const sample = `
+      https://teams.microsoft.com/l/meetup-join/19%3ameeting_past
+      ${pastHour}:${String(pastMinute).padStart(2, '0')}
+    `;
+    const parsed = parseMeetingText(sample);
+    assert.ok(parsed.startTime);
+    assert.ok(parsed.startTime.getTime() + 30 * 60 * 1000 > now.getTime());
+  });
 });

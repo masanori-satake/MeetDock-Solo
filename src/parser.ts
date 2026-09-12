@@ -131,6 +131,9 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
 
     const now = new Date();
     const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+    if (candidate.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+      candidate.setDate(candidate.getDate() + 1);
+    }
     startTime = candidate;
   }
 
