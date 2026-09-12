@@ -145,7 +145,7 @@ graph TD
 
 ## 🔒 データの保存について
 
-本拡張機能で登録した会議情報は、外部サーバーに送信されることは一切ありません。すべてのデータは VS Code の `ExtensionContext.globalState` を通じてローカル環境に保存されます。
+本拡張機能で登録した会議情報を、拡張機能自身が独自の外部サーバーへ送信することはありません。すべてのデータは VS Code の `ExtensionContext.globalState` を通じてローカル環境に保存されます。会議への参加を選択した場合のみ、`src/extension.ts` および `src/reminderService.ts` の `openExternal` 処理により、選択した会議 URL が既定のブラウザまたは Teams アプリへ渡されます。
 
 ---
 
