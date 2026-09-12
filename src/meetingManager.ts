@@ -125,4 +125,20 @@ export class MeetingManager {
     }
     return undefined;
   }
+
+  /**
+   * Returns all meetings that are currently ongoing or starting within withinMs milliseconds,
+   * sorted by start time (earliest first).
+   */
+  public getRelevantMeetings(withinMs: number): Meeting[] {
+    const sorted = this.getSortedMeetings();
+    const now = new Date();
+    return sorted.filter(m => {
+      const start = new Date(m.startTime);
+      const end = new Date(start.getTime() + MEETING_DURATION_MS);
+      const diffMs = start.getTime() - now.getTime();
+      // Include if currently ongoing OR starting within withinMs
+      return now < end && diffMs <= withinMs;
+    });
+  }
 }

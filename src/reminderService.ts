@@ -3,11 +3,20 @@ import { MeetingManager } from './meetingManager';
 import { Meeting } from './types';
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
+/** How far ahead to include meetings in the rotation (currently 5 minutes). */
+const REMINDER_WINDOW_MS = 5 * 60 * 1000;
+/** How often to rotate the status bar display when multiple meetings are relevant. */
+const ROTATION_INTERVAL_MS = 5000;
 
 export class ReminderService {
   private statusBarItem: vscode.StatusBarItem;
   private meetingManager: MeetingManager;
-  private timer: NodeJS.Timeout | undefined;
+  private updateTimer: NodeJS.Timeout | undefined;
+  private rotationTimer: NodeJS.Timeout | undefined;
+  /** Currently relevant meetings (ongoing or within REMINDER_WINDOW_MS). */
+  private currentRelevantMeetings: Meeting[] = [];
+  /** Index into currentRelevantMeetings for status bar rotation. */
+  private rotationIndex: number = 0;
 
   constructor(meetingManager: MeetingManager) {
     this.meetingManager = meetingManager;
@@ -22,15 +31,25 @@ export class ReminderService {
 
   public start(): void {
     this.update();
-    // Check every 10 seconds
-    this.timer = setInterval(() => {
+    // Check every 10 seconds for expirations and reminders
+    this.updateTimer = setInterval(() => {
       this.update();
     }, 10000);
+    // Rotate status bar display every 5 seconds (only active when multiple meetings are relevant)
+    this.rotationTimer = setInterval(() => {
+      if (this.currentRelevantMeetings.length > 1) {
+        this.rotationIndex = (this.rotationIndex + 1) % this.currentRelevantMeetings.length;
+        this.updateStatusBar();
+      }
+    }, ROTATION_INTERVAL_MS);
   }
 
   public stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
+    if (this.updateTimer) {
+      clearInterval(this.updateTimer);
+    }
+    if (this.rotationTimer) {
+      clearInterval(this.rotationTimer);
     }
     this.statusBarItem.dispose();
   }
@@ -43,41 +62,46 @@ export class ReminderService {
     // Process any expired/completed meetings
     await this.meetingManager.processExpirations();
 
-    const nextMeeting = this.meetingManager.getNextMeeting();
-    if (!nextMeeting) {
-      this.statusBarItem.text = `$(calendar) Teams: 予定なし`;
-      this.statusBarItem.backgroundColor = undefined;
-      this.statusBarItem.tooltip = '登録された Teams ミーティングはありません。';
-      return;
+    // Get all currently relevant meetings (ongoing or starting within REMINDER_WINDOW_MS)
+    const newRelevantMeetings = this.meetingManager.getRelevantMeetings(REMINDER_WINDOW_MS);
+
+    // If the list composition changed (e.g. a meeting was added/deleted), reset rotation index
+    // so we never reference a stale or out-of-bounds entry.
+    const prevIds = this.currentRelevantMeetings.map(m => m.id).join(',');
+    const newIds = newRelevantMeetings.map(m => m.id).join(',');
+    if (prevIds !== newIds) {
+      this.rotationIndex = 0;
     }
+    this.currentRelevantMeetings = newRelevantMeetings;
 
-    const now = new Date();
-    const startTime = new Date(nextMeeting.startTime);
-    const endTime = new Date(startTime.getTime() + MEETING_DURATION_MS);
-    const diffMs = startTime.getTime() - now.getTime();
-    const diffMinutes = Math.floor(diffMs / (60 * 1000));
-    const diffSeconds = Math.floor(diffMs / 1000);
+    // Fire reminders for every relevant meeting individually
+    await this.checkReminders(this.currentRelevantMeetings);
 
-    const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    // Refresh status bar
+    this.updateStatusBar();
+  }
 
-    if (now >= startTime && now <= endTime) {
-      // Meeting is currently ongoing ("開催中")
-      this.statusBarItem.text = `$(broadcast) Teams: ${nextMeeting.title} (開催中)`;
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-      this.statusBarItem.tooltip = `開催中: ${nextMeeting.title}\nクリックしてミーティング一覧を開く`;
-    } else if (diffMinutes <= 1 && diffMs > 0) {
-      // Less than 1 minute remaining -> warning background / red text
-      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (まもなく開始)`;
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
-      this.statusBarItem.tooltip = `まもなく開始: ${nextMeeting.title}\n開始時刻: ${timeStr}`;
-    } else if (diffMinutes <= 5 && diffMs > 0) {
-      // 5 minutes or less
-      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${diffMinutes}m)`;
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-      this.statusBarItem.tooltip = `次回会議: ${nextMeeting.title}\n開始時刻: ${timeStr}`;
-    } else {
-      // Normal countdown
-      let remainingText = '';
+  private updateStatusBar(): void {
+    const meetings = this.currentRelevantMeetings;
+    const total = meetings.length;
+
+    if (total === 0) {
+      // No relevant meetings — show the next upcoming meeting as a plain countdown
+      const nextMeeting = this.meetingManager.getNextMeeting();
+      if (!nextMeeting) {
+        this.statusBarItem.text = `$(calendar) Teams: 予定なし`;
+        this.statusBarItem.backgroundColor = undefined;
+        this.statusBarItem.tooltip = '登録された Teams ミーティングはありません。';
+        return;
+      }
+
+      const now = new Date();
+      const startTime = new Date(nextMeeting.startTime);
+      const diffMs = startTime.getTime() - now.getTime();
+      const diffMinutes = Math.floor(diffMs / (60 * 1000));
+      const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+      let remainingText: string;
       if (diffMinutes >= 60) {
         const hours = Math.floor(diffMinutes / 60);
         const mins = diffMinutes % 60;
@@ -88,14 +112,59 @@ export class ReminderService {
       this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`;
       this.statusBarItem.backgroundColor = undefined;
       this.statusBarItem.tooltip = `次回会議: ${nextMeeting.title}\n開始時刻: ${timeStr}`;
+      return;
     }
 
-    // Trigger Reminders
-    await this.checkReminders(nextMeeting, diffMs, now, startTime);
+    // Guard: clamp rotationIndex in case a meeting was deleted between the rotation tick and now
+    if (this.rotationIndex >= total) {
+      this.rotationIndex = 0;
+    }
+
+    const meeting = meetings[this.rotationIndex];
+    const now = new Date();
+    const startTime = new Date(meeting.startTime);
+    const endTime = new Date(startTime.getTime() + MEETING_DURATION_MS);
+    const diffMs = startTime.getTime() - now.getTime();
+    const diffMinutes = Math.floor(diffMs / (60 * 1000));
+
+    const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    // Show [n/total] suffix only when there are multiple relevant meetings
+    const indexSuffix = total > 1 ? ` [${this.rotationIndex + 1}/${total}]` : '';
+
+    if (now >= startTime && now < endTime) {
+      // Meeting is currently ongoing ("開催中") — yellow/warning background
+      this.statusBarItem.text = `$(broadcast) Teams: ${meeting.title} (開催中)${indexSuffix}`;
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+      this.statusBarItem.tooltip = `開催中: ${meeting.title}\nクリックしてミーティング一覧を開く`;
+    } else if (diffMs > 0 && diffMinutes < 1) {
+      // Less than 1 minute until start — red/error background
+      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (まもなく開始)${indexSuffix}`;
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+      this.statusBarItem.tooltip = `まもなく開始: ${meeting.title}\n開始時刻: ${timeStr}`;
+    } else if (diffMs > 0 && diffMinutes <= 5) {
+      // 5 minutes or less until start — yellow/warning background
+      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${diffMinutes}m)${indexSuffix}`;
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+      this.statusBarItem.tooltip = `次回会議: ${meeting.title}\n開始時刻: ${timeStr}`;
+    }
   }
 
-  private async checkReminders(meeting: Meeting, diffMs: number, now: Date, startTime: Date): Promise<void> {
-    // 5 minutes reminder (when remaining time is <= 5 minutes and > 0, and not notified yet)
+  private async checkReminders(meetings: Meeting[]): Promise<void> {
+    const now = new Date();
+    for (const meeting of meetings) {
+      const startTime = new Date(meeting.startTime);
+      const diffMs = startTime.getTime() - now.getTime();
+      await this.checkMeetingReminder(meeting, diffMs, now, startTime);
+    }
+  }
+
+  private async checkMeetingReminder(
+    meeting: Meeting,
+    diffMs: number,
+    now: Date,
+    startTime: Date
+  ): Promise<void> {
+    // 5-minute reminder (fires once per meeting via notified5m flag)
     if (diffMs <= 5 * 60 * 1000 && diffMs > 0 && !meeting.notified5m) {
       meeting.notified5m = true;
       await this.meetingManager.updateMeeting(meeting);
@@ -112,7 +181,7 @@ export class ReminderService {
       });
     }
 
-    // Meeting Start Time modal dialog notification (when time has arrived/passed within 2 minutes, and not notified yet)
+    // Start-time modal notification (fires once per meeting via notifiedStart flag)
     if (diffMs <= 0 && (now.getTime() - startTime.getTime()) < 2 * 60 * 1000 && !meeting.notifiedStart) {
       meeting.notifiedStart = true;
       await this.meetingManager.updateMeeting(meeting);
