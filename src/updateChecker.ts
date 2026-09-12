@@ -55,8 +55,12 @@ export function isNewerVersion(latestVersion: string, currentVersion: string): b
   const cleanLatest = latestVersion.replace(/^v/i, '').trim();
   const cleanCurrent = currentVersion.replace(/^v/i, '').trim();
 
-  const v1Parts = cleanLatest.split('-')[0].split('.').map(n => parseInt(n, 10) || 0);
-  const v2Parts = cleanCurrent.split('-')[0].split('.').map(n => parseInt(n, 10) || 0);
+  const [latestCore, ...latestPrereleaseParts] = cleanLatest.split('-');
+  const [currentCore, ...currentPrereleaseParts] = cleanCurrent.split('-');
+  const latestPrerelease = latestPrereleaseParts.join('-');
+  const currentPrerelease = currentPrereleaseParts.join('-');
+  const v1Parts = latestCore.split('.').map(n => parseInt(n, 10) || 0);
+  const v2Parts = currentCore.split('.').map(n => parseInt(n, 10) || 0);
 
   const maxLength = Math.max(v1Parts.length, v2Parts.length);
   for (let i = 0; i < maxLength; i++) {
@@ -68,6 +72,40 @@ export function isNewerVersion(latestVersion: string, currentVersion: string): b
     if (p1 < p2) {
       return false;
     }
+  }
+
+  if (!latestPrerelease) {
+    return Boolean(currentPrerelease);
+  }
+  if (!currentPrerelease) {
+    return false;
+  }
+
+  const latestIdentifiers = latestPrerelease.split('.');
+  const currentIdentifiers = currentPrerelease.split('.');
+  const identifierCount = Math.max(latestIdentifiers.length, currentIdentifiers.length);
+  for (let i = 0; i < identifierCount; i++) {
+    const latestIdentifier = latestIdentifiers[i];
+    const currentIdentifier = currentIdentifiers[i];
+    if (latestIdentifier === undefined) {
+      return false;
+    }
+    if (currentIdentifier === undefined) {
+      return true;
+    }
+    if (latestIdentifier === currentIdentifier) {
+      continue;
+    }
+
+    const latestIsNumeric = /^\d+$/.test(latestIdentifier);
+    const currentIsNumeric = /^\d+$/.test(currentIdentifier);
+    if (latestIsNumeric && currentIsNumeric) {
+      return Number(latestIdentifier) > Number(currentIdentifier);
+    }
+    if (latestIsNumeric !== currentIsNumeric) {
+      return !latestIsNumeric;
+    }
+    return latestIdentifier > currentIdentifier;
   }
 
   return false;
