@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.4.1] - 2026-09-12
+
+### 修正 (Fixed)
+- 外部ブラウザ/アプリで Teams URL を開く際のセキュリティ強化（`openExternal` 実行前の URL スキームおよびドメイン検証 `isValidTeamsUrl` / `openTeamsMeetingUrl` の追加）
+
 ## [1.4.0] - 2026-09-12
 
 ### 追加 (Added)
