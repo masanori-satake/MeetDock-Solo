@@ -18,7 +18,10 @@ export class ReminderService {
   /** Index into currentRelevantMeetings for status bar rotation. */
   private rotationIndex: number = 0;
 
-  constructor(meetingManager: MeetingManager) {
+  constructor(
+    meetingManager: MeetingManager,
+    private readonly now: () => Date = () => new Date()
+  ) {
     this.meetingManager = meetingManager;
     this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.statusBarItem.command = 'meetdock-solo.selectMeeting';
@@ -95,7 +98,7 @@ export class ReminderService {
         return;
       }
 
-      const now = new Date();
+      const now = this.now();
       const startTime = new Date(nextMeeting.startTime);
       const diffMs = startTime.getTime() - now.getTime();
       const diffMinutes = Math.floor(diffMs / (60 * 1000));
@@ -121,7 +124,7 @@ export class ReminderService {
     }
 
     const meeting = meetings[this.rotationIndex];
-    const now = new Date();
+    const now = this.now();
     const startTime = new Date(meeting.startTime);
     const endTime = new Date(startTime.getTime() + MEETING_DURATION_MS);
     const diffMs = startTime.getTime() - now.getTime();
@@ -150,7 +153,7 @@ export class ReminderService {
   }
 
   private async checkReminders(meetings: Meeting[]): Promise<void> {
-    const now = new Date();
+    const now = this.now();
     for (const meeting of meetings) {
       const startTime = new Date(meeting.startTime);
       const diffMs = startTime.getTime() - now.getTime();
