@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.3.1] - 2026-09-12
+
+### 追加 (Added)
+- `package.json` に詳細なメタデータ (`publisher`, `author`, `license`, `keywords`, `bugs`, `homepage`, `categories`) を追加・更新
+
 ## [1.3.0] - 2026-09-12
 
 ### 追加 (Added)
