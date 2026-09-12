@@ -26,5 +26,16 @@ suite('UpdateChecker Test Suite', () => {
     // Multiple digits
     assert.strictEqual(isNewerVersion('1.10.0', '1.2.0'), true);
     assert.strictEqual(isNewerVersion('1.2.0', '1.10.0'), false);
+
+    // Large BigInt / Prerelease SemVer comparison test
+    assert.strictEqual(isNewerVersion('1.0.0-9007199254740993', '1.0.0-9007199254740992'), true);
+    assert.strictEqual(isNewerVersion('1.0.0-9007199254740992', '1.0.0-9007199254740993'), false);
+
+    // Prerelease vs Normal
+    assert.strictEqual(isNewerVersion('1.0.0', '1.0.0-alpha'), true);
+    assert.strictEqual(isNewerVersion('1.0.0-alpha', '1.0.0'), false);
+
+    // Prerelease numeric vs non-numeric
+    assert.strictEqual(isNewerVersion('1.0.0-alpha', '1.0.0-1'), true);
   });
 });
