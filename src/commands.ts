@@ -136,6 +136,11 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
     finalStartTime.setDate(finalStartTime.getDate() + 1);
   }
+  if (recurrence === 'weekdays') {
+    while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
+      finalStartTime.setDate(finalStartTime.getDate() + 1);
+    }
+  }
 
   const newMeeting = {
     id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
