@@ -33,16 +33,41 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     // Look at non-empty lines before the URL
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     for (const line of lines) {
-      if (!line.includes('https://teams.microsoft.com') &&
-          !line.includes('https://teams.live.com') &&
-          !/^\d{1,2}:\d{2}/.test(line) &&
-          !/^\d{4}[-/.]/.test(line)) {
-        // Strip common html tags if dropped text contained html
-        const cleanLine = line.replace(/<[^>]*>/g, '').trim();
-        if (cleanLine.length > 0 && cleanLine.length < 100) {
-          title = cleanLine;
-          break;
-        }
+      if (line.includes('https://teams.microsoft.com') || line.includes('https://teams.live.com')) {
+        continue;
+      }
+
+      // Strip common html tags if dropped text contained html
+      const cleanLine = line.replace(/<[^>]*>/g, '').trim();
+      if (!cleanLine) {
+        continue;
+      }
+
+      // Skip invitation header phrases
+      if (/(?:Microsoft\s*)?Teams\s*会議に招待/i.test(cleanLine) ||
+          /が.*Teams.*会議に招待/i.test(cleanLine) ||
+          /has invited you to/i.test(cleanLine) ||
+          /invited you to/i.test(cleanLine) ||
+          /you'?re invited to/i.test(cleanLine) ||
+          /you have been invited to/i.test(cleanLine) ||
+          /you are invited to/i.test(cleanLine) ||
+          /^Microsoft\s*Teams\s*会議$/i.test(cleanLine) ||
+          /^Teams\s*会議$/i.test(cleanLine) ||
+          /^(?:会議のリンク|Meeting link|Join the meeting|Click here to join)/i.test(cleanLine)) {
+        continue;
+      }
+
+      // Skip lines starting with time or date
+      if (/^\d{1,2}:\d{2}/.test(cleanLine) ||
+          /^\d{4}[-/.\s年]/.test(cleanLine) ||
+          /^\d{1,2}月\d{1,2}日/.test(cleanLine) ||
+          /^(?:月曜日|火曜日|水曜日|木曜日|金曜日|土曜日|日曜日|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i.test(cleanLine)) {
+        continue;
+      }
+
+      if (cleanLine.length > 0 && cleanLine.length < 100) {
+        title = cleanLine;
+        break;
       }
     }
   }
@@ -50,25 +75,23 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   // 3. Extract Start Time
   let startTime: Date | undefined = undefined;
 
-  // Check full ISO or YYYY-MM-DD HH:mm pattern
-  const fullDateRegex = /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/;
-  const fullDateMatch = text.match(fullDateRegex);
+  // Check full date pattern: YYYY-MM-DD or YYYY年MM月DD日
+  const yearMatch = text.match(/(\d{4})[-/.\s年]\s*(\d{1,2})[-/.\s月]\s*(\d{1,2})/);
+  const timeMatch = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i);
 
-  if (fullDateMatch) {
-    const year = parseInt(fullDateMatch[1], 10);
-    const month = parseInt(fullDateMatch[2], 10) - 1;
-    const day = parseInt(fullDateMatch[3], 10);
-    const hour = fullDateMatch[4] ? parseInt(fullDateMatch[4], 10) : 9;
-    const minute = fullDateMatch[5] ? parseInt(fullDateMatch[5], 10) : 0;
-    const second = fullDateMatch[6] ? parseInt(fullDateMatch[6], 10) : 0;
-    startTime = new Date(year, month, day, hour, minute, second);
-  } else {
-    // Check HH:mm pattern
-    const timeRegex = /(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i;
-    const timeMatch = text.match(timeRegex);
+  if (yearMatch) {
+    const year = parseInt(yearMatch[1], 10);
+    const month = parseInt(yearMatch[2], 10) - 1;
+    const day = parseInt(yearMatch[3], 10);
+
+    let hour = 9;
+    let minute = 0;
+    let second = 0;
+
     if (timeMatch) {
-      let hour = parseInt(timeMatch[1], 10);
-      const minute = parseInt(timeMatch[2], 10);
+      hour = parseInt(timeMatch[1], 10);
+      minute = parseInt(timeMatch[2], 10);
+      second = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
       const ampm = timeMatch[4];
 
       if (ampm) {
@@ -78,12 +101,24 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
           hour = 0;
         }
       }
-
-      const now = new Date();
-      const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
-      // If candidate is earlier today by more than 1 hour, maybe it's for tomorrow or keep today
-      startTime = candidate;
     }
+    startTime = new Date(year, month, day, hour, minute, second);
+  } else if (timeMatch) {
+    let hour = parseInt(timeMatch[1], 10);
+    const minute = parseInt(timeMatch[2], 10);
+    const ampm = timeMatch[4];
+
+    if (ampm) {
+      if (ampm.toUpperCase() === 'PM' && hour < 12) {
+        hour += 12;
+      } else if (ampm.toUpperCase() === 'AM' && hour === 12) {
+        hour = 0;
+      }
+    }
+
+    const now = new Date();
+    const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+    startTime = candidate;
   }
 
   return {
