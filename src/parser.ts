@@ -88,7 +88,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   // Check full date pattern: YYYY-MM-DD or YYYY年MM月DD日
   const yearMatch = text.match(/(\d{4})[-/.\s年]\s*(\d{1,2})[-/.\s月]\s*(\d{1,2})/);
   const eraMatch = text.match(/(令和|平成|昭和|大正|明治)(元|\d{1,2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
-  
+
   // Check for time range first
   const timeRangeMatch = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?\s*(?:-|~|～|to)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i);
   // Fallback to single time
@@ -110,7 +110,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     const day = parseInt(yearMatch ? yearMatch[3] : eraMatch![4], 10);
 
     let sHour = 9, sMinute = 0, sSecond = 0;
-    
+
     if (timeRangeMatch) {
       sHour = applyAmPm(parseInt(timeRangeMatch[1], 10), timeRangeMatch[4]);
       sMinute = parseInt(timeRangeMatch[2], 10);

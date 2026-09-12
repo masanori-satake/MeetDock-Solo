@@ -171,7 +171,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
 
   test('shows 開催中 with broadcast icon for an ongoing meeting', async () => {
     const m = makeMeeting('d', -10); // started 10 min ago
-    mockManager.setMeetings([m]); 
+    mockManager.setMeetings([m]);
     await service.update();
     const text = statusText(service);
     assert.ok(text.includes('開催中'),   `Got: "${text}"`);
