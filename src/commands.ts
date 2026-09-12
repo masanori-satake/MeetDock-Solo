@@ -132,6 +132,10 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   }
 
   const recurrence: RecurrenceType = selectedRecurrence.type;
+  const validationNow = new Date();
+  while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
+    finalStartTime.setDate(finalStartTime.getDate() + 1);
+  }
 
   const newMeeting = {
     id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
