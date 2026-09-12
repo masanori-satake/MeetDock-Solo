@@ -360,4 +360,3 @@ suite('ReminderService - Reminder Flags', () => {
     );
   });
 });
-
