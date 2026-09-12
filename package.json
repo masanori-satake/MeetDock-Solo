@@ -1,19 +1,36 @@
 {
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
-  "description": "Prevent missing Teams meetings while coding.",
-  "version": "1.3.0",
+  "publisher": "masanori-satake",
+  "version": "1.3.1",
+  "description": "Prevent missing Teams meetings while coding. A lightweight, 100% local VSCode extension.",
+  "author": {
+    "name": "Masanori Satake"
+  },
+  "license": "MIT",
   "icon": "icon.png",
+  "categories": [
+    "Productivity",
+    "Other"
+  ],
+  "keywords": [
+    "teams",
+    "meeting",
+    "reminder",
+    "productivity",
+    "local-first"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/masanori-satake/MeetDock-Solo.git"
   },
+  "bugs": {
+    "url": "https://github.com/masanori-satake/MeetDock-Solo/issues"
+  },
+  "homepage": "https://github.com/masanori-satake/MeetDock-Solo#readme",
   "engines": {
     "vscode": "^1.137.0"
   },
-  "categories": [
-    "Other"
-  ],
   "activationEvents": [
     "onView:meetdock-view"
   ],
