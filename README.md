@@ -39,73 +39,12 @@
 
 ---
 
-## 🔄 動作フロー・システム構造
-
-### 会議登録・通知フロー (Mermaid Sequence Diagram)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as ユーザー
-    participant Extension as MeetDock-Solo
-    participant Storage as VS Code globalState
-    participant Teams as Microsoft Teams (Browser/App)
-
-    rect rgb(240, 248, 255)
-    note over User, Storage: 1. 会議の登録フロー
-    alt ドラッグ＆ドロップによる登録
-        User->>Extension: 招待文をサイドバーに D&D
-    else クリップボードからの登録
-        User->>Extension: ショートカット (Alt+M / Option+M) 実行
-    end
-    Extension->>Extension: URL / タイトル / 開始日時を自動解析 (Parser)
-    Extension->>User: 入力確認・編集ダイアログ (URL/タイトル/日時/繰り返し)
-    User-->>Extension: 確認・確定
-    Extension->>Storage: 会議データを保存
-    end
-
-    rect rgb(255, 250, 240)
-    note over User, Teams: 2. カウントダウン＆通知フロー
-    loop 10秒ごとの監視
-        Extension->>Storage: 会議データの読み込み・期限チェック
-        Extension->>Extension: ステータスバーの表示更新 (カウントダウン / カラー変更)
-        alt 5分前到達 (未通知時)
-            Extension->>User: 右下情報通知 (5分前リマインダー)
-        else 開始時刻到達 (未通知時)
-            Extension->>User: 全面モーダルダイアログ表示 (開始リマインダー)
-        end
-    end
-    User->>Extension: 「Teamsに参加」をクリック
-    Extension->>Teams: URL を外部ブラウザ/アプリで開く
-    end
-```
-
-### 機能コンポーネント構造 (Mermaid Flowchart)
-
-```mermaid
-graph TD
-    A[VS Code User Interface] -->|D&D / Command| B[Parser Module]
-    B -->|Extracted Data| C[Meeting Manager]
-    C -->|Save / Load| D[VS Code globalState]
-    C -->|Update Event| E[TreeDataProvider / Sidebar View]
-    C -->|Update Event| F[Reminder Service / Status Bar]
-    F -->|Count Down| G[Status Bar Item]
-    F -->|5m Notification| H[VS Code Info Message]
-    F -->|Start Notification| I[VS Code Modal Dialog]
-    H -->|Open URL| J[Microsoft Teams]
-    I -->|Open URL| J
-    G -->|Click| K[QuickPick Meeting Selector]
-    K -->|Select| J
-```
-
----
-
 ## 🚀 使い方
 
 ### 1. 会議を登録する
 
 #### 方法 A: サイドバーへドラッグ＆ドロップ
-1. VS Code のアクティビティバーにあるカレンダーアイコン **MeetDock-Solo** を開きます。
+1. VS Code のアクティビティバーにあるカレンダーアイコン **MeetDock** を開きます。
 2. Teams の会議URLを含むテキスト（メール本文、チャットメッセージ、Webページの選択テキストなど）をサイドバービュー（`Meetings`）へドラッグ＆ドロップします。
 3. 自動抽出された URL・件名・日時を確認し、必要に応じて修正して Enter キーを押します。
 4. 繰り返し設定（`単発` / `毎週` / `平日`）を選択して登録完了です。
@@ -149,6 +88,12 @@ graph TD
 ## 🔒 データの保存について
 
 本拡張機能で登録した会議情報を、拡張機能自身が独自の外部サーバーへ送信することはありません。すべてのデータは VS Code の `ExtensionContext.globalState` を通じてローカル環境に保存されます。会議への参加を選択した場合のみ、`src/extension.ts` および `src/reminderService.ts` の `openExternal` 処理により、選択した会議 URL が既定のブラウザまたは Teams アプリへ渡されます。
+
+---
+
+## 🛠️ 開発者向けドキュメント
+
+システムの詳細な動作フローやコンポーネント構造については、[docs/architecture.md](docs/architecture.md) を参照してください。
 
 ---
 
