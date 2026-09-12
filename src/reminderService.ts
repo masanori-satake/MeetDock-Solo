@@ -137,8 +137,8 @@ export class ReminderService {
     if (now >= startTime && now < endTime) {
       // Meeting is currently ongoing ("開催中")
       this.statusBarItem.text = `$(broadcast) ${meeting.title} (開催中)${indexSuffix}`;
-      this.statusBarItem.color = undefined; // 文字色はデフォルトに戻す
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
+      this.statusBarItem.color = new vscode.ThemeColor('charts.green');
+      this.statusBarItem.backgroundColor = undefined;
       this.statusBarItem.tooltip = `開催中: ${meeting.title}\nクリックしてミーティング一覧を開く`;
     } else if (diffMs > 0 && diffMinutes < 1) {
       // Less than 1 minute until start — red/error background
