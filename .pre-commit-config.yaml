@@ -6,3 +6,10 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-json
+  - repo: local
+    hooks:
+      - id: check-version
+        name: check version bump and consistency
+        entry: node scripts/check-version.js --check-bump
+        language: system
+        pass_filenames: false

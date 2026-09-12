@@ -62,3 +62,27 @@ graph TD
     G -->|Click| K[QuickPick Meeting Selector]
     K -->|Select| J
 ```
+
+---
+
+## 🛡️ バージョン管理・品質検証フロー (Quality Assurance)
+
+プロジェクトの更新時にバージョン番号の更新漏れを防ぐため、以下の自動検証機構を導入しています。
+
+### バージョン更新漏れチェックフロー (Mermaid Flowchart)
+
+```mermaid
+graph TD
+    Dev[開発者 / PR作成] -->|git commit / push| Hook[pre-commit Hook / CI Workflow]
+    Hook --> CheckScript[scripts/check-version.js --check-bump]
+    CheckScript -->|Consistency Check| Consistency[package.json / package-lock.json / README / CHANGELOG の一致確認]
+    CheckScript -->|Git Diff Check| Diff[ベースブランチ origin/main との比較]
+    Diff -->|変更あり かつ バージョン未変更| Fail[エラー判定: コミット/ビルド中断]
+    Diff -->|変更あり かつ バージョン繰り上がり済| Pass[成功: 処理続行]
+    Diff -->|変更なし| Pass
+```
+
+- **`npm run update-version <version>`**: 一括で `package.json`, `package-lock.json`, `README.md`, `CHANGELOG.md` のバージョンを更新します。
+- **`npm run check-version-bump`**: ファイル間の整合性チェックに加え、ベースブランチとの比較によりコード変更時のバージョン更新漏れを検証します。
+- **Git pre-commit Hook**: `.pre-commit-config.yaml` の設定により、コミット時に自動で `check-version-bump` が実行されます。
+- **GitHub Actions CI**: `.github/workflows/ci.yml` により、`push` および `pull_request` 時にバージョン確認・型チェック・lint・自動テストが実行されます。

@@ -1,0 +1,40 @@
+name: CI & Version Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Check Version Consistency and Bump
+        run: npm run check-version-bump
+
+      - name: Check Types
+        run: npm run check-types
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run Tests
+        run: xvfb-run npm test
+
+      - name: Package Extension Verification
+        run: npm run package
