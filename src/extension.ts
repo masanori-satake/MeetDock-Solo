@@ -3,12 +3,16 @@ import { MeetingManager } from './meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
 import { addFromClipboardCommand } from './commands';
+import { checkForUpdates } from './updateChecker';
 
 /**
  * Activates MeetDock and registers its tree view, reminders, and commands.
  */
 export function activate(context: vscode.ExtensionContext) {
   console.log('MeetDock-Solo is now active!');
+
+  // Check for updates in background asynchronously without blocking activation
+  checkForUpdates(context).catch(() => {});
 
   const meetingManager = new MeetingManager(context);
   const treeDataProvider = new MeetingTreeDataProvider(meetingManager);
