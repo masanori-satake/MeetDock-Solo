@@ -24,7 +24,9 @@ if (fs.existsSync(lockPath)) {
   if (lock.version !== version) {
     errors.push(`package-lock.json root "version" (${lock.version}) does not match package.json version (${version})`);
   }
-  if (lock.packages && lock.packages[''] && lock.packages[''].version !== version) {
+  if (!lock.packages || !lock.packages['']) {
+    errors.push('package-lock.json packages[""] root package record is missing');
+  } else if (lock.packages[''].version !== version) {
     errors.push(`package-lock.json packages[""].version (${lock.packages[''].version}) does not match package.json version (${version})`);
   }
 } else {
