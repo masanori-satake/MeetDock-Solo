@@ -37,5 +37,15 @@ suite('UpdateChecker Test Suite', () => {
 
     // Prerelease numeric vs non-numeric
     assert.strictEqual(isNewerVersion('1.0.0-alpha', '1.0.0-1'), true);
+
+    // Build metadata is valid but does not affect precedence.
+    assert.strictEqual(isNewerVersion('1.2.3+build.1', '1.2.2'), true);
+    assert.strictEqual(isNewerVersion('1.2.3+build.1', '1.2.3+build.2'), false);
+
+    // Invalid SemVer identifiers are rejected instead of being coerced to zero.
+    assert.strictEqual(isNewerVersion('1.2', '1.1.0'), false);
+    assert.strictEqual(isNewerVersion('01.2.3', '1.2.2'), false);
+    assert.strictEqual(isNewerVersion('1.2.3-01', '1.2.3-1'), false);
+    assert.strictEqual(isNewerVersion('1.2.3+build_1', '1.2.2'), false);
   });
 });

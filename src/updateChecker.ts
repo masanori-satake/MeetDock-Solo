@@ -47,41 +47,61 @@ export function fetchLatestReleaseTag(): Promise<string> {
   });
 }
 
+interface SemVer {
+  major: bigint;
+  minor: bigint;
+  patch: bigint;
+  prerelease?: string[];
+  build?: string[];
+}
+
+function parseSemVer(version: string): SemVer | undefined {
+  const normalized = version.replace(/^v/i, '').trim();
+  const match = normalized.match(
+    /^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/
+  );
+
+  if (!match) {
+    return undefined;
+  }
+
+  const [, major, minor, patch, prerelease, build] = match;
+  const numericIdentifier = /^(0|[1-9][0-9]*)$/;
+  if (!numericIdentifier.test(major) || !numericIdentifier.test(minor) || !numericIdentifier.test(patch)) {
+    return undefined;
+  }
+
+  const prereleaseIdentifiers = prerelease?.split('.');
+  if (prereleaseIdentifiers?.some(identifier => /^[0-9]+$/.test(identifier) && !numericIdentifier.test(identifier))) {
+    return undefined;
+  }
+
+  return {
+    major: BigInt(major),
+    minor: BigInt(minor),
+    patch: BigInt(patch),
+    prerelease: prereleaseIdentifiers,
+    build: build?.split('.')
+  };
+}
+
 /**
  * Compares two version strings (e.g. "1.1.0", "1.0.0", "1.0.0-9007199254740993").
  * Returns true if latestVersion is strictly greater than currentVersion according to SemVer 2.0.0 rules.
+ * Invalid version identifiers are rejected by returning false.
  */
 export function isNewerVersion(latestVersion: string, currentVersion: string): boolean {
-  const cleanLatest = latestVersion.replace(/^v/i, '').trim();
-  const cleanCurrent = currentVersion.replace(/^v/i, '').trim();
+  const latest = parseSemVer(latestVersion);
+  const current = parseSemVer(currentVersion);
 
-  // Split into main version and prerelease tag
-  const [main1, ...pre1Parts] = cleanLatest.split('-');
-  const [main2, ...pre2Parts] = cleanCurrent.split('-');
+  if (!latest || !current) {
+    return false;
+  }
 
-  const pre1Str = pre1Parts.length > 0 ? pre1Parts.join('-') : undefined;
-  const pre2Str = pre2Parts.length > 0 ? pre2Parts.join('-') : undefined;
-
-  // Compare main version (major.minor.patch)
-  const v1Main = main1.split('.').map(n => {
-    try {
-      return BigInt(n);
-    } catch {
-      return 0n;
-    }
-  });
-  const v2Main = main2.split('.').map(n => {
-    try {
-      return BigInt(n);
-    } catch {
-      return 0n;
-    }
-  });
-
-  const maxMainLen = Math.max(v1Main.length, v2Main.length);
-  for (let i = 0; i < maxMainLen; i++) {
-    const p1 = v1Main[i] ?? 0n;
-    const p2 = v2Main[i] ?? 0n;
+  // Build metadata is parsed for validation but has no effect on precedence.
+  for (const component of ['major', 'minor', 'patch'] as const) {
+    const p1 = latest[component];
+    const p2 = current[component];
     if (p1 > p2) {
       return true;
     }
@@ -92,19 +112,19 @@ export function isNewerVersion(latestVersion: string, currentVersion: string): b
 
   // Main versions are equal. Handle Prereleases according to SemVer 2.0.0 rules.
   // Normal version has higher precedence than a prerelease version.
-  if (pre1Str === undefined && pre2Str !== undefined) {
+  if (latest.prerelease === undefined && current.prerelease !== undefined) {
     return true; // e.g. 1.0.0 > 1.0.0-alpha
   }
-  if (pre1Str !== undefined && pre2Str === undefined) {
+  if (latest.prerelease !== undefined && current.prerelease === undefined) {
     return false; // e.g. 1.0.0-alpha < 1.0.0
   }
-  if (pre1Str === undefined && pre2Str === undefined) {
+  if (latest.prerelease === undefined && current.prerelease === undefined) {
     return false; // Both normal & equal main versions
   }
 
   // Both have prereleases. Compare dot-separated identifiers.
-  const ids1 = pre1Str!.split('.');
-  const ids2 = pre2Str!.split('.');
+  const ids1 = latest.prerelease!;
+  const ids2 = current.prerelease!;
   const maxPreLen = Math.max(ids1.length, ids2.length);
 
   for (let i = 0; i < maxPreLen; i++) {
