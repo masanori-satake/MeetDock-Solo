@@ -72,4 +72,42 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
     assert.strictEqual(parsed.startTime.getHours(), 10);
     assert.strictEqual(parsed.startTime.getMinutes(), 0);
   });
+
+  test('advances candidate date to tomorrow if time-only is in the past', () => {
+    const originalDate = global.Date;
+    const frozenNow = new originalDate(2026, 8, 7, 12, 0, 0);
+
+    global.Date = new Proxy(originalDate, {
+      construct(target, args) {
+        return args.length === 0
+          ? new target(frozenNow.getTime())
+          : Reflect.construct(target, args);
+      },
+      get(target, property, receiver) {
+        if (property === 'now') {
+          return () => frozenNow.getTime();
+        }
+        return Reflect.get(target, property, receiver);
+      }
+    });
+
+    try {
+      const pastHour = 11;
+      const pastMinute = 0;
+      const sample = `
+        https://teams.microsoft.com/l/meetup-join/19%3ameeting_past
+        ${pastHour}:${String(pastMinute).padStart(2, '0')}
+      `;
+      const parsed = parseMeetingText(sample);
+
+      assert.ok(parsed.startTime);
+      assert.strictEqual(parsed.startTime.getFullYear(), 2026);
+      assert.strictEqual(parsed.startTime.getMonth(), 8);
+      assert.strictEqual(parsed.startTime.getDate(), 8);
+      assert.strictEqual(parsed.startTime.getHours(), pastHour);
+      assert.strictEqual(parsed.startTime.getMinutes(), pastMinute);
+    } finally {
+      global.Date = originalDate;
+    }
+  });
 });

@@ -105,22 +105,27 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
     }
     finalTitle = inputTitle.trim();
 
+    const now = new Date();
     let defaultTimeStr = '';
     if (parsed.startTime) {
-      const yyyy = parsed.startTime.getFullYear();
-      const mm = String(parsed.startTime.getMonth() + 1).padStart(2, '0');
-      const dd = String(parsed.startTime.getDate()).padStart(2, '0');
-      const hh = String(parsed.startTime.getHours()).padStart(2, '0');
-      const min = String(parsed.startTime.getMinutes()).padStart(2, '0');
+      const st = new Date(parsed.startTime.getTime());
+      while (st.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+        st.setDate(st.getDate() + 1);
+      }
+      const yyyy = st.getFullYear();
+      const mm = String(st.getMonth() + 1).padStart(2, '0');
+      const dd = String(st.getDate()).padStart(2, '0');
+      const hh = String(st.getHours()).padStart(2, '0');
+      const min = String(st.getMinutes()).padStart(2, '0');
       defaultTimeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
     } else {
-      const now = new Date();
-      now.setHours(now.getHours() + 1, 0, 0, 0);
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const hh = String(now.getHours()).padStart(2, '0');
-      const min = String(now.getMinutes()).padStart(2, '0');
+      const defaultDate = new Date(now.getTime());
+      defaultDate.setHours(defaultDate.getHours() + 1, 0, 0, 0);
+      const yyyy = defaultDate.getFullYear();
+      const mm = String(defaultDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(defaultDate.getDate()).padStart(2, '0');
+      const hh = String(defaultDate.getHours()).padStart(2, '0');
+      const min = String(defaultDate.getMinutes()).padStart(2, '0');
       defaultTimeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
     }
 
@@ -144,7 +149,6 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
 
     const timeMatch = inputTimeStr.trim().match(/^(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+)?(\d{1,2}):(\d{2})$/);
     let finalStartTime: Date;
-    const now = new Date();
 
     if (timeMatch) {
       const hour = parseInt(timeMatch[4], 10);
@@ -157,9 +161,10 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
         finalStartTime = new Date(year, month, day, hour, minute, 0);
       } else {
         finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
-        if (finalStartTime < now) {
-          finalStartTime.setDate(finalStartTime.getDate() + 1);
-        }
+      }
+
+      while (finalStartTime.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
       }
     } else {
       return;
@@ -176,7 +181,20 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
       placeHolder: '繰り返し設定を選択してください'
     });
 
-    const recurrence: RecurrenceType = selectedRecurrence ? selectedRecurrence.type : 'once';
+    if (!selectedRecurrence) {
+      return;
+    }
+
+    const recurrence: RecurrenceType = selectedRecurrence.type;
+    const validationNow = new Date();
+    while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
+      finalStartTime.setDate(finalStartTime.getDate() + 1);
+    }
+    if (recurrence === 'weekdays') {
+      while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      }
+    }
 
     const newMeeting: Meeting = {
       id: String(Date.now()) + Math.random().toString(36).substring(2, 7),

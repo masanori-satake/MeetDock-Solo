@@ -47,23 +47,28 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   }
 
   // Prompt for Start Time
+  const now = new Date();
   let defaultTimeStr = '';
   if (parsed.startTime) {
-    const yyyy = parsed.startTime.getFullYear();
-    const mm = String(parsed.startTime.getMonth() + 1).padStart(2, '0');
-    const dd = String(parsed.startTime.getDate()).padStart(2, '0');
-    const hh = String(parsed.startTime.getHours()).padStart(2, '0');
-    const min = String(parsed.startTime.getMinutes()).padStart(2, '0');
+    const st = new Date(parsed.startTime.getTime());
+    while (st.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+      st.setDate(st.getDate() + 1);
+    }
+    const yyyy = st.getFullYear();
+    const mm = String(st.getMonth() + 1).padStart(2, '0');
+    const dd = String(st.getDate()).padStart(2, '0');
+    const hh = String(st.getHours()).padStart(2, '0');
+    const min = String(st.getMinutes()).padStart(2, '0');
     defaultTimeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
   } else {
-    const now = new Date();
+    const defaultDate = new Date(now.getTime());
     // Default to top of the next hour
-    now.setHours(now.getHours() + 1, 0, 0, 0);
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const hh = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
+    defaultDate.setHours(defaultDate.getHours() + 1, 0, 0, 0);
+    const yyyy = defaultDate.getFullYear();
+    const mm = String(defaultDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(defaultDate.getDate()).padStart(2, '0');
+    const hh = String(defaultDate.getHours()).padStart(2, '0');
+    const min = String(defaultDate.getMinutes()).padStart(2, '0');
     defaultTimeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
   }
 
@@ -89,7 +94,6 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   // Parse specified start time string
   const timeMatch = inputTimeStr.trim().match(/^(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+)?(\d{1,2}):(\d{2})$/);
   let finalStartTime: Date;
-  const now = new Date();
 
   if (timeMatch) {
     const hour = parseInt(timeMatch[4], 10);
@@ -102,10 +106,10 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
       finalStartTime = new Date(year, month, day, hour, minute, 0);
     } else {
       finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
-      if (finalStartTime < now) {
-        // If the time today has already passed, set for tomorrow
-        finalStartTime.setDate(finalStartTime.getDate() + 1);
-      }
+    }
+
+    while (finalStartTime.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+      finalStartTime.setDate(finalStartTime.getDate() + 1);
     }
   } else {
     vscode.window.showErrorMessage('開始日時の解析に失敗しました。');
@@ -123,7 +127,20 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     placeHolder: '繰り返し設定を選択してください'
   });
 
-  const recurrence: RecurrenceType = selectedRecurrence ? selectedRecurrence.type : 'once';
+  if (!selectedRecurrence) {
+    return; // User canceled
+  }
+
+  const recurrence: RecurrenceType = selectedRecurrence.type;
+  const validationNow = new Date();
+  while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
+    finalStartTime.setDate(finalStartTime.getDate() + 1);
+  }
+  if (recurrence === 'weekdays') {
+    while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
+      finalStartTime.setDate(finalStartTime.getDate() + 1);
+    }
+  }
 
   const newMeeting = {
     id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
