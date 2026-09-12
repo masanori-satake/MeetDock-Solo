@@ -94,6 +94,7 @@ export class ReminderService {
       const nextMeeting = this.meetingManager.getNextMeeting();
       if (!nextMeeting) {
         this.statusBarItem.text = `$(calendar) Teams: 予定なし`;
+        this.statusBarItem.color = undefined;
         this.statusBarItem.backgroundColor = undefined;
         this.statusBarItem.tooltip = '登録された Teams ミーティングはありません。';
         return;
@@ -114,6 +115,7 @@ export class ReminderService {
         remainingText = `${diffMinutes}m`;
       }
       this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`;
+      this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = undefined;
       this.statusBarItem.tooltip = `次回会議: ${nextMeeting.title}\n開始時刻: ${timeStr}`;
       return;

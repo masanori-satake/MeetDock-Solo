@@ -140,6 +140,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     await service.update();
     assert.ok(statusText(service).includes('予定なし'), `Got: "${statusText(service)}"`);
     assert.strictEqual(statusBg(service), undefined);
+    assert.strictEqual((service as any).statusBarItem.color, undefined);
   });
 
   test('shows countdown with no index suffix for a meeting more than 5 min away', async () => {
@@ -151,6 +152,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     // No rotation index should appear for a non-relevant meeting
     assert.ok(!text.includes('[1/'), `Should not contain "[1/" but got: "${text}"`);
     assert.strictEqual(statusBg(service), undefined);
+    assert.strictEqual((service as any).statusBarItem.color, undefined);
   });
 
   test('shows warning display (in Xm) for a meeting 3 min away', async () => {
@@ -193,6 +195,46 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     const color = (service as any).statusBarItem.color;
     assert.ok(color instanceof vscode.ThemeColor, 'Expected ThemeColor text color');
     assert.strictEqual((color as vscode.ThemeColor).id, 'charts.green', 'Expected charts.green text color');
+  });
+
+  test('resets text color and background color to standard when transitioning from ongoing to finished/next meeting', async () => {
+    const ongoingMeeting = makeMeeting(now, 'ongoing', -10);
+    const nextMeeting = makeMeeting(now, 'next', 60);
+    mockManager.setMeetings([ongoingMeeting, nextMeeting]);
+    await service.update();
+
+    // Verify ongoing meeting styling
+    const color = (service as any).statusBarItem.color;
+    assert.ok(color instanceof vscode.ThemeColor);
+    assert.strictEqual((color as vscode.ThemeColor).id, 'charts.green');
+    assert.strictEqual(statusBg(service), undefined);
+
+    // Simulate ongoing meeting finishing by removing it
+    mockManager.setMeetings([nextMeeting]);
+    await service.update();
+
+    // Verify default styling is restored
+    assert.strictEqual((service as any).statusBarItem.color, undefined, 'Expected color to reset to undefined');
+    assert.strictEqual(statusBg(service), undefined, 'Expected background color to reset to undefined');
+    assert.ok(statusText(service).includes('Next Teams'), `Got: "${statusText(service)}"`);
+  });
+
+  test('resets text color and background color when transitioning from ongoing to no meetings', async () => {
+    const ongoingMeeting = makeMeeting(now, 'ongoing', -10);
+    mockManager.setMeetings([ongoingMeeting]);
+    await service.update();
+
+    // Verify ongoing meeting styling before clearing the meeting list.
+    const color = (service as any).statusBarItem.color;
+    assert.ok(color instanceof vscode.ThemeColor);
+    assert.strictEqual((color as vscode.ThemeColor).id, 'charts.green');
+    assert.strictEqual(statusBg(service), undefined);
+
+    mockManager.setMeetings([]);
+    await service.update();
+
+    assert.strictEqual((service as any).statusBarItem.color, undefined, 'Expected color to reset to undefined');
+    assert.strictEqual(statusBg(service), undefined, 'Expected background color to reset to undefined');
   });
 });
 
