@@ -4,6 +4,9 @@ import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
 import { addFromClipboardCommand } from './commands';
 
+/**
+ * Activates MeetDock and registers its tree view, reminders, and commands.
+ */
 export function activate(context: vscode.ExtensionContext) {
   console.log('MeetDock-Solo is now active!');
 
@@ -86,4 +89,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
+/**
+ * Deactivates the extension after VS Code disposes its registered resources.
+ */
 export function deactivate() {}

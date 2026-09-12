@@ -3,6 +3,9 @@ import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
 import { RecurrenceType } from './types';
 
+/**
+ * Prompts for meeting details parsed from the clipboard and saves the meeting.
+ */
 export async function addFromClipboardCommand(meetingManager: MeetingManager): Promise<void> {
   const clipboardText = await vscode.env.clipboard.readText();
   if (!clipboardText || !clipboardText.trim()) {
