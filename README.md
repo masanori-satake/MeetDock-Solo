@@ -1,5 +1,6 @@
 # MeetDock-Solo
 
+[![Version](https://img.shields.io/badge/version-v1.2.1-blue.svg)](package.json)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
