@@ -36,7 +36,7 @@ suite('Parser Test Suite', () => {
 Satake Masanori Microsoft Teams 会議に招待されました。
 
 テスト
-2026年9月7日月曜日
+令和8年9月7日月曜日
 11:30 - 12:30 (JST)
 
 会議のリンク: https://teams.live.com/meet/9398636609731?p=5tlDf18IUn3zDYR0UR

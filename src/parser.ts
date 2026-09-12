@@ -1,5 +1,13 @@
 import { ParsedMeetingInfo } from './types';
 
+const JAPANESE_ERA_START_YEAR = {
+  令和: 2018,
+  平成: 1988,
+  昭和: 1925,
+  大正: 1911,
+  明治: 1867
+} as const;
+
 /**
  * Extracts Teams URL, Title, and Start Time from dropped or pasted text/HTML.
  */
@@ -60,6 +68,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
       // Skip lines starting with time or date
       if (/^\d{1,2}:\d{2}/.test(cleanLine) ||
           /^\d{4}[-/.\s年]/.test(cleanLine) ||
+          /^(?:令和|平成|昭和|大正|明治)(?:元|\d{1,2})年/.test(cleanLine) ||
           /^\d{1,2}月\d{1,2}日/.test(cleanLine) ||
           /^(?:月曜日|火曜日|水曜日|木曜日|金曜日|土曜日|日曜日|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i.test(cleanLine)) {
         continue;
@@ -77,12 +86,16 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
 
   // Check full date pattern: YYYY-MM-DD or YYYY年MM月DD日
   const yearMatch = text.match(/(\d{4})[-/.\s年]\s*(\d{1,2})[-/.\s月]\s*(\d{1,2})/);
+  const eraMatch = text.match(/(令和|平成|昭和|大正|明治)(元|\d{1,2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const timeMatch = text.match(/(?:^|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(AM|PM))?/i);
 
-  if (yearMatch) {
-    const year = parseInt(yearMatch[1], 10);
-    const month = parseInt(yearMatch[2], 10) - 1;
-    const day = parseInt(yearMatch[3], 10);
+  if (yearMatch || eraMatch) {
+    const year = yearMatch
+      ? parseInt(yearMatch[1], 10)
+      : JAPANESE_ERA_START_YEAR[eraMatch![1] as keyof typeof JAPANESE_ERA_START_YEAR]
+        + (eraMatch![2] === '元' ? 1 : parseInt(eraMatch![2], 10));
+    const month = parseInt(yearMatch ? yearMatch[2] : eraMatch![3], 10) - 1;
+    const day = parseInt(yearMatch ? yearMatch[3] : eraMatch![4], 10);
 
     let hour = 9;
     let minute = 0;
