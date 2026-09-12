@@ -1,22 +1,13 @@
-name: Build, Package and Publish to GitHub Pages
+name: Build, Package and Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -34,217 +25,19 @@ jobs:
       - name: Package Extension (.vsix)
         run: npx @vscode/vsce package --no-git-tag-version
 
-      - name: Prepare Public Directory for GitHub Pages
+      - name: Get Version
+        id: get_version
         run: |
-          mkdir -p public
-          # Copy generated vsix file into public folder
-          VSIX_FILE=$(ls *.vsix | head -n 1)
-          cp "$VSIX_FILE" public/
-
-          # Extract metadata from package.json
           VERSION=$(node -p "require('./package.json').version")
-          TITLE=$(node -p "require('./package.json').displayName")
-          DESC=$(node -p "require('./package.json').description")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
 
-          cat << 'EOF' > public/index.html
-          <!DOCTYPE html>
-          <html lang="ja">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>MeetDock-Solo - VSCode Extension</title>
-            <link rel="preconnect" href="https://fonts.googleapis.com">
-            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-            <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
-            <style>
-              :root {
-                --md-sys-color-primary: #6750A4;
-                --md-sys-color-on-primary: #FFFFFF;
-                --md-sys-color-primary-container: #EADDFF;
-                --md-sys-color-on-primary-container: #21005D;
-                --md-sys-color-surface: #FEF7FF;
-                --md-sys-color-on-surface: #1D1B20;
-                --md-sys-color-surface-variant: #E7E0EC;
-                --md-sys-color-on-surface-variant: #49454F;
-                --md-sys-color-outline: #79747E;
-                --md-elevation-1: 0px 1px 3px 1px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.30);
-                --md-elevation-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.30);
-              }
-
-              body {
-                font-family: 'Roboto', sans-serif;
-                background-color: var(--md-sys-color-surface);
-                color: var(--md-sys-color-on-surface);
-                margin: 0;
-                padding: 0;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-              }
-
-              .container {
-                background: #FFFFFF;
-                border-radius: 28px;
-                padding: 40px;
-                max-width: 600px;
-                width: 90%;
-                box-shadow: var(--md-elevation-2);
-                border: 1px solid var(--md-sys-color-surface-variant);
-              }
-
-              .header {
-                display: flex;
-                align-items: center;
-                gap: 16px;
-                margin-bottom: 24px;
-              }
-
-              .icon {
-                font-size: 48px;
-                color: var(--md-sys-color-primary);
-                background: var(--md-sys-color-primary-container);
-                padding: 12px;
-                border-radius: 16px;
-              }
-
-              h1 {
-                margin: 0;
-                font-size: 28px;
-                font-weight: 700;
-                color: var(--md-sys-color-on-surface);
-              }
-
-              .badge {
-                display: inline-block;
-                background: var(--md-sys-color-primary-container);
-                color: var(--md-sys-color-on-primary-container);
-                font-size: 14px;
-                font-weight: 500;
-                padding: 4px 12px;
-                border-radius: 8px;
-                margin-top: 4px;
-              }
-
-              .description {
-                font-size: 16px;
-                color: var(--md-sys-color-on-surface-variant);
-                line-height: 1.6;
-                margin-bottom: 32px;
-              }
-
-              .download-btn {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                background-color: var(--md-sys-color-primary);
-                color: var(--md-sys-color-on-primary);
-                font-size: 16px;
-                font-weight: 500;
-                padding: 14px 28px;
-                border-radius: 100px;
-                text-decoration: none;
-                transition: background-color 0.2s, box-shadow 0.2s;
-                box-shadow: var(--md-elevation-1);
-              }
-
-              .download-btn:hover {
-                background-color: #523B8A;
-                box-shadow: var(--md-elevation-2);
-              }
-
-              .instructions {
-                margin-top: 40px;
-                background-color: var(--md-sys-color-surface-variant);
-                border-radius: 16px;
-                padding: 20px;
-              }
-
-              .instructions h2 {
-                margin-top: 0;
-                font-size: 18px;
-                color: var(--md-sys-color-on-surface-variant);
-                display: flex;
-                align-items: center;
-                gap: 8px;
-              }
-
-              pre {
-                background-color: #1D1B20;
-                color: #E6E1E5;
-                padding: 14px 18px;
-                border-radius: 12px;
-                font-family: monospace;
-                font-size: 14px;
-                overflow-x: auto;
-                margin: 12px 0 0 0;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <span class="material-symbols-outlined icon">calendar_month</span>
-                <div>
-                  <h1 id="title">MeetDock-Solo</h1>
-                  <span class="badge" id="version">v0.0.0</span>
-                </div>
-              </div>
-              <p class="description" id="desc">Prevent missing Microsoft Teams meetings while coding.</p>
-
-              <a id="download-link" href="#" class="download-btn">
-                <span class="material-symbols-outlined">download</span>
-                拡張機能 (.vsix) をダウンロード
-              </a>
-
-              <div class="instructions">
-                <h2>
-                  <span class="material-symbols-outlined">terminal</span>
-                  インストール手順
-                </h2>
-                <p style="margin: 8px 0; font-size: 14px; color: var(--md-sys-color-on-surface-variant);">
-                  ダウンロードしたファイルをターミナルから以下のコマンドでインストールします:
-                </p>
-                <pre><code id="install-cmd">code --install-extension meetdock-solo.vsix</code></pre>
-              </div>
-            </div>
-
-            <script>
-              const version = "__VERSION__";
-              const title = "__TITLE__";
-              const desc = "__DESC__";
-              const vsixFile = "__VSIX_FILE__";
-
-              document.getElementById("title").textContent = title;
-              document.getElementById("version").textContent = "v" + version;
-              document.getElementById("desc").textContent = desc;
-              document.getElementById("download-link").href = vsixFile;
-              document.getElementById("install-cmd").textContent = "code --install-extension " + vsixFile;
-            </script>
-          </body>
-          </html>
-          EOF
-
-          # Inject real variables into index.html
-          sed -i "s/__VERSION__/$VERSION/g" public/index.html
-          sed -i "s/__TITLE__/$TITLE/g" public/index.html
-          sed -i "s/__DESC__/$DESC/g" public/index.html
-          sed -i "s/__VSIX_FILE__/$VSIX_FILE/g" public/index.html
-
-      - name: Upload Artifact for GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
         with:
-          path: public
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          name: ${{ steps.get_version.outputs.tag }}
+          files: "*.vsix"
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

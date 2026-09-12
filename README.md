@@ -1,5 +1,7 @@
 # MeetDock-Solo
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
+
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
 
 サイドバーへのドラッグ＆ドロップやショートカットキー（`Alt+M` / `Option+M`）によるクリップボード自動解析により、Teams 会議を迅速に登録できます。ステータスバーのリアルタイムカウントダウンと2段階のリマインダー通知（5分前ポップアップ・開始時のモーダル表示）で、コーディングに集中しながらも確実に会議へ参加できるようサポートします。
