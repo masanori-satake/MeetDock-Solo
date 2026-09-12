@@ -109,9 +109,18 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
     let defaultTimeStr = '';
     if (parsed.startTime) {
       const st = new Date(parsed.startTime.getTime());
-      while (st.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-        st.setDate(st.getDate() + 1);
+
+      if (parsed.startTime && parsed.endTime) {
+        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+        while (new Date(st.getTime() + duration).getTime() <= now.getTime()) {
+          st.setDate(st.getDate() + 1);
+        }
+      } else {
+        while (st.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+          st.setDate(st.getDate() + 1);
+        }
       }
+
       const yyyy = st.getFullYear();
       const mm = String(st.getMonth() + 1).padStart(2, '0');
       const dd = String(st.getDate()).padStart(2, '0');
@@ -163,8 +172,15 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
         finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
       }
 
-      while (finalStartTime.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      if (parsed.startTime && parsed.endTime) {
+        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+        while (new Date(finalStartTime.getTime() + duration).getTime() <= now.getTime()) {
+          finalStartTime.setDate(finalStartTime.getDate() + 1);
+        }
+      } else {
+        while (finalStartTime.getTime() + 30 * 60 * 1000 <= now.getTime()) {
+          finalStartTime.setDate(finalStartTime.getDate() + 1);
+        }
       }
     } else {
       return;
@@ -187,13 +203,29 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
 
     const recurrence: RecurrenceType = selectedRecurrence.type;
     const validationNow = new Date();
-    while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
-      finalStartTime.setDate(finalStartTime.getDate() + 1);
+    if (parsed.startTime && parsed.endTime) {
+      const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+      while (new Date(finalStartTime.getTime() + duration).getTime() <= validationNow.getTime()) {
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      }
+    } else {
+      while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
+        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      }
     }
+
     if (recurrence === 'weekdays') {
       while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
         finalStartTime.setDate(finalStartTime.getDate() + 1);
       }
+    }
+
+    let finalEndTime: Date | undefined;
+    if (parsed.startTime && parsed.endTime) {
+      const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
+      finalEndTime = new Date(finalStartTime.getTime() + duration);
+    } else if (parsed.endTime) {
+      finalEndTime = parsed.endTime;
     }
 
     const newMeeting: Meeting = {
@@ -201,6 +233,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
       title: finalTitle,
       url: finalUrl,
       startTime: finalStartTime.toISOString(),
+      endTime: finalEndTime?.toISOString(),
       recurrence
     };
 

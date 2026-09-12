@@ -126,7 +126,7 @@ export class ReminderService {
     const meeting = meetings[this.rotationIndex];
     const now = this.now();
     const startTime = new Date(meeting.startTime);
-    const endTime = new Date(startTime.getTime() + MEETING_DURATION_MS);
+    const endTime = meeting.endTime ? new Date(meeting.endTime) : new Date(startTime.getTime() + MEETING_DURATION_MS);
     const diffMs = startTime.getTime() - now.getTime();
     const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
@@ -135,18 +135,21 @@ export class ReminderService {
     const indexSuffix = total > 1 ? ` [${this.rotationIndex + 1}/${total}]` : '';
 
     if (now >= startTime && now < endTime) {
-      // Meeting is currently ongoing ("開催中") — yellow/warning background
-      this.statusBarItem.text = `$(broadcast) Teams: ${meeting.title} (開催中)${indexSuffix}`;
-      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+      // Meeting is currently ongoing ("開催中")
+      this.statusBarItem.text = `$(broadcast) ${meeting.title} (開催中)${indexSuffix}`;
+      this.statusBarItem.color = undefined; // 文字色はデフォルトに戻す
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.prominentBackground');
       this.statusBarItem.tooltip = `開催中: ${meeting.title}\nクリックしてミーティング一覧を開く`;
     } else if (diffMs > 0 && diffMinutes < 1) {
       // Less than 1 minute until start — red/error background
-      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (まもなく開始)${indexSuffix}`;
+      this.statusBarItem.text = `$(calendar) ${timeStr} ${meeting.title} (まもなく開始)${indexSuffix}`;
+      this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
       this.statusBarItem.tooltip = `まもなく開始: ${meeting.title}\n開始時刻: ${timeStr}`;
     } else if (diffMs > 0 && diffMinutes <= 5) {
       // 5 minutes or less until start — yellow/warning background
-      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${diffMinutes}m)${indexSuffix}`;
+      this.statusBarItem.text = `$(calendar) ${timeStr} ${meeting.title} (in ${diffMinutes}m)${indexSuffix}`;
+      this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
       this.statusBarItem.tooltip = `次回会議: ${meeting.title}\n開始時刻: ${timeStr}`;
     }
