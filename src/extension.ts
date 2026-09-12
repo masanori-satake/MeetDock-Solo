@@ -4,6 +4,7 @@ import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
 import { addFromClipboardCommand } from './commands';
 import { checkForUpdates } from './updateChecker';
+import { openTeamsMeetingUrl } from './urlValidator';
 
 /**
  * Activates MeetDock and registers its tree view, reminders, and commands.
@@ -34,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   const openMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.openMeeting', (item?: MeetingTreeItem) => {
     if (item && item.meeting) {
-      vscode.env.openExternal(vscode.Uri.parse(item.meeting.url));
+      openTeamsMeetingUrl(item.meeting.url);
     }
   });
 
@@ -78,7 +79,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     if (selected) {
-      vscode.env.openExternal(vscode.Uri.parse(selected.meeting.url));
+      openTeamsMeetingUrl(selected.meeting.url);
     }
   });
 

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { Meeting } from './types';
+import { openTeamsMeetingUrl } from './urlValidator';
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
 /** How far ahead to include meetings in the rotation (currently 5 minutes). */
@@ -182,7 +183,7 @@ export class ReminderService {
         joinBtn
       ).then(selection => {
         if (selection === joinBtn) {
-          vscode.env.openExternal(vscode.Uri.parse(meeting.url));
+          openTeamsMeetingUrl(meeting.url);
         }
       });
     }
@@ -199,7 +200,7 @@ export class ReminderService {
         joinBtn
       ).then(selection => {
         if (selection === joinBtn) {
-          vscode.env.openExternal(vscode.Uri.parse(meeting.url));
+          openTeamsMeetingUrl(meeting.url);
         }
       });
     }

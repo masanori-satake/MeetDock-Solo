@@ -2,7 +2,7 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Prevent missing Teams meetings while coding. A lightweight, 100% local VSCode extension.",
   "author": {
     "name": "Masanori Satake"

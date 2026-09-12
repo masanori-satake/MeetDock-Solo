@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
 import { Meeting, RecurrenceType } from './types';
+import { isValidTeamsUrl } from './urlValidator';
 
 /**
  * Prompts for meeting details parsed from the clipboard and saves the meeting.
@@ -24,7 +25,7 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
       if (!value || !value.trim()) {
         return 'URLは必須です。';
       }
-      if (!/^https:\/\/teams\.(microsoft|live)\.com\//i.test(value.trim())) {
+      if (!isValidTeamsUrl(value.trim())) {
         return '有効な Microsoft Teams URL を入力してください。';
       }
       return null;

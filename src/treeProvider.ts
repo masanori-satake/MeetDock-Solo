@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
+import { isValidTeamsUrl } from './urlValidator';
 
 export class MeetingTreeItem extends vscode.TreeItem {
   public readonly meeting: Meeting;
@@ -87,7 +88,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
       const inputUrl = await vscode.window.showInputBox({
         prompt: 'Microsoft Teams ミーティングURLが見つかりませんでした。入力してください。',
         placeHolder: 'https://teams.microsoft.com/l/meetup-join/...',
-        validateInput: (val) => /^https:\/\/teams\.(microsoft|live)\.com\//i.test(val.trim()) ? null : '有効な Teams URL を入力してください。'
+        validateInput: (val) => isValidTeamsUrl(val.trim()) ? null : '有効な Teams URL を入力してください。'
       });
       if (!inputUrl) {
         return;
