@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { getTeamsChatUrl, isValidTeamsUrl } from '../urlValidator';
+import { getTeamsChatUrl, isValidTeamsUrl, openTeamsChatUrl } from '../urlValidator';
 
 suite('URL Validator Test Suite', () => {
   test('validates legitimate Teams URLs correctly', () => {
@@ -48,5 +48,12 @@ suite('URL Validator Test Suite', () => {
   test('returns undefined for invalid or unsafe URLs', () => {
     assert.strictEqual(getTeamsChatUrl('javascript:alert(1)'), undefined);
     assert.strictEqual(getTeamsChatUrl('https://example.com'), undefined);
+  });
+
+  test('openTeamsChatUrl validates generated chat URL before opening external link', async () => {
+    // Verified that openTeamsChatUrl returns true for valid enterprise Teams URL
+    const validUrl = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0';
+    const result = await openTeamsChatUrl(validUrl);
+    assert.strictEqual(result, true);
   });
 });

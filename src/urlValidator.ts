@@ -96,7 +96,7 @@ export function getTeamsChatUrl(url: string): string | undefined {
  */
 export async function openTeamsChatUrl(url: string): Promise<boolean> {
   const chatUrl = getTeamsChatUrl(url);
-  if (!chatUrl) {
+  if (!chatUrl || !isValidTeamsUrl(chatUrl)) {
     vscode.window.showWarningMessage(t.cannotOpenChatMsg());
     return false;
   }
