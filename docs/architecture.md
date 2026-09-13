@@ -32,33 +32,33 @@
 ```mermaid
 graph TD
     %% アクターと外部システム
-    User[👤 ユーザー]
-    subgraph ExternalApp [外部アプリケーション]
-        Teams[📱 Microsoft Teams / Browser]
+    User["👤 ユーザー"]
+    subgraph ExternalApp ["外部アプリケーション"]
+        Teams["📱 Microsoft Teams / Browser"]
     end
 
     %% VS Code UI Layer
-    subgraph VSC_UI [VS Code Native UI Layer]
-        Sidebar[📅 Sidebar TreeView<br/>(MeetingTreeDataProvider)]
-        StatusBar[⏱️ Status Bar Item<br/>(Countdown & Status)]
-        Notification[🔔 Notification / Dialog<br/>(5m Reminder / Start Modal)]
-        QuickPickUI[📋 QuickPick Selector<br/>(Meeting Selector)]
-        InputBoxUI[✏️ InputBox Dialogs<br/>(Title/Time/URL Prompt)]
+    subgraph VSC_UI ["VS Code Native UI Layer"]
+        Sidebar["📅 Sidebar TreeView<br/>(MeetingTreeDataProvider)"]
+        StatusBar["⏱️ Status Bar Item<br/>(Countdown & Status)"]
+        Notification["🔔 Notification / Dialog<br/>(5m Reminder / Start Modal)"]
+        QuickPickUI["📋 QuickPick Selector<br/>(Meeting Selector)"]
+        InputBoxUI["✏️ InputBox Dialogs<br/>(Title/Time/URL Prompt)"]
     end
 
     %% MeetDock-Solo Core Modules
-    subgraph CoreEngine [MeetDock-Solo Core Engine]
-        CmdHandler[🎮 Command Handler<br/>(commands.ts)]
-        ParserMod[🔍 Parser Module<br/>(parser.ts / urlValidator.ts)]
-        DateTimeMod[⏰ Date & Recurrence Engine<br/>(dateTime.ts)]
-        MeetingMgr[📦 Meeting Manager<br/>(meetingManager.ts)]
-        ReminderSvc[🔄 Reminder Service<br/>(reminderService.ts)]
-        I18nMod[🌐 i18n Engine<br/>(i18n.ts)]
+    subgraph CoreEngine ["MeetDock-Solo Core Engine"]
+        CmdHandler["🎮 Command Handler<br/>(commands.ts)"]
+        ParserMod["🔍 Parser Module<br/>(parser.ts / urlValidator.ts)"]
+        DateTimeMod["⏰ Date & Recurrence Engine<br/>(dateTime.ts)"]
+        MeetingMgr["📦 Meeting Manager<br/>(meetingManager.ts)"]
+        ReminderSvc["🔄 Reminder Service<br/>(reminderService.ts)"]
+        I18nMod["🌐 i18n Engine<br/>(i18n.ts)"]
     end
 
     %% Storage Layer
-    subgraph StorageLayer [Storage Layer]
-        GlobalState[(💾 VS Code globalState<br/>meetdock-solo.meetings)]
+    subgraph StorageLayer ["Storage Layer"]
+        GlobalState[("💾 VS Code globalState<br/>meetdock-solo.meetings")]
     end
 
     %% ユーザー操作フロー
@@ -480,7 +480,7 @@ sequenceDiagram
 ## 6. 非機能アーキテクチャ・品質特性 (Non-Functional Architecture)
 
 ### 6.1 セキュリティ & プライバシー設計
-1. **ローカル環境閉じ閉じ (Complete Data Isolation)**
+1. **完全なローカル完結・データ隔離 (Complete Data Isolation)**
    - 外部サーバー・解析用アナリティクス等の通信を一切排除。
    - すべての会議データは VS Code 拡張機能の独立されたストレージ (`globalState`) 内のみに保持されます。
 2. **SafeLinks 解読と安全な URL 展開**
