@@ -2,7 +2,7 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Prevent missing Teams meetings while coding. A lightweight, 100% local VSCode extension.",
   "author": {
     "name": "Masanori Satake"
@@ -67,7 +67,7 @@
       },
       {
         "command": "meetdock-solo.openChat",
-        "title": "チャットを開く",
+        "title": "%command.openChat%",
         "icon": "$(comment-discussion)"
       },
       {

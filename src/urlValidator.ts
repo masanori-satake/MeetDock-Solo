@@ -78,8 +78,14 @@ export function getTeamsChatUrl(url: string): string | undefined {
   }
 
   try {
-    const decodedUrl = decodeURIComponent(targetUrl);
-    const match = decodedUrl.match(/19:[a-zA-Z0-9_\-=%]+@(thread\.[a-zA-Z0-9_\-]+|unq\.gbl\.spaces)/);
+    const target = new URL(targetUrl);
+    const meetupJoinMatch = target.pathname.match(/^\/l\/meetup-join\/([^/]+)(?:\/|$)/);
+    if (!meetupJoinMatch) {
+      return undefined;
+    }
+
+    const meetingId = decodeURIComponent(meetupJoinMatch[1]);
+    const match = meetingId.match(/^19:[a-zA-Z0-9_\-=%]+@(thread\.[a-zA-Z0-9_\-]+|unq\.gbl\.spaces)$/);
     if (!match) {
       return undefined;
     }
