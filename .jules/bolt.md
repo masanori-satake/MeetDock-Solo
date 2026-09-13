@@ -1,5 +1,5 @@
 ## 2026/09/13 - formatToParts 解析時の Map / 中間配列生成の削減
-**学び:** `Intl.DateTimeFormat.prototype.formatToParts()` の結果からパーツ（year, month, day, hour, minute, second）を抽出する際、`parts.map()` や `new Map()` を使用すると、頻繁に呼び出される関数内で毎回不要な配列・Map オブジェクトのメモリ割り当てが発生し GC 負荷が高くなる。パーツ配列に対する単一の `for` ループと `switch` 文による直接変数へのパース代入へ変更することで、オブジェクト生成ゼロで処理速度が約 44% 向上する。
+**学び:** `Intl.DateTimeFormat.prototype.formatToParts()` の結果からパーツ（year, month, day, hour, minute, second）を抽出する際、`parts.map()` や `new Map()` を使用すると、頻繁に呼び出される関数内で毎回不要な配列・Map オブジェクトのメモリ割り当てが発生し GC 負荷が高くなる。パーツ配列に対する単一の `for` ループと `switch` 文による直接変数へのパース代入へ変更することで、解析中に追加で発生する中間配列と `Map` のメモリ割り当てを削減し、処理速度が約 44% 向上する。ただし、`formatToParts()` 自体はパーツ配列と各レコードを生成する。
 **アクション:** `formatToParts()` の結果をパースする際は、`Map` や配列メソッドを介さず直接 `for` ループと `switch` 文で解析する。
 
 ## 2026/09/13 - Intl.DateTimeFormat キャッシュと Decorate-Sort-Undecorate による計算コストの削減
