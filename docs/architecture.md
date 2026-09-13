@@ -32,7 +32,7 @@
 ```mermaid
 graph TD
     %% アクターと外部システム
-    actor User as 👤 ユーザー
+    User[👤 ユーザー]
     subgraph ExternalApp [外部アプリケーション]
         Teams[📱 Microsoft Teams / Browser]
     end
