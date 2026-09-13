@@ -3,7 +3,7 @@ import { MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
 import { isValidTeamsUrl } from './urlValidator';
-import { t } from './i18n';
+import { t, MeetingStatusState } from './i18n';
 
 function formatDuration(start: Date, end: Date): string {
   const durationMs = Math.max(0, end.getTime() - start.getTime());
@@ -32,10 +32,28 @@ function formatEndDateTime(start: Date, end: Date, includeYear: boolean): string
     : `${end.getMonth() + 1}/${end.getDate()} ${endHHmm}`;
 }
 
+export function getMeetingStatusState(meeting: Meeting, now: Date = new Date()): MeetingStatusState {
+  const start = new Date(meeting.startTime);
+  const end = meeting.endTime
+    ? new Date(meeting.endTime)
+    : new Date(start.getTime() + 30 * 60 * 1000);
+  const diffMs = start.getTime() - now.getTime();
+  const diffMinutes = Math.floor(diffMs / (60 * 1000));
+
+  if (now >= start && now < end) {
+    return 'ongoing';
+  } else if (diffMs > 0 && diffMinutes < 1) {
+    return 'startingSoon';
+  } else if (diffMs > 0 && diffMinutes <= 5) {
+    return 'warning';
+  }
+  return 'normal';
+}
+
 export class MeetingTreeItem extends vscode.TreeItem {
   public readonly meeting: Meeting;
 
-  constructor(meeting: Meeting) {
+  constructor(meeting: Meeting, now: Date = new Date()) {
     const startTimeDate = new Date(meeting.startTime);
     const endTimeDate = meeting.endTime
       ? new Date(meeting.endTime)
@@ -47,20 +65,31 @@ export class MeetingTreeItem extends vscode.TreeItem {
     const dateStr = `${startTimeDate.getMonth() + 1}/${startTimeDate.getDate()}`;
     const durationStr = formatDuration(startTimeDate, endTimeDate);
 
-    const recurrenceSuffix = t.recurrenceSuffix(meeting.recurrence);
+    const recurrenceSuffix = t.recurrenceSuffix(meeting);
     const organizerStr = meeting.organizer ? t.organizerSuffix(meeting.organizer) : '';
+
+    const statusState = getMeetingStatusState(meeting, now);
+    const statusSuffix = t.statusSuffix(statusState, startTimeDate, now);
 
     super(meeting.title, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.meeting = meeting;
-    this.description = `${dateStr} ${startHHmm}-${descriptionEnd} (${durationStr})${organizerStr}${recurrenceSuffix}`;
+    this.description = `${dateStr} ${startHHmm}-${descriptionEnd} (${durationStr})${organizerStr}${recurrenceSuffix}${statusSuffix}`;
     const yyyy = startTimeDate.getFullYear();
     const mm = String(startTimeDate.getMonth() + 1).padStart(2, '0');
     const dd = String(startTimeDate.getDate()).padStart(2, '0');
-    this.tooltip = `${meeting.title}\n${t.timeLabel(yyyy, mm, dd, startHHmm, detailedEnd, durationStr)}${meeting.organizer ? `\n${t.organizerLabel(meeting.organizer)}` : ''}\n${t.recurrenceLabel(meeting.recurrence)}\nURL: ${meeting.url}`;
+    this.tooltip = `${meeting.title}\n${t.timeLabel(yyyy, mm, dd, startHHmm, detailedEnd, durationStr)}${meeting.organizer ? `\n${t.organizerLabel(meeting.organizer)}` : ''}\n${t.recurrenceLabel(meeting)}\nURL: ${meeting.url}`;
 
-    const iconName = meeting.recurrence === 'once' ? 'calendar' : 'sync';
-    this.iconPath = new vscode.ThemeIcon(iconName);
+    if (statusState === 'ongoing') {
+      this.iconPath = new vscode.ThemeIcon('radio-tower', new vscode.ThemeColor('charts.green'));
+    } else if (statusState === 'startingSoon') {
+      this.iconPath = new vscode.ThemeIcon('error', new vscode.ThemeColor('charts.red'));
+    } else if (statusState === 'warning') {
+      this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('charts.yellow'));
+    } else {
+      const iconName = meeting.recurrence === 'once' ? 'calendar' : 'sync';
+      this.iconPath = new vscode.ThemeIcon(iconName);
+    }
     this.contextValue = 'meetingItem';
   }
 }
@@ -80,13 +109,71 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor(private meetingManager: MeetingManager) {
+  private statusTimer: NodeJS.Timeout | undefined;
+  private lastStatusStates: Map<string, MeetingStatusState> = new Map();
+
+  constructor(
+    private meetingManager: MeetingManager,
+    private readonly now: () => Date = () => new Date()
+  ) {
     this.meetingManager.onDidChangeMeetings(() => {
       this.refresh();
     });
+    this.refresh();
+    this.startStatusCheckTimer();
+  }
+
+  public startStatusCheckTimer(): void {
+    if (this.statusTimer) {
+      clearInterval(this.statusTimer);
+    }
+    this.statusTimer = setInterval(() => {
+      this.checkStatusChange();
+    }, 10000);
+  }
+
+  public stopStatusCheckTimer(): void {
+    if (this.statusTimer) {
+      clearInterval(this.statusTimer);
+      this.statusTimer = undefined;
+    }
+  }
+
+  public dispose(): void {
+    this.stopStatusCheckTimer();
+  }
+
+  public checkStatusChange(): void {
+    const meetings = this.meetingManager.getSortedMeetings();
+    const now = this.now();
+    let hasStateChange = false;
+    const currentMap = new Map<string, MeetingStatusState>();
+
+    for (const m of meetings) {
+      const state = getMeetingStatusState(m, now);
+      currentMap.set(m.id, state);
+
+      const prevState = this.lastStatusStates.get(m.id);
+      if (prevState !== state) {
+        hasStateChange = true;
+      }
+    }
+
+    if (this.lastStatusStates.size !== currentMap.size) {
+      hasStateChange = true;
+    }
+
+    this.lastStatusStates = currentMap;
+
+    if (hasStateChange) {
+      this.refresh();
+    }
   }
 
   refresh(): void {
+    const meetings = this.meetingManager.getSortedMeetings();
+    const now = this.now();
+    this.lastStatusStates = new Map(meetings.map(m => [m.id, getMeetingStatusState(m, now)]));
     this._onDidChangeTreeData.fire();
   }
 
@@ -97,7 +184,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
     if (!element) {
       const meetings = this.meetingManager.getSortedMeetings();
-      return meetings.map(m => new MeetingTreeItem(m));
+      const currentDate = this.now();
+      return meetings.map(m => new MeetingTreeItem(m, currentDate));
     }
 
     if (element instanceof MeetingTreeItem) {
@@ -123,7 +211,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
       // 3. Recurrence detail item
       const recIcon = m.recurrence === 'once' ? 'calendar' : 'sync';
-      items.push(new MeetingDetailItem(t.recurrenceLabel(m.recurrence), recIcon));
+      items.push(new MeetingDetailItem(t.recurrenceLabel(m), recIcon));
 
       return items;
     }
@@ -178,7 +266,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     }
     finalTitle = inputTitle.trim();
 
-    const now = new Date();
+    const now = this.now();
     let defaultTimeStr = '';
     if (parsed.startTime) {
       const st = new Date(parsed.startTime.getTime());
@@ -262,8 +350,11 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     const defaultRecurrence = parsed.recurrence || 'once';
     const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
       { label: t.recurrenceOnceLabel(defaultRecurrence === 'once'), description: t.recurrenceOnceDesc(), type: 'once' },
+      { label: t.recurrenceDailyLabel(defaultRecurrence === 'daily'), description: t.recurrenceDailyDesc(), type: 'daily' },
       { label: t.recurrenceWeeklyLabel(defaultRecurrence === 'weekly'), description: t.recurrenceWeeklyDesc(), type: 'weekly' },
-      { label: t.recurrenceWeekdaysLabel(defaultRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' }
+      { label: t.recurrenceWeekdaysLabel(defaultRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' },
+      { label: t.recurrenceMonthlyLabel(defaultRecurrence === 'monthly'), description: t.recurrenceMonthlyDesc(), type: 'monthly' },
+      { label: t.recurrenceYearlyLabel(defaultRecurrence === 'yearly'), description: t.recurrenceYearlyDesc(), type: 'yearly' }
     ];
 
     if (defaultRecurrence !== 'once') {
@@ -283,7 +374,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     }
 
     const recurrence: RecurrenceType = selectedRecurrence.type;
-    const validationNow = new Date();
+    const validationNow = this.now();
     if (parsed.startTime && parsed.endTime) {
       const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
       while (new Date(finalStartTime.getTime() + duration).getTime() <= validationNow.getTime()) {
@@ -316,6 +407,12 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       startTime: finalStartTime.toISOString(),
       endTime: finalEndTime?.toISOString(),
       recurrence,
+      recurrenceInterval: parsed.recurrenceInterval,
+      daysOfWeek: parsed.daysOfWeek,
+      dayOfMonth: parsed.dayOfMonth,
+      monthOfYear: parsed.monthOfYear,
+      dayOfYear: parsed.dayOfYear,
+      recurrenceEndDate: parsed.recurrenceEndDate?.toISOString(),
       organizer: parsed.organizer,
       meetingId: parsed.meetingId,
       passcode: parsed.passcode,

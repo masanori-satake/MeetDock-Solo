@@ -1,7 +1,22 @@
 import * as vscode from 'vscode';
+import { Meeting } from './types';
+
+export type MeetingStatusState = 'normal' | 'warning' | 'startingSoon' | 'ongoing';
 
 export function isJapanese(): boolean {
   return vscode.env.language.toLowerCase().startsWith('ja');
+}
+
+function formatDaysOfWeek(days?: number[]): string {
+  if (!days || days.length === 0) {
+    return '';
+  }
+  const jpDays = ['日', '月', '火', '水', '木', '金', '土'];
+  const enDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const names = isJapanese()
+    ? days.map(d => jpDays[d])
+    : days.map(d => enDays[d]);
+  return names.join(', ');
 }
 
 export const t = {
@@ -14,21 +29,105 @@ export const t = {
     isJapanese() ? `主催者: ${organizer}` : `Organizer: ${organizer}`,
   organizerSuffix: (organizer: string) =>
     isJapanese() ? ` [主催: ${organizer}]` : ` [Organizer: ${organizer}]`,
-  recurrenceLabel: (type: 'once' | 'weekly' | 'weekdays') => {
+  recurrenceLabel: (m: Meeting) => {
+    const type = m.recurrence;
+    const interval = m.recurrenceInterval || 1;
+    const daysStr = formatDaysOfWeek(m.daysOfWeek);
+
+    if (type === 'daily') {
+      if (isJapanese()) {
+        return interval > 1 ? `繰り返し: ${interval}日ごと` : '繰り返し: 毎日';
+      }
+      return interval > 1 ? `Recurrence: Every ${interval} days` : 'Recurrence: Daily';
+    }
     if (type === 'weekly') {
-      return isJapanese() ? '繰り返し: 毎週' : 'Recurrence: Weekly';
+      if (isJapanese()) {
+        const prefix = interval > 1 ? `${interval}週ごと` : '毎週';
+        return daysStr ? `繰り返し: ${prefix} (${daysStr})` : `繰り返し: ${prefix}`;
+      }
+      const prefix = interval > 1 ? `Every ${interval} weeks` : 'Weekly';
+      return daysStr ? `Recurrence: ${prefix} (${daysStr})` : `Recurrence: ${prefix}`;
     }
     if (type === 'weekdays') {
       return isJapanese() ? '繰り返し: 平日' : 'Recurrence: Weekdays';
     }
+    if (type === 'monthly') {
+      const dom = m.dayOfMonth || new Date(m.startTime).getDate();
+      if (isJapanese()) {
+        const prefix = interval > 1 ? `${interval}か月ごと` : '毎月';
+        return `繰り返し: ${prefix} (${dom}日)`;
+      }
+      const prefix = interval > 1 ? `Every ${interval} months` : 'Monthly';
+      return `Recurrence: ${prefix} (day ${dom})`;
+    }
+    if (type === 'yearly') {
+      const start = new Date(m.startTime);
+      const moy = m.monthOfYear || (start.getMonth() + 1);
+      const doy = m.dayOfYear || m.dayOfMonth || start.getDate();
+      if (isJapanese()) {
+        const prefix = interval > 1 ? `${interval}年ごと` : '毎年';
+        return `繰り返し: ${prefix} (${moy}/${doy})`;
+      }
+      const prefix = interval > 1 ? `Every ${interval} years` : 'Yearly';
+      return `Recurrence: ${prefix} (${moy}/${doy})`;
+    }
     return isJapanese() ? '繰り返し: 単発 (1回のみ)' : 'Recurrence: Once';
   },
-  recurrenceSuffix: (type: 'once' | 'weekly' | 'weekdays') => {
+  recurrenceSuffix: (m: Meeting) => {
+    const type = m.recurrence;
+    const interval = m.recurrenceInterval || 1;
+    const daysStr = formatDaysOfWeek(m.daysOfWeek);
+
+    if (type === 'daily') {
+      if (isJapanese()) {
+        return interval > 1 ? ` [${interval}日ごと]` : ' [毎日]';
+      }
+      return interval > 1 ? ` [Every ${interval}d]` : ' [Daily]';
+    }
     if (type === 'weekly') {
-      return isJapanese() ? ' [毎週]' : ' [Weekly]';
+      if (isJapanese()) {
+        const prefix = interval > 1 ? `${interval}週ごと` : '毎週';
+        return daysStr ? ` [${prefix} ${daysStr}]` : ` [${prefix}]`;
+      }
+      const prefix = interval > 1 ? `Every ${interval}w` : 'Weekly';
+      return daysStr ? ` [${prefix} ${daysStr}]` : ` [${prefix}]`;
     }
     if (type === 'weekdays') {
       return isJapanese() ? ' [平日]' : ' [Weekdays]';
+    }
+    if (type === 'monthly') {
+      const dom = m.dayOfMonth || new Date(m.startTime).getDate();
+      if (isJapanese()) {
+        const prefix = interval > 1 ? `${interval}か月ごと` : '毎月';
+        return ` [${prefix} ${dom}日]`;
+      }
+      const prefix = interval > 1 ? `Every ${interval}m` : 'Monthly';
+      return ` [${prefix} ${dom}]`;
+    }
+    if (type === 'yearly') {
+      const start = new Date(m.startTime);
+      const moy = m.monthOfYear || (start.getMonth() + 1);
+      const doy = m.dayOfYear || m.dayOfMonth || start.getDate();
+      if (isJapanese()) {
+        const prefix = interval > 1 ? `${interval}年ごと` : '毎年';
+        return ` [${prefix} ${moy}/${doy}]`;
+      }
+      const prefix = interval > 1 ? `Every ${interval}y` : 'Yearly';
+      return ` [${prefix} ${moy}/${doy}]`;
+    }
+    return '';
+  },
+  statusSuffix: (statusState: MeetingStatusState, startTime: Date, now: Date) => {
+    if (statusState === 'ongoing') {
+      return isJapanese() ? ' (開催中)' : ' (In progress)';
+    }
+    if (statusState === 'startingSoon') {
+      return isJapanese() ? ' (まもなく開始)' : ' (Starting soon)';
+    }
+    if (statusState === 'warning') {
+      const diffMs = startTime.getTime() - now.getTime();
+      const diffMinutes = Math.max(1, Math.floor(diffMs / (60 * 1000)));
+      return isJapanese() ? ` (${diffMinutes}分前)` : ` (In ${diffMinutes}m)`;
     }
     return '';
   },
@@ -59,10 +158,16 @@ export const t = {
   recurrencePlaceholder: () => isJapanese() ? '繰り返し設定を選択してください' : 'Select recurrence setting',
   recurrenceOnceLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '単発 (Once) [パース結果]' : '単発 (Once)') : (isParsed ? 'Once [Parsed]' : 'Once'),
   recurrenceOnceDesc: () => isJapanese() ? '今回のみ' : 'One-time meeting',
+  recurrenceDailyLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '日次 (Daily) [パース結果]' : '日次 (Daily)') : (isParsed ? 'Daily [Parsed]' : 'Daily'),
+  recurrenceDailyDesc: () => isJapanese() ? '毎日または指定日数ごとに繰り返し' : 'Repeats daily or at day intervals',
   recurrenceWeeklyLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '毎週 (Weekly) [パース結果]' : '毎週 (Weekly)') : (isParsed ? 'Weekly [Parsed]' : 'Weekly'),
-  recurrenceWeeklyDesc: () => isJapanese() ? '毎週同じ曜日に繰り返し' : 'Repeats every week',
+  recurrenceWeeklyDesc: () => isJapanese() ? '毎週または指定曜日/週ごとに繰り返し' : 'Repeats weekly or on specific days',
   recurrenceWeekdaysLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '平日 (Weekdays) [パース結果]' : '平日 (Weekdays)') : (isParsed ? 'Weekdays [Parsed]' : 'Weekdays'),
   recurrenceWeekdaysDesc: () => isJapanese() ? '月曜〜金曜日に繰り返し' : 'Repeats Monday to Friday',
+  recurrenceMonthlyLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '月次 (Monthly) [パース結果]' : '月次 (Monthly)') : (isParsed ? 'Monthly [Parsed]' : 'Monthly'),
+  recurrenceMonthlyDesc: () => isJapanese() ? '毎月または指定月数ごとに繰り返し' : 'Repeats monthly or at month intervals',
+  recurrenceYearlyLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '年次 (Yearly) [パース結果]' : '年次 (Yearly)') : (isParsed ? 'Yearly [Parsed]' : 'Yearly'),
+  recurrenceYearlyDesc: () => isJapanese() ? '毎年または指定年数ごとに繰り返し' : 'Repeats yearly or at year intervals',
   meetingSaved: (title: string) => isJapanese() ? `MeetDock: ミーティング「${title}」を保存しました。` : `MeetDock: Saved meeting "${title}".`,
   meetingDeleted: (title: string) => isJapanese() ? `MeetDock: ミーティング「${title}」を削除しました。` : `MeetDock: Deleted meeting "${title}".`,
   noMeetingsPrompt: () => isJapanese() ? '登録された Teams ミーティングはありません。クリップボードから追加しますか？' : 'No registered Teams meetings. Add from clipboard?',

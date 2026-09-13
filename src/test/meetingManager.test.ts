@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { MeetingManager } from '../meetingManager';
+import { MeetingManager, getNextOccurrence } from '../meetingManager';
 import { Meeting } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -166,10 +166,10 @@ suite('MeetingManager - getNextMeeting', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test suite: processExpirations with explicit end times
+// Test suite: processExpirations with explicit end times & extended recurrences
 // ---------------------------------------------------------------------------
 
-suite('MeetingManager - processExpirations', () => {
+suite('MeetingManager - processExpirations & Recurrence Schedule', () => {
   test('advances an expired weekly meeting while preserving its explicit duration', async () => {
     const now = Date.now();
     const start = new Date(now - 15 * 24 * 60 * 60 * 1000);
@@ -211,6 +211,115 @@ suite('MeetingManager - processExpirations', () => {
     assert.ok(updatedEnd.getTime() >= now, 'Weekdays meeting should advance to an unexpired occurrence');
     assert.ok(updatedStart.getDay() !== 0 && updatedStart.getDay() !== 6, 'Occurrence should be on a weekday');
     assert.strictEqual(updatedEnd.getTime() - updatedStart.getTime(), duration);
+  });
+
+  test('getNextOccurrence handles daily recurrence with interval 2', () => {
+    const start = new Date('2026-09-13T14:30:00.000Z');
+    const meeting: Meeting = {
+      id: 'daily2',
+      title: 'Daily Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: start.toISOString(),
+      recurrence: 'daily',
+      recurrenceInterval: 2,
+    };
+
+    const now = new Date('2026-09-13T15:01:00.000Z');
+    const next = getNextOccurrence(meeting, now);
+    assert.ok(next);
+    assert.strictEqual(next.toISOString(), '2026-09-15T14:30:00.000Z');
+  });
+
+  test('getNextOccurrence handles weekly recurrence with multiple days of week', () => {
+    // 2026-09-13 is Sunday (0)
+    const start = new Date('2026-09-13T13:42:00.000Z');
+    const meeting: Meeting = {
+      id: 'weeklyMulti',
+      title: 'Weekly Multi Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: start.toISOString(),
+      endTime: new Date('2026-09-13T13:44:00.000Z').toISOString(),
+      recurrence: 'weekly',
+      daysOfWeek: [0, 2, 3], // Sun, Tue, Wed
+    };
+
+    const now = new Date('2026-09-13T13:45:00.000Z'); // Sunday 13:45 (after 13:44 end)
+    const next = getNextOccurrence(meeting, now);
+    assert.ok(next);
+    // Next nearest day is Tuesday 2026-09-15
+    assert.strictEqual(next.getUTCDay(), 2); // Tuesday
+    assert.strictEqual(next.getUTCDate(), 15);
+  });
+
+  test('getNextOccurrence handles monthly recurrence with interval 2', () => {
+    const start = new Date('2026-09-13T15:00:00.000Z');
+    const meeting: Meeting = {
+      id: 'monthly2',
+      title: 'Monthly Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: start.toISOString(),
+      recurrence: 'monthly',
+      recurrenceInterval: 2,
+      dayOfMonth: 13,
+    };
+
+    const now = new Date('2026-09-13T15:31:00.000Z');
+    const next = getNextOccurrence(meeting, now);
+    assert.ok(next);
+    assert.strictEqual(next.getUTCMonth(), 10); // November (0-indexed 10)
+    assert.strictEqual(next.getUTCDate(), 13);
+  });
+
+  test('getNextOccurrence handles yearly recurrence with interval 2', () => {
+    const start = new Date('2026-09-13T16:00:00.000Z');
+    const meeting: Meeting = {
+      id: 'yearly2',
+      title: 'Yearly Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: start.toISOString(),
+      recurrence: 'yearly',
+      recurrenceInterval: 2,
+      monthOfYear: 9,
+      dayOfYear: 13,
+    };
+
+    const now = new Date('2026-09-13T16:31:00.000Z');
+    const next = getNextOccurrence(meeting, now);
+    assert.ok(next);
+    assert.strictEqual(next.getUTCFullYear(), 2028);
+    assert.strictEqual(next.getUTCMonth(), 8); // September
+    assert.strictEqual(next.getUTCDate(), 13);
+  });
+
+  test('expires meeting when recurrenceEndDate is reached', async () => {
+    const start = new Date('2026-09-13T14:30:00.000Z');
+    const meeting: Meeting = {
+      id: 'dailyExpired',
+      title: 'Expired Series',
+      url: 'https://teams.live.com/meet/123',
+      startTime: start.toISOString(),
+      recurrence: 'daily',
+      recurrenceInterval: 2,
+      recurrenceEndDate: new Date('2026-09-13T23:59:59.999Z').toISOString(),
+    };
+
+    const manager = new MeetingManager(createMockContext([meeting]));
+    // Date after meeting end and series end date
+    const now = new Date('2026-09-14T10:00:00.000Z');
+    const originalDate = global.Date;
+    global.Date = new Proxy(originalDate, {
+      construct(target, args) {
+        return args.length === 0 ? new target(now.getTime()) : Reflect.construct(target, args);
+      }
+    });
+
+    try {
+      await manager.processExpirations();
+      const meetings = manager.getMeetings();
+      assert.strictEqual(meetings.length, 0, 'Meeting should be removed when recurrence series end date is exceeded');
+    } finally {
+      global.Date = originalDate;
+    }
   });
 });
 

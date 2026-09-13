@@ -96,6 +96,124 @@ function createDateWithOffset(
   return new Date(year, month, day, hour, minute, second);
 }
 
+function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
+  recurrence: RecurrenceType;
+  recurrenceInterval?: number;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
+  monthOfYear?: number;
+  dayOfYear?: number;
+  recurrenceEndDate?: Date;
+} {
+  let recurrence: RecurrenceType = 'once';
+  let recurrenceInterval: number | undefined = undefined;
+  let daysOfWeek: number[] | undefined = undefined;
+  let dayOfMonth: number | undefined = undefined;
+  let monthOfYear: number | undefined = undefined;
+  let dayOfYear: number | undefined = undefined;
+  let recurrenceEndDate: Date | undefined = undefined;
+
+  // 1. Recurrence End Date
+  const endDateMatch = normalizedText.match(/(?:(\d{4})[-/.]\s*)?(\d{1,2})[-/.]\s*(\d{1,2})\s*まで|until\s+(?:(\d{4})[-/.])?(\d{1,2})[-/.](\d{1,2})/i);
+  if (endDateMatch) {
+    const startYear = startTime ? startTime.getFullYear() : new Date().getFullYear();
+    const parsedYear = endDateMatch[1] || endDateMatch[4] ? parseInt(endDateMatch[1] || endDateMatch[4], 10) : startYear;
+    const parsedMonth = parseInt(endDateMatch[2] || endDateMatch[5], 10) - 1;
+    const parsedDay = parseInt(endDateMatch[3] || endDateMatch[6], 10);
+
+    let year = parsedYear;
+    if (!endDateMatch[1] && !endDateMatch[4] && startTime) {
+      if (parsedMonth < startTime.getMonth()) {
+        year = startYear + 1;
+      }
+    }
+    recurrenceEndDate = new Date(year, parsedMonth, parsedDay, 23, 59, 59, 999);
+  }
+
+  // 2. Interval
+  const intervalMatch = normalizedText.match(/(?:繰り返し間隔|interval)[\s:]*(\d+)|(\d+)\s*(?:日|か月|ヶ月|月|年|週)(?:ごと|おき|間開催)/i);
+  if (intervalMatch) {
+    const num = parseInt(intervalMatch[1] || intervalMatch[2], 10);
+    if (!isNaN(num) && num > 0) {
+      recurrenceInterval = num;
+    }
+  }
+
+  // 3. Recurrence Type determination
+  if (/(?:日次|daily|(\d+)\s*日間開催|(\d+)\s*日ごと|(\d+)\s*日おき)/i.test(normalizedText)) {
+    recurrence = 'daily';
+    recurrenceInterval = recurrenceInterval || 1;
+  } else if (/(?:月次|monthly|(\d+)\s*か?月ごと|(\d+)\s*月おき)/i.test(normalizedText)) {
+    recurrence = 'monthly';
+    recurrenceInterval = recurrenceInterval || 1;
+    const domMatch = normalizedText.match(/(\d{1,2})\s*日に/);
+    if (domMatch) {
+      dayOfMonth = parseInt(domMatch[1], 10);
+    } else if (startTime) {
+      dayOfMonth = startTime.getDate();
+    }
+  } else if (/(?:年次|yearly|毎年|(\d+)\s*年ごと|(\d+)\s*年おき)/i.test(normalizedText)) {
+    recurrence = 'yearly';
+    recurrenceInterval = recurrenceInterval || 1;
+    const ymdMatch = normalizedText.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if (ymdMatch) {
+      monthOfYear = parseInt(ymdMatch[1], 10);
+      dayOfYear = parseInt(ymdMatch[2], 10);
+    } else if (startTime) {
+      monthOfYear = startTime.getMonth() + 1;
+      dayOfYear = startTime.getDate();
+    }
+  } else if (/(?:平日|weekdays|Monday through Friday)/i.test(normalizedText)) {
+    recurrence = 'weekdays';
+  } else if (/(?:毎週|週次|weekly|会議シリーズ|series|(\d+)\s*週ごと|(\d+)\s*週おき)/i.test(normalizedText)) {
+    recurrence = 'weekly';
+    recurrenceInterval = recurrenceInterval || 1;
+
+    // Parse days of week
+    const daysFound = new Set<number>();
+    const dayPatterns: { day: number; regex: RegExp }[] = [
+      { day: 0, regex: /(?:日曜日?|sunday|sun)/i },
+      { day: 1, regex: /(?:月曜日?|monday|mon)/i },
+      { day: 2, regex: /(?:火曜日?|tuesday|tue)/i },
+      { day: 3, regex: /(?:水曜日?|wednesday|wed)/i },
+      { day: 4, regex: /(?:木曜日?|thursday|thu)/i },
+      { day: 5, regex: /(?:金曜日?|friday|fri)/i },
+      { day: 6, regex: /(?:土曜日?|saturday|sat)/i },
+    ];
+
+    let searchTarget = normalizedText;
+    const linesWithDays = normalizedText.split('\n').filter(l => /(?:日|月|火|水|木|金|土)曜日?|monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(l));
+    if (linesWithDays.length > 0) {
+      const recLine = linesWithDays.find(l => /(?:毎週|every|シリーズ|series|開催)/i.test(l));
+      if (recLine) {
+        searchTarget = recLine;
+      }
+    }
+
+    for (const { day, regex } of dayPatterns) {
+      if (regex.test(searchTarget)) {
+        daysFound.add(day);
+      }
+    }
+
+    if (daysFound.size > 0) {
+      daysOfWeek = Array.from(daysFound).sort((a, b) => a - b);
+    } else if (startTime) {
+      daysOfWeek = [startTime.getDay()];
+    }
+  }
+
+  return {
+    recurrence,
+    recurrenceInterval,
+    daysOfWeek,
+    dayOfMonth,
+    monthOfYear,
+    dayOfYear,
+    recurrenceEndDate
+  };
+}
+
 /**
  * Extracts Teams URL, Title, Start Time, End Time, Organizer, Meeting ID, Passcode, and Recurrence from text.
  */
@@ -160,15 +278,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   }
   const isEnterprise = Boolean(meetingId || passcode || /(?:会議\s*ID|Meeting\s*ID)/i.test(normalizedText));
 
-  // 4. Extract Recurrence
-  let recurrence: RecurrenceType = 'once';
-  if (/(?:平日|weekdays|Monday through Friday)/i.test(normalizedText)) {
-    recurrence = 'weekdays';
-  } else if (/(?:会議シリーズ|series|毎[日週月年]|Occurs every|Every\s+(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|week|month|year))/i.test(normalizedText)) {
-    recurrence = 'weekly';
-  }
-
-  // 5. Extract Title
+  // 4. Extract Title
   let title = 'Teams Meeting';
   const subjectMatch = normalizedText.match(/(?:Subject|件名|タイトル|Title):\s*(.+)/i);
   const headerTitleMatch = normalizedText.match(/invited you to a Microsoft Teams Meeting:\s*(.+)$/im);
@@ -226,7 +336,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     }
   }
 
-  // 6. Extract Date, Start and End Time
+  // 5. Extract Date, Start and End Time
   let startTime: Date | undefined = undefined;
   let endTime: Date | undefined = undefined;
 
@@ -331,6 +441,9 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     }
   }
 
+  // 6. Extract Recurrence Info
+  const recurrenceInfo = parseRecurrenceInfo(normalizedText, startTime);
+
   return {
     title,
     url,
@@ -340,6 +453,6 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     meetingId,
     passcode,
     isEnterprise,
-    recurrence
+    ...recurrenceInfo
   };
 }
