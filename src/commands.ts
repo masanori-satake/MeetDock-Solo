@@ -125,8 +125,11 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   const defaultRecurrence = parsed.recurrence || 'once';
   const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
     { label: t.recurrenceOnceLabel(defaultRecurrence === 'once'), description: t.recurrenceOnceDesc(), type: 'once' },
+    { label: t.recurrenceDailyLabel(defaultRecurrence === 'daily'), description: t.recurrenceDailyDesc(), type: 'daily' },
     { label: t.recurrenceWeeklyLabel(defaultRecurrence === 'weekly'), description: t.recurrenceWeeklyDesc(), type: 'weekly' },
-    { label: t.recurrenceWeekdaysLabel(defaultRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' }
+    { label: t.recurrenceWeekdaysLabel(defaultRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' },
+    { label: t.recurrenceMonthlyLabel(defaultRecurrence === 'monthly'), description: t.recurrenceMonthlyDesc(), type: 'monthly' },
+    { label: t.recurrenceYearlyLabel(defaultRecurrence === 'yearly'), description: t.recurrenceYearlyDesc(), type: 'yearly' }
   ];
 
   if (defaultRecurrence !== 'once') {
@@ -164,23 +167,31 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     finalEndTime = parsed.endTime;
   }
 
+  const selectedStartParts = getZonedDateParts(finalStartTime, parsed.timeZone);
+
   const recurrenceFields: Partial<Meeting> = recurrence === 'once'
     ? {}
     : {
         recurrenceInterval: parsed.recurrenceInterval ?? 1,
         recurrenceEndDate: parsed.recurrenceEndDate?.toISOString(),
-        ...(recurrence === 'weekly' && parsed.daysOfWeek
-          ? { daysOfWeek: parsed.daysOfWeek }
-          : {}),
-        ...(recurrence === 'monthly' && parsed.dayOfMonth
-          ? { dayOfMonth: parsed.dayOfMonth }
-          : {}),
-        ...(recurrence === 'yearly'
-          ? {
-              ...(parsed.monthOfYear ? { monthOfYear: parsed.monthOfYear } : {}),
-              ...(parsed.dayOfYear ? { dayOfYear: parsed.dayOfYear } : {}),
-            }
-          : {}),
+        ...(recurrence === 'weekly' ? {
+          daysOfWeek: parsed.recurrence === 'weekly' && parsed.daysOfWeek?.length
+            ? parsed.daysOfWeek
+            : [selectedStartParts.dayOfWeek],
+        } : {}),
+        ...(recurrence === 'monthly' ? {
+          dayOfMonth: parsed.recurrence === 'monthly' && parsed.dayOfMonth
+            ? parsed.dayOfMonth
+            : selectedStartParts.day,
+        } : {}),
+        ...(recurrence === 'yearly' ? {
+          monthOfYear: parsed.recurrence === 'yearly' && parsed.monthOfYear
+            ? parsed.monthOfYear
+            : selectedStartParts.month + 1,
+          dayOfYear: parsed.recurrence === 'yearly' && parsed.dayOfYear
+            ? parsed.dayOfYear
+            : selectedStartParts.day,
+        } : {}),
       };
 
   const newMeeting: Meeting = {

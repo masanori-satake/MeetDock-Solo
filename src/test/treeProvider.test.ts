@@ -145,8 +145,22 @@ suite('TreeProvider Test Suite', () => {
     provider.dispose();
   });
 
-  test('MeetingDetailItem creates a collapsible state None item with icon', () => {
+  test('MeetingDetailItem creates a collapsible state None item with icon and correct contextValue', () => {
     const detail = new MeetingDetailItem('主催者: 田中 太郎', 'person');
     assert.strictEqual(detail.label, '主催者: 田中 太郎');
+    assert.strictEqual(detail.contextValue, 'meetingDetailItem');
+  });
+
+  test('MeetingTreeItem has contextValue meetingItem', () => {
+    const meeting: Meeting = {
+      id: 'm1',
+      title: 'テスト会議',
+      url: 'https://teams.microsoft.com/l/meetup-join/1',
+      startTime: '2026-09-14T10:00:00.000Z',
+      endTime: '2026-09-14T10:30:00.000Z',
+      recurrence: 'once'
+    };
+    const treeItem = new MeetingTreeItem(meeting);
+    assert.strictEqual(treeItem.contextValue, 'meetingItem');
   });
 });

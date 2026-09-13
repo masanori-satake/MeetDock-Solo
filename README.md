@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.5.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.5.1-blue.svg)](package.json)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -15,7 +15,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 ### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新のリリース（`v1.5.0` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.5.0.vsix`）をクリックしてダウンロードします。
+2. 最新のリリース（`v1.5.1` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.5.1.vsix`）をクリックしてダウンロードします。
 
 ### 手順 2: VS Code へのインストール
 以下のいずれかの方法でインストールできます。
@@ -56,9 +56,12 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 4. **繰り返し（リカーレンス）会議の自動更新**
    - 会議ごとに繰り返し設定を選択可能：
-     - **単発 (Once)**: 会議終了後に自動的に一覧から削除されます。
-     - **毎週 (Weekly)**: 会議終了後、自動的に翌週の同日時に次回スケジュールが更新されます。
-     - **平日 (Weekdays)**: 会議終了後、自動的に次の平日（月〜金）に次回スケジュールが更新されます。
+     - **単発 (Once)**: 1回のみの開催。会議終了後に自動的に一覧から削除されます。
+     - **日次 (Daily)**: 毎日または指定日数ごとに繰り返し、次回スケジュールが更新されます。
+     - **毎週 (Weekly)**: 毎週または指定曜日/週ごとに繰り返し、次回スケジュールが更新されます。
+     - **平日 (Weekdays)**: 月曜〜金曜日の平日に繰り返し、次回スケジュールが更新されます。
+     - **月次 (Monthly)**: 毎月または指定月数（同日）ごとに繰り返し、次回スケジュールが更新されます（※対象月に指定日が存在しない場合、31日→30日/28日など自動的に月末日へ調整されます）。
+     - **年次 (Yearly)**: 毎年または指定年数（同月日）ごとに繰り返し、次回スケジュールが更新されます（※うるう年の2月29日設定の場合、平年は2月28日へ自動的に調整されます）。
 
 5. **データ永続化 (`globalState`)**
    - 登録された会議データは VS Code の `globalState` に安全に保存され、エディタを再起動しても保持されます。
@@ -73,7 +76,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 1. VS Code のアクティビティバーにあるカレンダーアイコン **MeetDock-Solo** を開きます。
 2. Teams の会議URLを含むテキスト（メール本文、チャットメッセージ、Webページの選択テキストなど）をサイドバービュー（`Meetings`）へドラッグ＆ドロップします。
 3. 自動抽出された URL・件名・日時を確認し、必要に応じて修正して Enter キーを押します。
-4. 繰り返し設定（`単発` / `毎週` / `平日`）を選択して登録完了です。
+4. 繰り返し設定（`単発` / `日次` / `毎週` / `平日` / `月次` / `年次`）を選択して登録完了です。
 
 #### 方法 B: クリップボードから追加
 1. Outlook や Teams 等で会議情報を含むテキストをコピー (`Ctrl+C` / `Cmd+C`) します。
