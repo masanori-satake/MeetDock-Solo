@@ -181,6 +181,149 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
     assert.strictEqual(parsedPartial.startTime.toISOString(), '2026-12-25T01:00:00.000Z');
   });
 
+  test('parses sample 1: 日次会議 (2日毎に開催)', () => {
+    const sample = `Satake Masanori Microsoft Teams 会議シリーズに招待されました。
+
+日次(繰り返し間隔2)
+2026年9月13日日曜日
+14:30 - 15:00 (JST)
+09/13 から 10/13 まで 2 日間開催
+
+会議のリンク: https://teams.live.com/meet/9360613350877?p=VBCCrpj3E6IPCam8QT`;
+
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.recurrence, 'daily');
+    assert.strictEqual(parsed.recurrenceInterval, 2);
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getMonth(), 9); // October (0-indexed 9)
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 13);
+  });
+
+  test('parses sample 2: 週次会議 (単一曜日開催)', () => {
+    const sample = `Satake Masanori Microsoft Teams 会議シリーズに招待されました。
+
+毎週(単一曜日)の会議
+2026年9月13日日曜日
+14:00 - 14:30 (JST)
+09/13 から 10/16 まで毎週 日曜日 に開催
+
+会議のリンク: https://teams.live.com/meet/9326033013686?p=fYn5MqGgNEPMBARzlc`;
+
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.recurrence, 'weekly');
+    assert.strictEqual(parsed.recurrenceInterval, 1);
+    assert.deepStrictEqual(parsed.daysOfWeek, [0]); // Sun
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 16);
+  });
+
+  test('parses sample 3: 週次会議 (複数曜日開催)', () => {
+    const sample = `Satake Masanori Microsoft Teams 会議シリーズに招待されました。
+
+毎週の会議
+2026年9月13日日曜日
+13:42 - 13:44 (JST)
+09/13 から 10/13 まで毎週 火曜日、水曜日 および 日曜日 に開催
+
+会議のリンク: https://teams.live.com/meet/9380295657460?p=vKEfuJjVi8Vzg6CoC5`;
+
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.recurrence, 'weekly');
+    assert.strictEqual(parsed.recurrenceInterval, 1);
+    assert.deepStrictEqual(parsed.daysOfWeek, [0, 2, 3]); // Sun, Tue, Wed
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 13);
+  });
+
+  test('parses sample 4: 月次会議 (2月おき)', () => {
+    const sample = `Satake Masanori Microsoft Teams 会議シリーズに招待されました。
+
+月次の会議(2月おき)
+2026年9月13日日曜日
+15:00 - 15:30 (JST)
+13 日に 09/13 から 10/13 まで 2 か月ごとに開催
+
+会議のリンク: https://teams.live.com/meet/9359625525642?p=Tx3ZNfli4trMHi0ljs`;
+
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.recurrence, 'monthly');
+    assert.strictEqual(parsed.recurrenceInterval, 2);
+    assert.strictEqual(parsed.dayOfMonth, 13);
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 13);
+  });
+
+  test('parses sample 5: 年次開催の会議 (2年おき)', () => {
+    const sample = `Satake Masanori Microsoft Teams 会議シリーズに招待されました。
+
+年次開催の会議(2年おき)
+2026年9月13日日曜日
+16:00 - 16:30 (JST)
+10/13 まで、毎年 9 月 13 日に開催
+
+会議のリンク: https://teams.live.com/meet/9339603825565?p=pzC9FG2X90x4NTwn2S`;
+
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.recurrence, 'yearly');
+    assert.strictEqual(parsed.recurrenceInterval, 2);
+    assert.strictEqual(parsed.monthOfYear, 9);
+    assert.strictEqual(parsed.dayOfYear, 13);
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 13);
+  });
+
+  test('moves an implicit recurrence end year forward when its month and day precede the start date', () => {
+    const parsed = parseMeetingText(`
+      Subject: Daily rollover
+      2026-09-13 09:00
+      Daily until 09/12
+      https://teams.microsoft.com/l/meetup-join/19%3arollover
+    `);
+
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getFullYear(), 2027);
+    assert.strictEqual(parsed.recurrenceEndDate.getMonth(), 8);
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 12);
+  });
+
+  test('keeps an implicit recurrence end year when its date is later in the start month', () => {
+    const parsed = parseMeetingText(`
+      Subject: Daily same year
+      2026-09-13 09:00
+      Daily until 09/14
+      https://teams.microsoft.com/l/meetup-join/19%3asame-year
+    `);
+
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getFullYear(), 2026);
+  });
+
+  test('selects abbreviated weekdays from a Weekly recurrence line', () => {
+    const parsed = parseMeetingText(`
+      Subject: Abbreviated schedule
+      Sunday, September 13, 2026
+      09:00 - 09:30 (UTC)
+      Weekly on Tue, Wed
+      https://teams.microsoft.com/l/meetup-join/19%3aabbreviated
+    `);
+
+    assert.strictEqual(parsed.recurrence, 'weekly');
+    assert.deepStrictEqual(parsed.daysOfWeek, [2, 3]);
+  });
+
+  test('preserves the parsed IANA time zone', () => {
+    const parsed = parseMeetingText(`
+      Subject: Zoned meeting
+      Sunday, March 1, 2026
+      09:00 - 09:30 (America/New_York)
+      Weekly on Sunday
+      https://teams.microsoft.com/l/meetup-join/19%3azone
+    `);
+
+    assert.strictEqual(parsed.timeZone, 'America/New_York');
+    assert.strictEqual(parsed.startTime?.toISOString(), '2026-03-01T14:00:00.000Z');
+  });
+
   test('does not include a newline in the meeting ID', () => {
     const parsed = parseMeetingText(`
 Meeting ID: 123 456

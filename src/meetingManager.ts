@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Meeting } from './types';
+import { addZonedDays, createDateInTimeZone, getDaysInMonth, getZonedDateParts } from './dateTime';
 
 const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
@@ -14,6 +15,103 @@ function getMeetingEndTime(meeting: Meeting): Date {
     return new Date(meeting.endTime);
   }
   return new Date(new Date(meeting.startTime).getTime() + MEETING_DURATION_MS);
+}
+
+function getCalendarDayNumber(year: number, month: number, day: number): number {
+  return Math.floor(Date.UTC(year, month, day) / (24 * 60 * 60 * 1000));
+}
+
+export function getNextOccurrence(meeting: Meeting, now: Date): Date | null {
+  if (meeting.recurrence === 'once') {
+    return null;
+  }
+
+  const startTime = new Date(meeting.startTime);
+  const endTime = meeting.endTime
+    ? new Date(meeting.endTime)
+    : new Date(startTime.getTime() + MEETING_DURATION_MS);
+  const duration = endTime.getTime() - startTime.getTime();
+
+  let seriesEnd: Date | undefined = undefined;
+  if (meeting.recurrenceEndDate) {
+    seriesEnd = new Date(meeting.recurrenceEndDate);
+  }
+
+  const interval = meeting.recurrenceInterval && meeting.recurrenceInterval > 0 ? meeting.recurrenceInterval : 1;
+  const timeZone = meeting.timeZone;
+  const startParts = getZonedDateParts(startTime, timeZone);
+
+  let candidate = new Date(startTime.getTime());
+
+  if (meeting.recurrence === 'daily') {
+    while (candidate.getTime() + duration < now.getTime()) {
+      candidate = addZonedDays(candidate, interval, timeZone);
+    }
+  } else if (meeting.recurrence === 'weekdays') {
+    let candidateParts = getZonedDateParts(candidate, timeZone);
+    while (candidate.getTime() + duration < now.getTime() || candidateParts.dayOfWeek === 0 || candidateParts.dayOfWeek === 6) {
+      candidate = addZonedDays(candidate, 1, timeZone);
+      candidateParts = getZonedDateParts(candidate, timeZone);
+    }
+  } else if (meeting.recurrence === 'weekly') {
+    const daysOfWeek = meeting.daysOfWeek && meeting.daysOfWeek.length > 0
+      ? meeting.daysOfWeek
+      : [startParts.dayOfWeek];
+
+    const initialWeekStart = getCalendarDayNumber(startParts.year, startParts.month, startParts.day) - startParts.dayOfWeek;
+
+    while (true) {
+      const isPast = candidate.getTime() + duration < now.getTime();
+      const candidateParts = getZonedDateParts(candidate, timeZone);
+      const currWeekStart = getCalendarDayNumber(candidateParts.year, candidateParts.month, candidateParts.day) - candidateParts.dayOfWeek;
+      const diffWeeks = (currWeekStart - initialWeekStart) / 7;
+      const isCorrectWeek = interval <= 1 || (diffWeeks % interval === 0);
+      const isCorrectDay = daysOfWeek.includes(candidateParts.dayOfWeek);
+
+      if (!isPast && isCorrectWeek && isCorrectDay) {
+        break;
+      }
+
+      candidate = addZonedDays(candidate, 1, timeZone);
+    }
+  } else if (meeting.recurrence === 'monthly') {
+    const targetDay = meeting.dayOfMonth || startParts.day;
+    const initialYear = startParts.year;
+    const initialMonth = startParts.month;
+    let monthStep = 0;
+
+    while (candidate.getTime() + duration < now.getTime()) {
+      monthStep += interval;
+      const totalMonths = initialMonth + monthStep;
+      const nextYear = initialYear + Math.floor(totalMonths / 12);
+      const nextMonth = totalMonths % 12;
+
+      const daysInMonth = getDaysInMonth(nextYear, nextMonth);
+      const clampedDay = Math.min(targetDay, daysInMonth);
+
+      candidate = createDateInTimeZone(nextYear, nextMonth, clampedDay, startParts.hour, startParts.minute, startParts.second, startParts.millisecond, timeZone);
+    }
+  } else if (meeting.recurrence === 'yearly') {
+    const targetMonth = meeting.monthOfYear ? meeting.monthOfYear - 1 : startParts.month;
+    const targetDay = meeting.dayOfYear || meeting.dayOfMonth || startParts.day;
+    const initialYear = startParts.year;
+    let yearStep = 0;
+
+    while (candidate.getTime() + duration < now.getTime()) {
+      yearStep += interval;
+      const nextYear = initialYear + yearStep;
+      const daysInMonth = getDaysInMonth(nextYear, targetMonth);
+      const clampedDay = Math.min(targetDay, daysInMonth);
+
+      candidate = createDateInTimeZone(nextYear, targetMonth, clampedDay, startParts.hour, startParts.minute, startParts.second, startParts.millisecond, timeZone);
+    }
+  }
+
+  if (seriesEnd && candidate.getTime() > seriesEnd.getTime()) {
+    return null;
+  }
+
+  return candidate;
 }
 
 export class MeetingManager {
@@ -86,30 +184,8 @@ export class MeetingManager {
 
       if (now > endTime) {
         updated = true;
-        if (meeting.recurrence === 'once') {
-          // Single meeting expired after completion, remove it
-          continue;
-        } else if (meeting.recurrence === 'weekly') {
-          let nextStart = new Date(startTime.getTime());
-          while (now.getTime() > nextStart.getTime() + duration) {
-            nextStart.setDate(nextStart.getDate() + 7);
-          }
-          result.push({
-            ...meeting,
-            startTime: nextStart.toISOString(),
-            endTime: new Date(nextStart.getTime() + duration).toISOString(),
-            notified5m: false,
-            notifiedStart: false,
-          });
-        } else if (meeting.recurrence === 'weekdays') {
-          let nextStart = new Date(startTime.getTime());
-          while (now.getTime() > nextStart.getTime() + duration) {
-            nextStart.setDate(nextStart.getDate() + 1);
-            // Skip weekends (0 = Sunday, 6 = Saturday)
-            while (nextStart.getDay() === 0 || nextStart.getDay() === 6) {
-              nextStart.setDate(nextStart.getDate() + 1);
-            }
-          }
+        const nextStart = getNextOccurrence(meeting, now);
+        if (nextStart) {
           result.push({
             ...meeting,
             startTime: nextStart.toISOString(),
@@ -145,28 +221,8 @@ export class MeetingManager {
 
       if (now > endTime) {
         hasChanges = true;
-        if (meeting.recurrence === 'once') {
-          continue;
-        } else if (meeting.recurrence === 'weekly') {
-          let nextStart = new Date(startTime.getTime());
-          while (now.getTime() > nextStart.getTime() + duration) {
-            nextStart.setDate(nextStart.getDate() + 7);
-          }
-          activeMeetings.push({
-            ...meeting,
-            startTime: nextStart.toISOString(),
-            endTime: new Date(nextStart.getTime() + duration).toISOString(),
-            notified5m: false,
-            notifiedStart: false,
-          });
-        } else if (meeting.recurrence === 'weekdays') {
-          let nextStart = new Date(startTime.getTime());
-          while (now.getTime() > nextStart.getTime() + duration) {
-            nextStart.setDate(nextStart.getDate() + 1);
-            while (nextStart.getDay() === 0 || nextStart.getDay() === 6) {
-              nextStart.setDate(nextStart.getDate() + 1);
-            }
-          }
+        const nextStart = getNextOccurrence(meeting, now);
+        if (nextStart) {
           activeMeetings.push({
             ...meeting,
             startTime: nextStart.toISOString(),
@@ -215,7 +271,6 @@ export class MeetingManager {
       const start = new Date(m.startTime);
       const end = getMeetingEndTime(m);
       const diffMs = start.getTime() - now.getTime();
-      // Include if currently ongoing OR starting within withinMs
       return now < end && diffMs <= withinMs;
     });
   }

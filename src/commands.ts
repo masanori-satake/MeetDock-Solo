@@ -4,6 +4,7 @@ import { parseMeetingText } from './parser';
 import { Meeting, RecurrenceType } from './types';
 import { isValidTeamsUrl } from './urlValidator';
 import { t } from './i18n';
+import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
 
 /**
  * Prompts for meeting details parsed from the clipboard and saves the meeting.
@@ -52,15 +53,16 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   const now = new Date();
   let defaultTimeStr = '';
   if (parsed.startTime) {
-    const st = new Date(parsed.startTime.getTime());
+    let st = new Date(parsed.startTime.getTime());
     while (st.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-      st.setDate(st.getDate() + 1);
+      st = addZonedDays(st, 1, parsed.timeZone);
     }
-    const yyyy = st.getFullYear();
-    const mm = String(st.getMonth() + 1).padStart(2, '0');
-    const dd = String(st.getDate()).padStart(2, '0');
-    const hh = String(st.getHours()).padStart(2, '0');
-    const min = String(st.getMinutes()).padStart(2, '0');
+    const startParts = getZonedDateParts(st, parsed.timeZone);
+    const yyyy = startParts.year;
+    const mm = String(startParts.month + 1).padStart(2, '0');
+    const dd = String(startParts.day).padStart(2, '0');
+    const hh = String(startParts.hour).padStart(2, '0');
+    const min = String(startParts.minute).padStart(2, '0');
     defaultTimeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
   } else {
     const defaultDate = new Date(now.getTime());
@@ -105,13 +107,14 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
       const year = parseInt(timeMatch[1], 10);
       const month = parseInt(timeMatch[2], 10) - 1;
       const day = parseInt(timeMatch[3], 10);
-      finalStartTime = new Date(year, month, day, hour, minute, 0);
+      finalStartTime = createDateInTimeZone(year, month, day, hour, minute, 0, 0, parsed.timeZone);
     } else {
-      finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+      const nowParts = getZonedDateParts(now, parsed.timeZone);
+      finalStartTime = createDateInTimeZone(nowParts.year, nowParts.month, nowParts.day, hour, minute, 0, 0, parsed.timeZone);
     }
 
     while (finalStartTime.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-      finalStartTime.setDate(finalStartTime.getDate() + 1);
+      finalStartTime = addZonedDays(finalStartTime, 1, parsed.timeZone);
     }
   } else {
     vscode.window.showErrorMessage(t.timeParseError());
@@ -145,11 +148,11 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   const recurrence: RecurrenceType = selectedRecurrence.type;
   const validationNow = new Date();
   while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
-    finalStartTime.setDate(finalStartTime.getDate() + 1);
+    finalStartTime = addZonedDays(finalStartTime, 1, parsed.timeZone);
   }
   if (recurrence === 'weekdays') {
-    while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
-      finalStartTime.setDate(finalStartTime.getDate() + 1);
+    while ([0, 6].includes(getZonedDateParts(finalStartTime, parsed.timeZone).dayOfWeek)) {
+      finalStartTime = addZonedDays(finalStartTime, 1, parsed.timeZone);
     }
   }
 
@@ -161,17 +164,38 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     finalEndTime = parsed.endTime;
   }
 
+  const recurrenceFields: Partial<Meeting> = recurrence === 'once'
+    ? {}
+    : {
+        recurrenceInterval: parsed.recurrenceInterval ?? 1,
+        recurrenceEndDate: parsed.recurrenceEndDate?.toISOString(),
+        ...(recurrence === 'weekly' && parsed.daysOfWeek
+          ? { daysOfWeek: parsed.daysOfWeek }
+          : {}),
+        ...(recurrence === 'monthly' && parsed.dayOfMonth
+          ? { dayOfMonth: parsed.dayOfMonth }
+          : {}),
+        ...(recurrence === 'yearly'
+          ? {
+              ...(parsed.monthOfYear ? { monthOfYear: parsed.monthOfYear } : {}),
+              ...(parsed.dayOfYear ? { dayOfYear: parsed.dayOfYear } : {}),
+            }
+          : {}),
+      };
+
   const newMeeting: Meeting = {
     id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
     title: inputTitle.trim(),
     url: inputUrl.trim(),
     startTime: finalStartTime.toISOString(),
     endTime: finalEndTime?.toISOString(),
+    timeZone: parsed.timeZone,
     recurrence,
     organizer: parsed.organizer,
     meetingId: parsed.meetingId,
     passcode: parsed.passcode,
     isEnterprise: parsed.isEnterprise,
+    ...recurrenceFields,
   };
 
   await meetingManager.addMeeting(newMeeting);
