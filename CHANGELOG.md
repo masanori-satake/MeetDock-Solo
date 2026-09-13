@@ -2,6 +2,13 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.6.0] - 2026-09-13
+
+### 追加 (Added)
+- Jules等のAIエージェントによるコード・ドキュメント変更時のバージョン更新を強制・自動検証する `--check-bump` オプションを `scripts/check-version.js` に追加
+- エージェント向けの開発・運用ガイドライン `AGENTS.md` の新規作成（SemVerに基づくバージョン選定基準、更新手順、`CHANGELOG.md` 記述ルールの明確化）
+- `package.json` に `check-version-bump` コマンドを追加
+
 ## [1.5.1] - 2026-09-13
 
 ### 変更・修正 (Changed & Fixed)
