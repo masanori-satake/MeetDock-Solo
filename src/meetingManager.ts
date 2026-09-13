@@ -117,11 +117,61 @@ export class MeetingManager {
   }
 
   /**
-   * Returns sorted active meetings (closest start time first).
+   * Returns sorted active meetings (closest start time first), processing expirations first.
    */
   public getSortedMeetings(): Meeting[] {
-    const meetings = this.getMeetings();
-    return meetings.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    const now = new Date();
+    const rawMeetings = this.getMeetings();
+    let hasChanges = false;
+    const activeMeetings: Meeting[] = [];
+
+    for (const meeting of rawMeetings) {
+      const startTime = new Date(meeting.startTime);
+      const endTime = getMeetingEndTime(meeting);
+      const duration = endTime.getTime() - startTime.getTime();
+
+      if (now > endTime) {
+        hasChanges = true;
+        if (meeting.recurrence === 'once') {
+          continue;
+        } else if (meeting.recurrence === 'weekly') {
+          let nextStart = new Date(startTime.getTime());
+          while (now.getTime() > nextStart.getTime() + duration) {
+            nextStart.setDate(nextStart.getDate() + 7);
+          }
+          activeMeetings.push({
+            ...meeting,
+            startTime: nextStart.toISOString(),
+            endTime: new Date(nextStart.getTime() + duration).toISOString(),
+            notified5m: false,
+            notifiedStart: false,
+          });
+        } else if (meeting.recurrence === 'weekdays') {
+          let nextStart = new Date(startTime.getTime());
+          while (now.getTime() > nextStart.getTime() + duration) {
+            nextStart.setDate(nextStart.getDate() + 1);
+            while (nextStart.getDay() === 0 || nextStart.getDay() === 6) {
+              nextStart.setDate(nextStart.getDate() + 1);
+            }
+          }
+          activeMeetings.push({
+            ...meeting,
+            startTime: nextStart.toISOString(),
+            endTime: new Date(nextStart.getTime() + duration).toISOString(),
+            notified5m: false,
+            notifiedStart: false,
+          });
+        }
+      } else {
+        activeMeetings.push(meeting);
+      }
+    }
+
+    if (hasChanges) {
+      this.saveMeetings(activeMeetings).catch(() => {});
+    }
+
+    return activeMeetings.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
   }
 
   /**

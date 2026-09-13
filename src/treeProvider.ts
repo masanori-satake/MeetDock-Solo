@@ -4,13 +4,33 @@ import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
 import { isValidTeamsUrl } from './urlValidator';
 
+function formatDuration(start: Date, end: Date): string {
+  const durationMs = Math.max(0, end.getTime() - start.getTime());
+  const totalMinutes = Math.floor(durationMs / (60 * 1000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0 && minutes > 0) {
+    return `${hours}時間${minutes}分`;
+  } else if (hours > 0) {
+    return `${hours}時間`;
+  } else {
+    return `${minutes}分`;
+  }
+}
+
 export class MeetingTreeItem extends vscode.TreeItem {
   public readonly meeting: Meeting;
 
   constructor(meeting: Meeting) {
     const startTimeDate = new Date(meeting.startTime);
-    const timeStr = startTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endTimeDate = meeting.endTime
+      ? new Date(meeting.endTime)
+      : new Date(startTimeDate.getTime() + 30 * 60 * 1000);
+
+    const startHHmm = startTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endHHmm = endTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     const dateStr = `${startTimeDate.getMonth() + 1}/${startTimeDate.getDate()}`;
+    const durationStr = formatDuration(startTimeDate, endTimeDate);
 
     let recurrenceSuffix = '';
     if (meeting.recurrence === 'weekly') {
@@ -19,21 +39,33 @@ export class MeetingTreeItem extends vscode.TreeItem {
       recurrenceSuffix = ' [平日]';
     }
 
-    super(meeting.title, vscode.TreeItemCollapsibleState.None);
+    const organizerStr = meeting.organizer ? ` [主催: ${meeting.organizer}]` : '';
+
+    super(meeting.title, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.meeting = meeting;
-    this.description = `${dateStr} ${timeStr}${recurrenceSuffix}`;
-    this.tooltip = `${meeting.title}\n開始時刻: ${startTimeDate.toLocaleString()}\nURL: ${meeting.url}\n繰り返し: ${meeting.recurrence}`;
-    this.iconPath = new vscode.ThemeIcon('calendar');
+    this.description = `${dateStr} ${startHHmm}-${endHHmm} (${durationStr})${organizerStr}${recurrenceSuffix}`;
+    this.tooltip = `会議名: ${meeting.title}\n時間: ${startTimeDate.toLocaleString()} - ${endHHmm} (${durationStr})${meeting.organizer ? `\n主催者: ${meeting.organizer}` : ''}\n繰り返し: ${meeting.recurrence}\nURL: ${meeting.url}`;
+
+    const iconName = meeting.recurrence === 'once' ? 'calendar' : 'sync';
+    this.iconPath = new vscode.ThemeIcon(iconName);
     this.contextValue = 'meetingItem';
   }
 }
 
-export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingTreeItem>, vscode.TreeDragAndDropController<MeetingTreeItem> {
+export class MeetingDetailItem extends vscode.TreeItem {
+  constructor(label: string, iconName: string) {
+    super(label, vscode.TreeItemCollapsibleState.None);
+    this.iconPath = new vscode.ThemeIcon(iconName);
+    this.contextValue = 'meetingDetailItem';
+  }
+}
+
+export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
   dropMimeTypes = ['text/plain', 'text/html', 'text/uri-list'];
   dragMimeTypes = [];
 
-  private _onDidChangeTreeData = new vscode.EventEmitter<MeetingTreeItem | undefined | null | void>();
+  private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   constructor(private meetingManager: MeetingManager) {
@@ -46,22 +78,56 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: MeetingTreeItem): vscode.TreeItem {
+  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: MeetingTreeItem): vscode.ProviderResult<MeetingTreeItem[]> {
-    if (element) {
-      return [];
+  getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
+    if (!element) {
+      const meetings = this.meetingManager.getSortedMeetings();
+      return meetings.map(m => new MeetingTreeItem(m));
     }
-    const meetings = this.meetingManager.getSortedMeetings();
-    return meetings.map(m => new MeetingTreeItem(m));
+
+    if (element instanceof MeetingTreeItem) {
+      const m = element.meeting;
+      const start = new Date(m.startTime);
+      const end = m.endTime ? new Date(m.endTime) : new Date(start.getTime() + 30 * 60 * 1000);
+      const durationStr = formatDuration(start, end);
+
+      const items: vscode.TreeItem[] = [];
+
+      // 1. Time & Duration detail item
+      const yyyy = start.getFullYear();
+      const mm = String(start.getMonth() + 1).padStart(2, '0');
+      const dd = String(start.getDate()).padStart(2, '0');
+      const startHHmm = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      const endHHmm = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      items.push(new MeetingDetailItem(`時間: ${yyyy}/${mm}/${dd} ${startHHmm} - ${endHHmm} (${durationStr})`, 'clock'));
+
+      // 2. Organizer detail item (if present)
+      if (m.organizer) {
+        items.push(new MeetingDetailItem(`主催者: ${m.organizer}`, 'person'));
+      }
+
+      // 3. Recurrence detail item
+      let recStr = '単発 (1回のみ)';
+      if (m.recurrence === 'weekly') {
+        recStr = '繰り返し (毎週)';
+      } else if (m.recurrence === 'weekdays') {
+        recStr = '繰り返し (平日)';
+      }
+      const recIcon = m.recurrence === 'once' ? 'calendar' : 'sync';
+      items.push(new MeetingDetailItem(`繰り返し: ${recStr}`, recIcon));
+
+      return items;
+    }
+
+    return [];
   }
 
-  async handleDrop(target: MeetingTreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+  async handleDrop(target: vscode.TreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
     let droppedText = '';
 
-    // Check html first, then text/plain, then text/uri-list
     const htmlItem = dataTransfer.get('text/html');
     if (htmlItem) {
       droppedText = await htmlItem.asString();
@@ -187,12 +253,20 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
       return;
     }
 
-    // QuickPick for recurrence
+    const defaultRecurrence = parsed.recurrence || 'once';
     const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
-      { label: '単発 (Once)', description: '今回のみ (デフォルト)', type: 'once' },
-      { label: '毎週 (Weekly)', description: '毎週同じ曜日に繰り返し', type: 'weekly' },
-      { label: '平日 (Weekdays)', description: '月曜〜金曜日に繰り返し', type: 'weekdays' }
+      { label: defaultRecurrence === 'once' ? '単発 (Once) [パース結果]' : '単発 (Once)', description: '今回のみ', type: 'once' },
+      { label: defaultRecurrence === 'weekly' ? '毎週 (Weekly) [パース結果]' : '毎週 (Weekly)', description: '毎週同じ曜日に繰り返し', type: 'weekly' },
+      { label: defaultRecurrence === 'weekdays' ? '平日 (Weekdays) [パース結果]' : '平日 (Weekdays)', description: '月曜〜金曜日に繰り返し', type: 'weekdays' }
     ];
+
+    if (defaultRecurrence !== 'once') {
+      const idx = recurrenceItems.findIndex(item => item.type === defaultRecurrence);
+      if (idx > 0) {
+        const [item] = recurrenceItems.splice(idx, 1);
+        recurrenceItems.unshift(item);
+      }
+    }
 
     const selectedRecurrence = await vscode.window.showQuickPick(recurrenceItems, {
       placeHolder: '繰り返し設定を選択してください'
@@ -235,7 +309,11 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<MeetingT
       url: finalUrl,
       startTime: finalStartTime.toISOString(),
       endTime: finalEndTime?.toISOString(),
-      recurrence
+      recurrence,
+      organizer: parsed.organizer,
+      meetingId: parsed.meetingId,
+      passcode: parsed.passcode,
+      isEnterprise: parsed.isEnterprise,
     };
 
     await this.meetingManager.addMeeting(newMeeting);

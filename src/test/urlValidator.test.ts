@@ -5,6 +5,8 @@ suite('URL Validator Test Suite', () => {
   test('validates legitimate Teams URLs correctly', () => {
     assert.strictEqual(isValidTeamsUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc'), true);
     assert.strictEqual(isValidTeamsUrl('https://teams.live.com/l/meetup-join/19%3ameeting_xyz'), true);
+    assert.strictEqual(isValidTeamsUrl('https://teams.live.com/meet/9398636609731?p=5tlDf18IUn3zDYR0UR'), true);
+    assert.strictEqual(isValidTeamsUrl('https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com'), true);
     assert.strictEqual(isValidTeamsUrl('  https://teams.microsoft.com/l/meetup-join/test  '), true);
   });
 

@@ -118,11 +118,20 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   }
 
   // Prompt for Recurrence Selection QuickPick
+  const defaultRecurrence = parsed.recurrence || 'once';
   const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
-    { label: '単発 (Once)', description: '今回のみ (デフォルト)', type: 'once' },
-    { label: '毎週 (Weekly)', description: '毎週同じ曜日に繰り返し', type: 'weekly' },
-    { label: '平日 (Weekdays)', description: '月曜〜金曜日に繰り返し', type: 'weekdays' }
+    { label: defaultRecurrence === 'once' ? '単発 (Once) [パース結果]' : '単発 (Once)', description: '今回のみ', type: 'once' },
+    { label: defaultRecurrence === 'weekly' ? '毎週 (Weekly) [パース結果]' : '毎週 (Weekly)', description: '毎週同じ曜日に繰り返し', type: 'weekly' },
+    { label: defaultRecurrence === 'weekdays' ? '平日 (Weekdays) [パース結果]' : '平日 (Weekdays)', description: '月曜〜金曜日に繰り返し', type: 'weekdays' }
   ];
+
+  if (defaultRecurrence !== 'once') {
+    const idx = recurrenceItems.findIndex(item => item.type === defaultRecurrence);
+    if (idx > 0) {
+      const [item] = recurrenceItems.splice(idx, 1);
+      recurrenceItems.unshift(item);
+    }
+  }
 
   const selectedRecurrence = await vscode.window.showQuickPick(recurrenceItems, {
     placeHolder: '繰り返し設定を選択してください'
@@ -157,7 +166,11 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     url: inputUrl.trim(),
     startTime: finalStartTime.toISOString(),
     endTime: finalEndTime?.toISOString(),
-    recurrence
+    recurrence,
+    organizer: parsed.organizer,
+    meetingId: parsed.meetingId,
+    passcode: parsed.passcode,
+    isEnterprise: parsed.isEnterprise,
   };
 
   await meetingManager.addMeeting(newMeeting);

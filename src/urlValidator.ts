@@ -9,8 +9,8 @@ export function isValidTeamsUrl(url: string): boolean {
     return false;
   }
   const trimmed = url.trim();
-  // Ensure strict match for https://teams.microsoft.com/ or https://teams.live.com/
-  return /^https:\/\/teams\.(microsoft|live)\.com\//i.test(trimmed);
+  // Ensure match for https://teams.microsoft.com/, https://teams.live.com/, or Safe Links (*.safelinks.protection.outlook.com)
+  return /^https:\/\/(?:teams\.(?:microsoft|live)\.com|[a-zA-Z0-9.-]+\.safelinks\.protection\.outlook\.com)\//i.test(trimmed);
 }
 
 /**
