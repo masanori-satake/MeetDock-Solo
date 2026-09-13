@@ -242,7 +242,7 @@ export class MeetingManager {
       });
     }
 
-    return activeMeetings.sort((a, b) => (a.startTime < b.startTime ? -1 : a.startTime > b.startTime ? 1 : 0));
+    return activeMeetings.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
   }
 
   /**
