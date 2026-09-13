@@ -3,19 +3,14 @@ import { MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
 import { isValidTeamsUrl } from './urlValidator';
+import { t } from './i18n';
 
 function formatDuration(start: Date, end: Date): string {
   const durationMs = Math.max(0, end.getTime() - start.getTime());
   const totalMinutes = Math.floor(durationMs / (60 * 1000));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours > 0 && minutes > 0) {
-    return `${hours}時間${minutes}分`;
-  } else if (hours > 0) {
-    return `${hours}時間`;
-  } else {
-    return `${minutes}分`;
-  }
+  return t.duration(hours, minutes);
 }
 
 export class MeetingTreeItem extends vscode.TreeItem {
@@ -32,20 +27,17 @@ export class MeetingTreeItem extends vscode.TreeItem {
     const dateStr = `${startTimeDate.getMonth() + 1}/${startTimeDate.getDate()}`;
     const durationStr = formatDuration(startTimeDate, endTimeDate);
 
-    let recurrenceSuffix = '';
-    if (meeting.recurrence === 'weekly') {
-      recurrenceSuffix = ' [毎週]';
-    } else if (meeting.recurrence === 'weekdays') {
-      recurrenceSuffix = ' [平日]';
-    }
-
-    const organizerStr = meeting.organizer ? ` [主催: ${meeting.organizer}]` : '';
+    const recurrenceSuffix = t.recurrenceSuffix(meeting.recurrence);
+    const organizerStr = meeting.organizer ? t.organizerSuffix(meeting.organizer) : '';
 
     super(meeting.title, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.meeting = meeting;
     this.description = `${dateStr} ${startHHmm}-${endHHmm} (${durationStr})${organizerStr}${recurrenceSuffix}`;
-    this.tooltip = `会議名: ${meeting.title}\n時間: ${startTimeDate.toLocaleString()} - ${endHHmm} (${durationStr})${meeting.organizer ? `\n主催者: ${meeting.organizer}` : ''}\n繰り返し: ${meeting.recurrence}\nURL: ${meeting.url}`;
+    const yyyy = startTimeDate.getFullYear();
+    const mm = String(startTimeDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(startTimeDate.getDate()).padStart(2, '0');
+    this.tooltip = `${meeting.title}\n${t.timeLabel(yyyy, mm, dd, startHHmm, endHHmm, durationStr)}${meeting.organizer ? `\n${t.organizerLabel(meeting.organizer)}` : ''}\n${t.recurrenceLabel(meeting.recurrence)}\nURL: ${meeting.url}`;
 
     const iconName = meeting.recurrence === 'once' ? 'calendar' : 'sync';
     this.iconPath = new vscode.ThemeIcon(iconName);
@@ -102,22 +94,16 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       const dd = String(start.getDate()).padStart(2, '0');
       const startHHmm = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       const endHHmm = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      items.push(new MeetingDetailItem(`時間: ${yyyy}/${mm}/${dd} ${startHHmm} - ${endHHmm} (${durationStr})`, 'clock'));
+      items.push(new MeetingDetailItem(t.timeLabel(yyyy, mm, dd, startHHmm, endHHmm, durationStr), 'clock'));
 
       // 2. Organizer detail item (if present)
       if (m.organizer) {
-        items.push(new MeetingDetailItem(`主催者: ${m.organizer}`, 'person'));
+        items.push(new MeetingDetailItem(t.organizerLabel(m.organizer), 'person'));
       }
 
       // 3. Recurrence detail item
-      let recStr = '単発 (1回のみ)';
-      if (m.recurrence === 'weekly') {
-        recStr = '繰り返し (毎週)';
-      } else if (m.recurrence === 'weekdays') {
-        recStr = '繰り返し (平日)';
-      }
       const recIcon = m.recurrence === 'once' ? 'calendar' : 'sync';
-      items.push(new MeetingDetailItem(`繰り返し: ${recStr}`, recIcon));
+      items.push(new MeetingDetailItem(t.recurrenceLabel(m.recurrence), recIcon));
 
       return items;
     }
@@ -152,9 +138,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     let finalUrl = parsed.url;
     if (!finalUrl) {
       const inputUrl = await vscode.window.showInputBox({
-        prompt: 'Microsoft Teams ミーティングURLが見つかりませんでした。入力してください。',
-        placeHolder: 'https://teams.microsoft.com/l/meetup-join/...',
-        validateInput: (val) => isValidTeamsUrl(val.trim()) ? null : '有効な Teams URL を入力してください。'
+        prompt: t.urlPrompt(),
+        placeHolder: t.urlPlaceholder(),
+        validateInput: (val) => isValidTeamsUrl(val.trim()) ? null : t.urlInvalid()
       });
       if (!inputUrl) {
         return;
@@ -164,7 +150,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
     let finalTitle = parsed.title;
     const inputTitle = await vscode.window.showInputBox({
-      prompt: 'ミーティングタイトルを確認・編集してください',
+      prompt: t.titlePrompt(),
       value: finalTitle || 'Teams Meeting'
     });
     if (!inputTitle) {
@@ -206,15 +192,15 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     }
 
     const inputTimeStr = await vscode.window.showInputBox({
-      prompt: '開始日時を入力してください (形式: YYYY-MM-DD HH:mm または HH:mm)',
+      prompt: t.timePrompt(),
       value: defaultTimeStr,
       validateInput: (val) => {
         if (!val || !val.trim()) {
-          return '開始日時は必須です。';
+          return t.timeRequired();
         }
         const timeRegex = /^(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+)?(\d{1,2}):(\d{2})$/;
         if (!timeRegex.test(val.trim())) {
-          return '正しい日時形式 (例: 2026-04-01 14:00 または 14:00) で入力してください。';
+          return t.timeInvalid();
         }
         return null;
       }
@@ -255,9 +241,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
     const defaultRecurrence = parsed.recurrence || 'once';
     const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
-      { label: defaultRecurrence === 'once' ? '単発 (Once) [パース結果]' : '単発 (Once)', description: '今回のみ', type: 'once' },
-      { label: defaultRecurrence === 'weekly' ? '毎週 (Weekly) [パース結果]' : '毎週 (Weekly)', description: '毎週同じ曜日に繰り返し', type: 'weekly' },
-      { label: defaultRecurrence === 'weekdays' ? '平日 (Weekdays) [パース結果]' : '平日 (Weekdays)', description: '月曜〜金曜日に繰り返し', type: 'weekdays' }
+      { label: t.recurrenceOnceLabel(defaultRecurrence === 'once'), description: t.recurrenceOnceDesc(), type: 'once' },
+      { label: t.recurrenceWeeklyLabel(defaultRecurrence === 'weekly'), description: t.recurrenceWeeklyDesc(), type: 'weekly' },
+      { label: t.recurrenceWeekdaysLabel(defaultRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' }
     ];
 
     if (defaultRecurrence !== 'once') {
@@ -269,7 +255,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     }
 
     const selectedRecurrence = await vscode.window.showQuickPick(recurrenceItems, {
-      placeHolder: '繰り返し設定を選択してください'
+      placeHolder: t.recurrencePlaceholder()
     });
 
     if (!selectedRecurrence) {
@@ -317,6 +303,6 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     };
 
     await this.meetingManager.addMeeting(newMeeting);
-    vscode.window.showInformationMessage(`MeetDock: 「${newMeeting.title}」を登録しました。`);
+    vscode.window.showInformationMessage(t.meetingSaved(newMeeting.title));
   }
 }

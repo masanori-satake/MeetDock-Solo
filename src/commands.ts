@@ -3,6 +3,7 @@ import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
 import { Meeting, RecurrenceType } from './types';
 import { isValidTeamsUrl } from './urlValidator';
+import { t } from './i18n';
 
 /**
  * Prompts for meeting details parsed from the clipboard and saves the meeting.
@@ -10,7 +11,7 @@ import { isValidTeamsUrl } from './urlValidator';
 export async function addFromClipboardCommand(meetingManager: MeetingManager): Promise<void> {
   const clipboardText = await vscode.env.clipboard.readText();
   if (!clipboardText || !clipboardText.trim()) {
-    vscode.window.showWarningMessage('クリップボードにテキストが存在しません。');
+    vscode.window.showWarningMessage(t.clipboardEmpty());
     return;
   }
 
@@ -18,15 +19,15 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
 
   // Prompt for Teams URL
   const inputUrl = await vscode.window.showInputBox({
-    prompt: 'Microsoft Teams ミーティングURLを入力または確認してください',
+    prompt: t.urlPrompt(),
     value: parsed.url || '',
-    placeHolder: 'https://teams.microsoft.com/l/meetup-join/...',
+    placeHolder: t.urlPlaceholder(),
     validateInput: (value) => {
       if (!value || !value.trim()) {
-        return 'URLは必須です。';
+        return t.urlRequired();
       }
       if (!isValidTeamsUrl(value.trim())) {
-        return '有効な Microsoft Teams URL を入力してください。';
+        return t.urlInvalid();
       }
       return null;
     }
@@ -38,9 +39,9 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
 
   // Prompt for Meeting Title
   const inputTitle = await vscode.window.showInputBox({
-    prompt: 'ミーティングのタイトルを入力してください',
+    prompt: t.titlePrompt(),
     value: parsed.title || 'Teams Meeting',
-    placeHolder: '例: 定例ミーティング'
+    placeHolder: t.titlePlaceholder()
   });
 
   if (!inputTitle) {
@@ -74,15 +75,15 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   }
 
   const inputTimeStr = await vscode.window.showInputBox({
-    prompt: '開始日時を入力してください (形式: YYYY-MM-DD HH:mm または HH:mm)',
+    prompt: t.timePrompt(),
     value: defaultTimeStr,
     validateInput: (val) => {
       if (!val || !val.trim()) {
-        return '開始日時は必須です。';
+        return t.timeRequired();
       }
       const timeRegex = /^(?:(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+)?(\d{1,2}):(\d{2})$/;
       if (!timeRegex.test(val.trim())) {
-        return '正しい日時形式 (例: 2026-04-01 14:00 または 14:00) で入力してください。';
+        return t.timeInvalid();
       }
       return null;
     }
@@ -113,16 +114,16 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
       finalStartTime.setDate(finalStartTime.getDate() + 1);
     }
   } else {
-    vscode.window.showErrorMessage('開始日時の解析に失敗しました。');
+    vscode.window.showErrorMessage(t.timeParseError());
     return;
   }
 
   // Prompt for Recurrence Selection QuickPick
   const defaultRecurrence = parsed.recurrence || 'once';
   const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
-    { label: defaultRecurrence === 'once' ? '単発 (Once) [パース結果]' : '単発 (Once)', description: '今回のみ', type: 'once' },
-    { label: defaultRecurrence === 'weekly' ? '毎週 (Weekly) [パース結果]' : '毎週 (Weekly)', description: '毎週同じ曜日に繰り返し', type: 'weekly' },
-    { label: defaultRecurrence === 'weekdays' ? '平日 (Weekdays) [パース結果]' : '平日 (Weekdays)', description: '月曜〜金曜日に繰り返し', type: 'weekdays' }
+    { label: t.recurrenceOnceLabel(defaultRecurrence === 'once'), description: t.recurrenceOnceDesc(), type: 'once' },
+    { label: t.recurrenceWeeklyLabel(defaultRecurrence === 'weekly'), description: t.recurrenceWeeklyDesc(), type: 'weekly' },
+    { label: t.recurrenceWeekdaysLabel(defaultRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' }
   ];
 
   if (defaultRecurrence !== 'once') {
@@ -134,7 +135,7 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   }
 
   const selectedRecurrence = await vscode.window.showQuickPick(recurrenceItems, {
-    placeHolder: '繰り返し設定を選択してください'
+    placeHolder: t.recurrencePlaceholder()
   });
 
   if (!selectedRecurrence) {
@@ -174,5 +175,5 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   };
 
   await meetingManager.addMeeting(newMeeting);
-  vscode.window.showInformationMessage(`MeetDock: ミーティング「${newMeeting.title}」を保存しました。`);
+  vscode.window.showInformationMessage(t.meetingSaved(newMeeting.title));
 }

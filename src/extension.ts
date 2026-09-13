@@ -5,6 +5,7 @@ import { ReminderService } from './reminderService';
 import { addFromClipboardCommand } from './commands';
 import { checkForUpdates } from './updateChecker';
 import { openTeamsMeetingUrl } from './urlValidator';
+import { t } from './i18n';
 
 /**
  * Activates MeetDock and registers its tree view, reminders, and commands.
@@ -42,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
   const deleteMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.deleteMeeting', async (item?: MeetingTreeItem) => {
     if (item && item.meeting) {
       await meetingManager.removeMeeting(item.meeting.id);
-      vscode.window.showInformationMessage(`MeetDock: ミーティング「${item.meeting.title}」を削除しました。`);
+      vscode.window.showInformationMessage(t.meetingDeleted(item.meeting.title));
     }
   });
 
@@ -54,10 +55,10 @@ export function activate(context: vscode.ExtensionContext) {
     const sortedMeetings = meetingManager.getSortedMeetings();
     if (sortedMeetings.length === 0) {
       const choice = await vscode.window.showInformationMessage(
-        '登録された Teams ミーティングはありません。クリップボードから追加しますか？',
-        '追加する'
+        t.noMeetingsPrompt(),
+        t.addBtn()
       );
-      if (choice === '追加する') {
+      if (choice === t.addBtn()) {
         await addFromClipboardCommand(meetingManager);
       }
       return;
@@ -75,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: 'Teams ミーティングを選択してブラウザ/アプリで開きます'
+      placeHolder: t.selectMeetingPlaceholder()
     });
 
     if (selected) {

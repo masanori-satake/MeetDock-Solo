@@ -138,7 +138,8 @@ suite('ReminderService - Status Bar (single meeting)', () => {
   test('shows "予定なし" when no meetings are registered', async () => {
     mockManager.setMeetings([]);
     await service.update();
-    assert.ok(statusText(service).includes('予定なし'), `Got: "${statusText(service)}"`);
+    const txt = statusText(service);
+    assert.ok(txt.includes('予定なし') || txt.includes('No upcoming meetings'), `Got: "${txt}"`);
     assert.strictEqual(statusBg(service), undefined);
     assert.strictEqual((service as any).statusBarItem.color, undefined);
   });
@@ -176,7 +177,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     mockManager.setMeetings([meeting]);
     await service.update();
     const text = statusText(service);
-    assert.ok(text.includes('まもなく開始'), `Got: "${text}"`);
+    assert.ok(text.includes('まもなく開始') || text.includes('Starting soon'), `Got: "${text}"`);
     assert.ok(text.includes(meeting.title), `Expected title in text but got: "${text}"`);
     assert.ok(!text.includes('Next Teams:'), `Should not contain "Next Teams:" but got: "${text}"`);
     assert.ok(statusBg(service) instanceof vscode.ThemeColor, 'Expected ThemeColor background');
@@ -187,7 +188,7 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     mockManager.setMeetings([m]);
     await service.update();
     const text = statusText(service);
-    assert.ok(text.includes('開催中'),   `Got: "${text}"`);
+    assert.ok(text.includes('開催中') || text.includes('In progress'), `Got: "${text}"`);
     assert.ok(text.includes('broadcast'), `Got: "${text}"`);
     assert.ok(text.includes(m.title), `Expected title in text but got: "${text}"`);
     assert.ok(!text.includes('Teams:'), `Should not contain "Teams:" but got: "${text}"`);

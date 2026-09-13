@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { t } from './i18n';
 
 /**
  * Validates that a string is a valid HTTPS Microsoft Teams URL.
@@ -19,7 +20,7 @@ export function isValidTeamsUrl(url: string): boolean {
  */
 export async function openTeamsMeetingUrl(url: string): Promise<boolean> {
   if (!isValidTeamsUrl(url)) {
-    vscode.window.showErrorMessage('不安全または無効な Teams URL です。開くことができません。');
+    vscode.window.showErrorMessage(t.unsafeUrlMsg());
     return false;
   }
   return await vscode.env.openExternal(vscode.Uri.parse(url.trim()));
