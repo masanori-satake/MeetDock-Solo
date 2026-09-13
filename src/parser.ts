@@ -198,14 +198,20 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     url = '';
   }
 
+  const cleanField = (val: string, maxLen: number) => {
+    // Replace control characters with space, then normalize whitespace
+    const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned.length > maxLen ? cleaned.substring(0, maxLen).trim() : cleaned;
+  };
+
   // 2. Extract Organizer
   let organizer: string | undefined = undefined;
   const jpOrgMatch = normalizedText.match(/^(.+?)\s+Microsoft Teams 会議(?:シリーズ)?に招待されました。/m);
-  const enOrgMatch = normalizedText.match(/^(.+?)\s+(?:has invited you to a Teams meeting|invited you to a Microsoft Teams Meeting:|invited you to a Teams Meeting)/m);
+  const enOrgMatch = normalizedText.match(/^(.+?)\s+(?:has invited you to a Teams meeting|invited you to a Microsoft Teams Meeting:|invited you to a Microsoft Teams Meeting|invited you to a Teams Meeting)/m);
   if (jpOrgMatch && jpOrgMatch[1].trim()) {
-    organizer = jpOrgMatch[1].trim();
+    organizer = cleanField(jpOrgMatch[1], 100);
   } else if (enOrgMatch && enOrgMatch[1].trim()) {
-    organizer = enOrgMatch[1].trim();
+    organizer = cleanField(enOrgMatch[1], 100);
   }
 
   // 3. Extract Meeting ID & Passcode & Enterprise flag
@@ -213,11 +219,11 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   let passcode: string | undefined = undefined;
   const meetingIdMatch = normalizedText.match(/(?:会議\s*ID|Meeting\s*ID):[^\S\r\n]*((?:\d|[^\S\r\n]){9,17})/i);
   if (meetingIdMatch) {
-    meetingId = meetingIdMatch[1].replace(/\s+/g, '');
+    meetingId = cleanField(meetingIdMatch[1].replace(/\s+/g, ''), 50);
   }
   const passcodeMatch = normalizedText.match(/(?:パスコード|Passcode):\s*([A-Za-z0-9]+)/i);
   if (passcodeMatch) {
-    passcode = passcodeMatch[1].trim();
+    passcode = cleanField(passcodeMatch[1], 50);
   }
   const isEnterprise = Boolean(meetingId || passcode || /(?:会議\s*ID|Meeting\s*ID)/i.test(normalizedText));
 
@@ -277,6 +283,11 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     if (titleCandidates.length > 0) {
       title = titleCandidates.join(' ');
     }
+  }
+
+  title = cleanField(title, 200);
+  if (!title) {
+    title = 'Teams Meeting';
   }
 
   // 5. Extract Date, Start and End Time

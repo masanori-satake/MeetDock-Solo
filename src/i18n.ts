@@ -151,6 +151,7 @@ export const t = {
   urlInvalid: () => isJapanese() ? '有効な Microsoft Teams URL を入力してください。' : 'Please enter a valid Microsoft Teams URL.',
   titlePrompt: () => isJapanese() ? 'ミーティングのタイトルを入力してください' : 'Enter meeting title',
   titlePlaceholder: () => isJapanese() ? '例: 定例ミーティング' : 'e.g. Weekly Sync',
+  titleTooLong: () => isJapanese() ? 'タイトルは200文字以内で入力してください。' : 'Title must be 200 characters or less.',
   timePrompt: () => isJapanese() ? '開始日時を入力してください (形式: YYYY-MM-DD HH:mm または HH:mm)' : 'Enter start date/time (Format: YYYY-MM-DD HH:mm or HH:mm)',
   timeRequired: () => isJapanese() ? '開始日時は必須です。' : 'Start date/time is required.',
   timeInvalid: () => isJapanese() ? '正しい日時形式 (例: 2026-04-01 14:00 または 14:00) で入力してください。' : 'Please use correct format (e.g. 2026-04-01 14:00 or 14:00).',

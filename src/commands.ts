@@ -42,7 +42,14 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   const inputTitle = await vscode.window.showInputBox({
     prompt: t.titlePrompt(),
     value: parsed.title || 'Teams Meeting',
-    placeHolder: t.titlePlaceholder()
+    placeHolder: t.titlePlaceholder(),
+    validateInput: (value) => {
+      const trimmed = value ? value.trim() : '';
+      if (trimmed.length > 200) {
+        return t.titleTooLong();
+      }
+      return null;
+    }
   });
 
   if (!inputTitle) {

@@ -456,4 +456,34 @@ Passcode: abc123
       global.Date = originalDate;
     }
   });
+
+  test('truncates overly long titles and strips control characters', () => {
+    const longTitle = 'A'.repeat(250) + '\x07\x1F';
+    const sample = `
+      件名: ${longTitle}
+      日時: 2026-04-10 14:00
+      Teams URL: https://teams.microsoft.com/l/meetup-join/19%3ameeting_sanitized
+    `;
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.title.length, 200);
+    assert.strictEqual(parsed.title, 'A'.repeat(200));
+  });
+
+  test('sanitizes and truncates organizer, meetingId, and passcode fields', () => {
+    const sample = `
+    Alice\x00Bob Microsoft Teams 会議に招待されました。
+    テスト会議
+    2026年9月14日月曜日
+    8:30 - 9:30 (JST)
+    会議 ID: 123 456 789 012 345 678 901 234 567 890 123 456 789
+    パスコード: pass\x07word12345678901234567890123456789012345678901234567890
+    `;
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(parsed.organizer, 'Alice Bob');
+    assert.ok(parsed.meetingId);
+    assert.ok(parsed.meetingId.length <= 50);
+    assert.ok(parsed.passcode);
+    assert.ok(parsed.passcode.length <= 50);
+    assert.strictEqual(parsed.passcode.includes('\x07'), false);
+  });
 });
