@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { getNextOccurrence, MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
-import { isValidTeamsUrl } from './urlValidator';
+import { getTeamsChatUrl, isValidTeamsUrl } from './urlValidator';
 import { t, MeetingStatusState } from './i18n';
 import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
 
@@ -90,7 +90,8 @@ export class MeetingTreeItem extends vscode.TreeItem {
       const iconName = meeting.recurrence === 'once' ? 'calendar' : 'sync';
       this.iconPath = new vscode.ThemeIcon(iconName);
     }
-    this.contextValue = 'meetingItem';
+    const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
+    this.contextValue = hasChat ? 'meetingItemWithChat' : 'meetingItem';
   }
 }
 

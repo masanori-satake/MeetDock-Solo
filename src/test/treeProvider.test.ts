@@ -151,16 +151,27 @@ suite('TreeProvider Test Suite', () => {
     assert.strictEqual(detail.contextValue, 'meetingDetailItem');
   });
 
-  test('MeetingTreeItem has contextValue meetingItem', () => {
-    const meeting: Meeting = {
+  test('MeetingTreeItem sets contextValue meetingItemWithChat for meetings with chat thread ID and meetingItem for personal Teams or non-chat meetings', () => {
+    const enterpriseMeeting: Meeting = {
       id: 'm1',
-      title: 'テスト会議',
-      url: 'https://teams.microsoft.com/l/meetup-join/1',
+      title: '組織会議',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0',
       startTime: '2026-09-14T10:00:00.000Z',
       endTime: '2026-09-14T10:30:00.000Z',
       recurrence: 'once'
     };
-    const treeItem = new MeetingTreeItem(meeting);
-    assert.strictEqual(treeItem.contextValue, 'meetingItem');
+    const itemWithChat = new MeetingTreeItem(enterpriseMeeting);
+    assert.strictEqual(itemWithChat.contextValue, 'meetingItemWithChat');
+
+    const personalMeeting: Meeting = {
+      id: 'm2',
+      title: '個人用会議',
+      url: 'https://teams.live.com/meet/93735498380940?p=6kSddKYY6KaGxK5CF2',
+      startTime: '2026-09-14T10:00:00.000Z',
+      endTime: '2026-09-14T10:30:00.000Z',
+      recurrence: 'once'
+    };
+    const itemNoChat = new MeetingTreeItem(personalMeeting);
+    assert.strictEqual(itemNoChat.contextValue, 'meetingItem');
   });
 });

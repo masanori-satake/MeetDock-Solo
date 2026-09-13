@@ -4,7 +4,7 @@ import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
 import { addFromClipboardCommand } from './commands';
 import { checkForUpdates } from './updateChecker';
-import { openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
+import { getTeamsChatUrl, openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
 import { Meeting } from './types';
 import { t } from './i18n';
 
@@ -61,13 +61,19 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    if (sortedMeetings.length === 1) {
-      await openTeamsChatUrl(sortedMeetings[0].url);
+    const meetingsWithChat = sortedMeetings.filter(m => getTeamsChatUrl(m.url) !== undefined);
+    if (meetingsWithChat.length === 0) {
+      vscode.window.showWarningMessage(t.cannotOpenChatMsg());
+      return;
+    }
+
+    if (meetingsWithChat.length === 1) {
+      await openTeamsChatUrl(meetingsWithChat[0].url);
       return;
     }
 
     type MeetingQuickPickItem = vscode.QuickPickItem & { meeting: Meeting };
-    const items: MeetingQuickPickItem[] = sortedMeetings.map(m => {
+    const items: MeetingQuickPickItem[] = meetingsWithChat.map(m => {
       const start = new Date(m.startTime);
       const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
       return {
@@ -118,13 +124,14 @@ export function activate(context: vscode.ExtensionContext) {
     quickPick.items = sortedMeetings.map(m => {
       const start = new Date(m.startTime);
       const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      const hasChat = getTeamsChatUrl(m.url) !== undefined;
       return {
         label: `$(calendar) ${m.title}`,
         description: `${timeStr} (${m.recurrence})`,
-        buttons: [{
+        buttons: hasChat ? [{
           iconPath: new vscode.ThemeIcon('comment-discussion'),
           tooltip: t.openChatBtn()
-        }],
+        }] : [],
         meeting: m
       };
     });
