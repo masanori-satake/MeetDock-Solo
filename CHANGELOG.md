@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.7.2] - 2026-09-13
+
+### 変更・修正 (Changed & Fixed)
+- `openTeamsChatUrl` において、自動生成された Teams 会議チャット URL に対する二重セキュリティ検証（`isValidTeamsUrl`）を追加し、不安全なスキームや不正なドメインへの `openExternal` 呼び出しを防止（多層防御の強化）
+
 ## [1.7.1] - 2026-09-13
 
 ### 変更・修正 (Changed & Fixed)
