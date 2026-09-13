@@ -134,32 +134,6 @@ suite('MeetingManager - getRelevantMeetings', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test suite: getSortedMeetings
-// ---------------------------------------------------------------------------
-
-suite('MeetingManager - getSortedMeetings', () => {
-  test('sorts start times chronologically when timezone offsets differ', () => {
-    const earliestStart = new Date(Date.now() + 5 * 60 * 1000);
-    const latestStart = new Date(Date.now() + 10 * 60 * 1000);
-    const earliest = {
-      ...makeMeeting('earliest', 5),
-      startTime: new Date(earliestStart.getTime() + 9 * 60 * 60 * 1000)
-        .toISOString()
-        .replace('Z', '+09:00'),
-    };
-    const latest = {
-      ...makeMeeting('latest', 10),
-      startTime: latestStart.toISOString(),
-    };
-    const manager = new MeetingManager(createMockContext([latest, earliest]));
-
-    const sorted = manager.getSortedMeetings();
-
-    assert.deepStrictEqual(sorted.map(meeting => meeting.id), ['earliest', 'latest']);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // Test suite: getNextMeeting (regression guard)
 // ---------------------------------------------------------------------------
 

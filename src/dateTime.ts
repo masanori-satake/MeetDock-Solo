@@ -66,12 +66,6 @@ function getDateTimeFormatter(timeZone: string): Intl.DateTimeFormat {
   return formatter;
 }
 
-/**
- * Normalizes a time-zone alias, UTC offset, or IANA name for later date calculations.
- *
- * @param value Time-zone text to normalize.
- * @returns The normalized time zone, or `undefined` when the value is empty or invalid.
- */
 export function normalizeTimeZone(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
@@ -114,13 +108,6 @@ function dayOfWeek(year: number, month: number, day: number): number {
   return new Date(Date.UTC(year, month, day)).getUTCDay();
 }
 
-/**
- * Extracts calendar fields from a date in local time, a fixed UTC offset, or an IANA time zone.
- *
- * @param date Date whose fields should be extracted.
- * @param timeZone Optional normalized time zone used to interpret the date.
- * @returns The date and time fields in the requested time zone.
- */
 export function getZonedDateParts(date: Date, timeZone?: string): ZonedDateParts {
   if (!timeZone) {
     return {
