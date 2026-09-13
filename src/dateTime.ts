@@ -138,18 +138,44 @@ export function getZonedDateParts(date: Date, timeZone?: string): ZonedDateParts
   }
 
   const parts = getDateTimeFormatter(timeZone).formatToParts(date);
-  const values = new Map(parts.map(part => [part.type, parseInt(part.value, 10)]));
-  const year = values.get('year')!;
-  const month = values.get('month')! - 1;
-  const day = values.get('day')!;
+  let year = 0;
+  let month = 0;
+  let day = 0;
+  let hour = 0;
+  let minute = 0;
+  let second = 0;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    switch (part.type) {
+      case 'year':
+        year = parseInt(part.value, 10);
+        break;
+      case 'month':
+        month = parseInt(part.value, 10) - 1;
+        break;
+      case 'day':
+        day = parseInt(part.value, 10);
+        break;
+      case 'hour':
+        hour = parseInt(part.value, 10);
+        break;
+      case 'minute':
+        minute = parseInt(part.value, 10);
+        break;
+      case 'second':
+        second = parseInt(part.value, 10);
+        break;
+    }
+  }
 
   return {
     year,
     month,
     day,
-    hour: values.get('hour')!,
-    minute: values.get('minute')!,
-    second: values.get('second')!,
+    hour,
+    minute,
+    second,
     millisecond: date.getMilliseconds(),
     dayOfWeek: dayOfWeek(year, month, day),
   };
