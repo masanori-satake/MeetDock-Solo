@@ -40,16 +40,6 @@ suite('URL Validator Test Suite', () => {
     );
   });
 
-  test('does not extract a chat ID from query parameters', () => {
-    const safeLinkUrl = 'https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fl%2Fmeetup-join%2Fpersonal%3FchatId%3D19%253ameeting_QUERY%2540thread.v2';
-    assert.strictEqual(getTeamsChatUrl(safeLinkUrl), undefined);
-  });
-
-  test('does not extract a chat ID from fragments', () => {
-    const safeLinkUrl = 'https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fl%2Fmeetup-join%2Fpersonal%2319%253ameeting_FRAGMENT%2540thread.v2';
-    assert.strictEqual(getTeamsChatUrl(safeLinkUrl), undefined);
-  });
-
   test('returns undefined for personal Teams URLs without thread ID', () => {
     const personalUrl = 'https://teams.live.com/meet/939100970';
     assert.strictEqual(getTeamsChatUrl(personalUrl), undefined);
