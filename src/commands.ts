@@ -164,6 +164,25 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     finalEndTime = parsed.endTime;
   }
 
+  const recurrenceFields: Partial<Meeting> = recurrence === 'once'
+    ? {}
+    : {
+        recurrenceInterval: parsed.recurrenceInterval ?? 1,
+        recurrenceEndDate: parsed.recurrenceEndDate?.toISOString(),
+        ...(recurrence === 'weekly' && parsed.daysOfWeek
+          ? { daysOfWeek: parsed.daysOfWeek }
+          : {}),
+        ...(recurrence === 'monthly' && parsed.dayOfMonth
+          ? { dayOfMonth: parsed.dayOfMonth }
+          : {}),
+        ...(recurrence === 'yearly'
+          ? {
+              ...(parsed.monthOfYear ? { monthOfYear: parsed.monthOfYear } : {}),
+              ...(parsed.dayOfYear ? { dayOfYear: parsed.dayOfYear } : {}),
+            }
+          : {}),
+      };
+
   const newMeeting: Meeting = {
     id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
     title: inputTitle.trim(),
@@ -176,6 +195,7 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     meetingId: parsed.meetingId,
     passcode: parsed.passcode,
     isEnterprise: parsed.isEnterprise,
+    ...recurrenceFields,
   };
 
   await meetingManager.addMeeting(newMeeting);
