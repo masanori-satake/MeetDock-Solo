@@ -2,6 +2,12 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.7.3] - 2026-09-13
+
+### パフォーマンス改善 (Performance Improvements)
+- `src/dateTime.ts` における `Intl.DateTimeFormat` インスタンスのキャッシュ（`formatterCache` Map / `validTimeZoneCache` Set）の導入により、タイムゾーン変換や繰り返し計算でのオブジェクト生成コストを削減
+- `src/meetingManager.ts` の `getSortedMeetings` において、各会議の開始エポックタイムスタンプを一度だけ計算・キャッシュしてソート（Schwartzian transform）するよう改善し、ソート比較時の $O(N \log N)$ 回の無駄なパースおよび `Date` インスタンス生成コストを削除
+
 ## [1.7.2] - 2026-09-13
 
 ### 変更・修正 (Changed & Fixed)

@@ -212,7 +212,7 @@ export class MeetingManager {
     const now = new Date();
     const rawMeetings = this.getMeetings();
     let hasChanges = false;
-    const activeMeetings: Meeting[] = [];
+    const mapped: Array<{ meeting: Meeting; timestamp: number }> = [];
 
     for (const meeting of rawMeetings) {
       const startTime = new Date(meeting.startTime);
@@ -223,26 +223,28 @@ export class MeetingManager {
         hasChanges = true;
         const nextStart = getNextOccurrence(meeting, now);
         if (nextStart) {
-          activeMeetings.push({
+          const nextMeeting: Meeting = {
             ...meeting,
             startTime: nextStart.toISOString(),
             endTime: new Date(nextStart.getTime() + duration).toISOString(),
             notified5m: false,
             notifiedStart: false,
-          });
+          };
+          mapped.push({ meeting: nextMeeting, timestamp: nextStart.getTime() });
         }
       } else {
-        activeMeetings.push(meeting);
+        mapped.push({ meeting, timestamp: startTime.getTime() });
       }
     }
 
     if (hasChanges) {
-      this.saveMeetings(activeMeetings).catch(error => {
+      this.saveMeetings(mapped.map(item => item.meeting)).catch(error => {
         console.error('Failed to save expired meeting updates.', error);
       });
     }
 
-    return activeMeetings.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    mapped.sort((a, b) => a.timestamp - b.timestamp);
+    return mapped.map(item => item.meeting);
   }
 
   /**

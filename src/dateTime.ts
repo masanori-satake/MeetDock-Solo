@@ -41,6 +41,31 @@ function normalizeOffset(value: string): string | undefined {
   return `${match[1]}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+const validTimeZoneCache = new Set<string>();
+
+/**
+ * Caches and returns an Intl.DateTimeFormat instance for the given IANA timeZone
+ * to avoid expensive repeated object creation.
+ */
+function getDateTimeFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = formatterCache.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
+      timeZone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hourCycle: 'h23',
+    });
+    formatterCache.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
 export function normalizeTimeZone(value: string | undefined): string | undefined {
   if (!value) {
     return undefined;
@@ -57,8 +82,13 @@ export function normalizeTimeZone(value: string | undefined): string | undefined
     return alias[1];
   }
 
+  if (validTimeZoneCache.has(clean)) {
+    return clean;
+  }
+
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: clean }).format();
+    validTimeZoneCache.add(clean);
     return clean;
   } catch {
     return undefined;
@@ -107,16 +137,7 @@ export function getZonedDateParts(date: Date, timeZone?: string): ZonedDateParts
     };
   }
 
-  const parts = new Intl.DateTimeFormat('en-US-u-ca-gregory-nu-latn', {
-    timeZone,
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric',
-    hourCycle: 'h23',
-  }).formatToParts(date);
+  const parts = getDateTimeFormatter(timeZone).formatToParts(date);
   const values = new Map(parts.map(part => [part.type, parseInt(part.value, 10)]));
   const year = values.get('year')!;
   const month = values.get('month')! - 1;
