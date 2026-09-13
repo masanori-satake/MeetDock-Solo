@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { Meeting } from './types';
 import { openTeamsMeetingUrl } from './urlValidator';
+import { t } from './i18n';
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
 /** How far ahead to include meetings in the rotation (currently 5 minutes). */
@@ -93,10 +94,10 @@ export class ReminderService {
       // No relevant meetings — show the next upcoming meeting as a plain countdown
       const nextMeeting = this.meetingManager.getNextMeeting();
       if (!nextMeeting) {
-        this.statusBarItem.text = `$(calendar) Teams: 予定なし`;
+        this.statusBarItem.text = t.noMeetingsStatusBar();
         this.statusBarItem.color = undefined;
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.tooltip = '登録された Teams ミーティングはありません。';
+        this.statusBarItem.tooltip = t.noMeetingsTooltip();
         return;
       }
 
@@ -106,18 +107,11 @@ export class ReminderService {
       const diffMinutes = Math.floor(diffMs / (60 * 1000));
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-      let remainingText: string;
-      if (diffMinutes >= 60) {
-        const hours = Math.floor(diffMinutes / 60);
-        const mins = diffMinutes % 60;
-        remainingText = `${hours}h${mins}m`;
-      } else {
-        remainingText = `${diffMinutes}m`;
-      }
-      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`;
+      const remainingText = t.remainingTime(diffMinutes);
+      this.statusBarItem.text = t.nextMeetingStatus(timeStr, remainingText);
       this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = undefined;
-      this.statusBarItem.tooltip = `次回会議: ${nextMeeting.title}\n開始時刻: ${timeStr}`;
+      this.statusBarItem.tooltip = t.nextMeetingTooltip(nextMeeting.title, timeStr);
       return;
     }
 
@@ -138,23 +132,23 @@ export class ReminderService {
     const indexSuffix = total > 1 ? ` [${this.rotationIndex + 1}/${total}]` : '';
 
     if (now >= startTime && now < endTime) {
-      // Meeting is currently ongoing ("開催中")
-      this.statusBarItem.text = `$(broadcast) ${meeting.title} (開催中)${indexSuffix}`;
+      // Meeting is currently ongoing ("開催中" / "In progress")
+      this.statusBarItem.text = t.ongoingStatus(meeting.title, indexSuffix);
       this.statusBarItem.color = new vscode.ThemeColor('charts.green');
       this.statusBarItem.backgroundColor = undefined;
-      this.statusBarItem.tooltip = `開催中: ${meeting.title}\nクリックしてミーティング一覧を開く`;
+      this.statusBarItem.tooltip = t.ongoingTooltip(meeting.title);
     } else if (diffMs > 0 && diffMinutes < 1) {
       // Less than 1 minute until start — red/error background
-      this.statusBarItem.text = `$(calendar) ${timeStr} ${meeting.title} (まもなく開始)${indexSuffix}`;
+      this.statusBarItem.text = t.startingSoonStatus(timeStr, meeting.title, indexSuffix);
       this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
-      this.statusBarItem.tooltip = `まもなく開始: ${meeting.title}\n開始時刻: ${timeStr}`;
+      this.statusBarItem.tooltip = t.startingSoonTooltip(meeting.title, timeStr);
     } else if (diffMs > 0 && diffMinutes <= 5) {
       // 5 minutes or less until start — yellow/warning background
-      this.statusBarItem.text = `$(calendar) ${timeStr} ${meeting.title} (in ${diffMinutes}m)${indexSuffix}`;
+      this.statusBarItem.text = t.inMinutesStatus(timeStr, meeting.title, diffMinutes, indexSuffix);
       this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-      this.statusBarItem.tooltip = `次回会議: ${meeting.title}\n開始時刻: ${timeStr}`;
+      this.statusBarItem.tooltip = t.nextMeetingTooltip(meeting.title, timeStr);
     }
   }
 
@@ -179,12 +173,12 @@ export class ReminderService {
       await this.meetingManager.updateMeeting(meeting);
 
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      const joinBtn = 'Teamsに参加';
+      const joinBtnText = t.joinBtn();
       vscode.window.showInformationMessage(
-        `【5分前リマインダー】「${meeting.title}」が ${timeStr} に開始します。`,
-        joinBtn
+        t.reminder5mMsg(meeting.title, timeStr),
+        joinBtnText
       ).then(selection => {
-        if (selection === joinBtn) {
+        if (selection === joinBtnText) {
           openTeamsMeetingUrl(meeting.url);
         }
       });
@@ -195,13 +189,13 @@ export class ReminderService {
       meeting.notifiedStart = true;
       await this.meetingManager.updateMeeting(meeting);
 
-      const joinBtn = 'Teamsに参加';
+      const joinBtnText = t.joinBtn();
       vscode.window.showInformationMessage(
-        `ミーティング「${meeting.title}」の時間になりました！`,
+        t.reminderStartMsg(meeting.title),
         { modal: true },
-        joinBtn
+        joinBtnText
       ).then(selection => {
-        if (selection === joinBtn) {
+        if (selection === joinBtnText) {
           openTeamsMeetingUrl(meeting.url);
         }
       });
