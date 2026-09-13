@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.7.6] - 2026-09-13
+
+### セキュリティ強化 (Security Enhancements)
+- GitHub Releases 更新確認機能 (`fetchLatestReleaseTag`) において、レスポンスデータの最大サイズ制限（100KB）および上限超過時のストリーム破棄処理を追加し、メモリ枯渇（DoS）リスクに対する防護策（多層防御）を強化
+
 ## [1.7.5] - 2026-09-13
 
 ### パフォーマンス改善 (Performance Improvements)

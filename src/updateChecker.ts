@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
 import * as https from 'https';
 
+const MAX_RESPONSE_SIZE = 100 * 1024; // 100KB limit to prevent DoS via unbounded memory growth
+
 /**
  * Helper to fetch latest release tag from GitHub API.
  */
-export function fetchLatestReleaseTag(): Promise<string> {
+export function fetchLatestReleaseTag(getFn: typeof https.get = https.get): Promise<string> {
   return new Promise((resolve, reject) => {
     const options: https.RequestOptions = {
       hostname: 'api.github.com',
@@ -17,12 +19,18 @@ export function fetchLatestReleaseTag(): Promise<string> {
       timeout: 5000
     };
 
-    const req = https.get(options, (res) => {
+    const req = getFn(options, (res) => {
       if (res.statusCode !== 200) {
         return reject(new Error(`HTTP status code: ${res.statusCode}`));
       }
       let data = '';
-      res.on('data', (chunk) => {
+      let dataLength = 0;
+      res.on('data', (chunk: Buffer | string) => {
+        dataLength += chunk.length;
+        if (dataLength > MAX_RESPONSE_SIZE) {
+          req.destroy(new Error('Response size limit exceeded'));
+          return;
+        }
         data += chunk;
       });
       res.on('end', () => {
