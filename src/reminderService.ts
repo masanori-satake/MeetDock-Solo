@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { Meeting } from './types';
-import { openTeamsMeetingUrl } from './urlValidator';
+import { openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
 import { t } from './i18n';
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
@@ -174,12 +174,16 @@ export class ReminderService {
 
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       const joinBtnText = t.joinBtn();
+      const openChatBtnText = t.openChatBtn();
       vscode.window.showInformationMessage(
         t.reminder5mMsg(meeting.title, timeStr),
-        joinBtnText
+        joinBtnText,
+        openChatBtnText
       ).then(selection => {
         if (selection === joinBtnText) {
           openTeamsMeetingUrl(meeting.url);
+        } else if (selection === openChatBtnText) {
+          openTeamsChatUrl(meeting.url);
         }
       });
     }
@@ -190,13 +194,17 @@ export class ReminderService {
       await this.meetingManager.updateMeeting(meeting);
 
       const joinBtnText = t.joinBtn();
+      const openChatBtnText = t.openChatBtn();
       vscode.window.showInformationMessage(
         t.reminderStartMsg(meeting.title),
         { modal: true },
-        joinBtnText
+        joinBtnText,
+        openChatBtnText
       ).then(selection => {
         if (selection === joinBtnText) {
           openTeamsMeetingUrl(meeting.url);
+        } else if (selection === openChatBtnText) {
+          openTeamsChatUrl(meeting.url);
         }
       });
     }

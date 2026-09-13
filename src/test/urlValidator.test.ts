@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { isValidTeamsUrl } from '../urlValidator';
+import { getTeamsChatUrl, isValidTeamsUrl } from '../urlValidator';
 
 suite('URL Validator Test Suite', () => {
   test('validates legitimate Teams URLs correctly', () => {
@@ -22,5 +22,31 @@ suite('URL Validator Test Suite', () => {
     assert.strictEqual(isValidTeamsUrl('https://nam12.safelinks.protection.outlook.com/?url=http%3A%2F%2Fteams.microsoft.com%2Fmeet%2F123'), false);
     assert.strictEqual(isValidTeamsUrl('https://example.com'), false);
     assert.strictEqual(isValidTeamsUrl(''), false);
+  });
+
+  test('extracts chat URL from enterprise Teams URLs', () => {
+    const rawUrl = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_Y2M3YWQwYjEt%40thread.v2/0?context=123';
+    assert.strictEqual(
+      getTeamsChatUrl(rawUrl),
+      'https://teams.microsoft.com/l/chat/19:meeting_Y2M3YWQwYjEt@thread.v2/conversations'
+    );
+  });
+
+  test('extracts chat URL from SafeLinks wrapping enterprise Teams URLs', () => {
+    const safeLinkUrl = 'https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fl%2Fmeetup-join%2F19%253ameeting_ABC123%2540thread.v2%2F0';
+    assert.strictEqual(
+      getTeamsChatUrl(safeLinkUrl),
+      'https://teams.microsoft.com/l/chat/19:meeting_ABC123@thread.v2/conversations'
+    );
+  });
+
+  test('returns undefined for personal Teams URLs without thread ID', () => {
+    const personalUrl = 'https://teams.live.com/meet/939100970';
+    assert.strictEqual(getTeamsChatUrl(personalUrl), undefined);
+  });
+
+  test('returns undefined for invalid or unsafe URLs', () => {
+    assert.strictEqual(getTeamsChatUrl('javascript:alert(1)'), undefined);
+    assert.strictEqual(getTeamsChatUrl('https://example.com'), undefined);
   });
 });

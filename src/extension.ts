@@ -4,7 +4,8 @@ import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
 import { addFromClipboardCommand } from './commands';
 import { checkForUpdates } from './updateChecker';
-import { openTeamsMeetingUrl } from './urlValidator';
+import { openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
+import { Meeting } from './types';
 import { t } from './i18n';
 
 /**
@@ -34,9 +35,54 @@ export function activate(context: vscode.ExtensionContext) {
     await addFromClipboardCommand(meetingManager);
   });
 
-  const openMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.openMeeting', (item?: MeetingTreeItem) => {
+  const openMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.openMeeting', async (item?: MeetingTreeItem) => {
     if (item && item.meeting) {
-      openTeamsMeetingUrl(item.meeting.url);
+      await openTeamsMeetingUrl(item.meeting.url);
+      return;
+    }
+    await vscode.commands.executeCommand('meetdock-solo.selectMeeting');
+  });
+
+  const openChatDisposable = vscode.commands.registerCommand('meetdock-solo.openChat', async (item?: MeetingTreeItem) => {
+    if (item && item.meeting) {
+      await openTeamsChatUrl(item.meeting.url);
+      return;
+    }
+
+    const sortedMeetings = meetingManager.getSortedMeetings();
+    if (sortedMeetings.length === 0) {
+      const choice = await vscode.window.showInformationMessage(
+        t.noMeetingsPrompt(),
+        t.addBtn()
+      );
+      if (choice === t.addBtn()) {
+        await addFromClipboardCommand(meetingManager);
+      }
+      return;
+    }
+
+    if (sortedMeetings.length === 1) {
+      await openTeamsChatUrl(sortedMeetings[0].url);
+      return;
+    }
+
+    type MeetingQuickPickItem = vscode.QuickPickItem & { meeting: Meeting };
+    const items: MeetingQuickPickItem[] = sortedMeetings.map(m => {
+      const start = new Date(m.startTime);
+      const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      return {
+        label: `$(comment-discussion) ${m.title}`,
+        description: `${timeStr} (${m.recurrence})`,
+        meeting: m
+      };
+    });
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: t.selectMeetingPlaceholder()
+    });
+
+    if (selected) {
+      await openTeamsChatUrl(selected.meeting.url);
     }
   });
 
@@ -64,24 +110,40 @@ export function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const items = sortedMeetings.map(m => {
+    type MeetingQuickPickItem = vscode.QuickPickItem & { meeting: Meeting };
+
+    const quickPick = vscode.window.createQuickPick<MeetingQuickPickItem>();
+    quickPick.placeholder = t.selectMeetingPlaceholder();
+
+    quickPick.items = sortedMeetings.map(m => {
       const start = new Date(m.startTime);
       const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
       return {
         label: `$(calendar) ${m.title}`,
         description: `${timeStr} (${m.recurrence})`,
-        detail: m.url,
+        buttons: [{
+          iconPath: new vscode.ThemeIcon('comment-discussion'),
+          tooltip: t.openChatBtn()
+        }],
         meeting: m
       };
     });
 
-    const selected = await vscode.window.showQuickPick(items, {
-      placeHolder: t.selectMeetingPlaceholder()
+    quickPick.onDidTriggerItemButton((e) => {
+      openTeamsChatUrl(e.item.meeting.url);
+      quickPick.hide();
     });
 
-    if (selected) {
-      openTeamsMeetingUrl(selected.meeting.url);
-    }
+    quickPick.onDidAccept(() => {
+      const selected = quickPick.selectedItems[0];
+      if (selected) {
+        openTeamsMeetingUrl(selected.meeting.url);
+      }
+      quickPick.hide();
+    });
+
+    quickPick.onDidHide(() => quickPick.dispose());
+    quickPick.show();
   });
 
   context.subscriptions.push(
@@ -90,6 +152,7 @@ export function activate(context: vscode.ExtensionContext) {
     reminderService,
     addClipboardDisposable,
     openMeetingDisposable,
+      openChatDisposable,
     deleteMeetingDisposable,
     refreshViewDisposable,
     selectMeetingDisposable
