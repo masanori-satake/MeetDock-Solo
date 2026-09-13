@@ -2,7 +2,7 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Prevent missing Teams meetings while coding. A lightweight, 100% local VSCode extension.",
   "author": {
     "name": "Masanori Satake"
@@ -103,12 +103,12 @@
       "view/item/context": [
         {
           "command": "meetdock-solo.openMeeting",
-          "when": "view == meetdock-view",
+          "when": "view == meetdock-view && viewItem == meetingItem",
           "group": "inline"
         },
         {
           "command": "meetdock-solo.deleteMeeting",
-          "when": "view == meetdock-view",
+          "when": "view == meetdock-view && viewItem == meetingItem",
           "group": "inline"
         }
       ]
