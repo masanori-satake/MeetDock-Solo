@@ -60,7 +60,12 @@ if (fs.existsSync(readmePath)) {
   errors.push('README.md does not exist');
 }
 
-// Helper functions for semver and git check
+/**
+ * Parse a strict semantic version string into numeric components.
+ *
+ * @param {string} v Version string to parse.
+ * @returns {[number, number, number] | null} Parsed components, or null when invalid.
+ */
 function parseSemver(v) {
   if (!v) return null;
   const m = v.match(/^(\d+)\.(\d+)\.(\d+)$/);
@@ -68,6 +73,13 @@ function parseSemver(v) {
   return [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)];
 }
 
+/**
+ * Determine whether the current version is newer than the base version.
+ *
+ * @param {string} baseVer Version from the base branch.
+ * @param {string} curVer Version from the current checkout.
+ * @returns {boolean} True when the current version is greater than the base version.
+ */
 function isVersionBumped(baseVer, curVer) {
   const b = parseSemver(baseVer);
   const c = parseSemver(curVer);
@@ -78,6 +90,12 @@ function isVersionBumped(baseVer, curVer) {
   return false;
 }
 
+/**
+ * Determine whether a changed file is included in the packaged extension.
+ *
+ * @param {string} filepath Repository-relative file path.
+ * @returns {boolean} True when the file requires a version bump.
+ */
 function isVsixRelevant(filepath) {
   const normalized = filepath.replace(/\\/g, '/');
   const ignoredPrefixes = [
