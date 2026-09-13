@@ -73,11 +73,19 @@ export const t = {
   noMeetingsStatusBar: () => isJapanese() ? '$(calendar) Teams: 予定なし' : '$(calendar) Teams: No upcoming meetings',
   noMeetingsTooltip: () => isJapanese() ? '登録された Teams ミーティングはありません。' : 'No registered Teams meetings.',
   nextMeetingTooltip: (title: string, timeStr: string) => isJapanese() ? `次回会議: ${title}\n開始時刻: ${timeStr}` : `Next meeting: ${title}\nStart time: ${timeStr}`,
+  nextMeetingStatus: (timeStr: string, remainingText: string) => isJapanese() ? `$(calendar) 次の Teams: ${timeStr} (${remainingText}後)` : `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`,
+  remainingTime: (diffMinutes: number) => {
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    return isJapanese()
+      ? (hours > 0 ? `${hours}時間${minutes}分` : `${minutes}分`)
+      : (hours > 0 ? `${hours}h${minutes}m` : `${minutes}m`);
+  },
   ongoingStatus: (title: string, indexSuffix: string) => isJapanese() ? `$(broadcast) ${title} (開催中)${indexSuffix}` : `$(broadcast) ${title} (In progress)${indexSuffix}`,
   ongoingTooltip: (title: string) => isJapanese() ? `開催中: ${title}\nクリックしてミーティング一覧を開く` : `In progress: ${title}\nClick to view meeting list`,
   startingSoonStatus: (timeStr: string, title: string, indexSuffix: string) => isJapanese() ? `$(calendar) ${timeStr} ${title} (まもなく開始)${indexSuffix}` : `$(calendar) ${timeStr} ${title} (Starting soon)${indexSuffix}`,
   startingSoonTooltip: (title: string, timeStr: string) => isJapanese() ? `まもなく開始: ${title}\n開始時刻: ${timeStr}` : `Starting soon: ${title}\nStart time: ${timeStr}`,
-  inMinutesStatus: (timeStr: string, title: string, diffMinutes: number, indexSuffix: string) => isJapanese() ? `$(calendar) ${timeStr} ${title} (in ${diffMinutes}m)${indexSuffix}` : `$(calendar) ${timeStr} ${title} (in ${diffMinutes}m)${indexSuffix}`,
+  inMinutesStatus: (timeStr: string, title: string, diffMinutes: number, indexSuffix: string) => isJapanese() ? `$(calendar) ${timeStr} ${title} (${diffMinutes}分後)${indexSuffix}` : `$(calendar) ${timeStr} ${title} (in ${diffMinutes}m)${indexSuffix}`,
   reminder5mMsg: (title: string, timeStr: string) => isJapanese() ? `【5分前リマインダー】「${title}」が ${timeStr} に開始します。` : `[5m Reminder] "${title}" starts at ${timeStr}.`,
   reminderStartMsg: (title: string) => isJapanese() ? `ミーティング「${title}」の時間になりました！` : `Time for meeting "${title}"!`,
   joinBtn: () => isJapanese() ? 'Teamsに参加' : 'Join Teams',

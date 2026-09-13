@@ -107,15 +107,8 @@ export class ReminderService {
       const diffMinutes = Math.floor(diffMs / (60 * 1000));
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-      let remainingText: string;
-      if (diffMinutes >= 60) {
-        const hours = Math.floor(diffMinutes / 60);
-        const mins = diffMinutes % 60;
-        remainingText = `${hours}h${mins}m`;
-      } else {
-        remainingText = `${diffMinutes}m`;
-      }
-      this.statusBarItem.text = `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`;
+      const remainingText = t.remainingTime(diffMinutes);
+      this.statusBarItem.text = t.nextMeetingStatus(timeStr, remainingText);
       this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = undefined;
       this.statusBarItem.tooltip = t.nextMeetingTooltip(nextMeeting.title, timeStr);
