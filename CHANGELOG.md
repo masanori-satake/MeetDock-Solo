@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.7.5] - 2026-09-13
+
+### パフォーマンス改善 (Performance Improvements)
+- `src/dateTime.ts` の `getZonedDateParts` において、`formatToParts` の返り値解析における `Map` およびの中間配列生成を廃止し、ループと `switch` 文による直接変数代入へ置き換えることで GC 負荷と計算コストを低減
+
 ## [1.7.4] - 2026-09-13
 
 ### セキュリティ強化 (Security Enhancements)
