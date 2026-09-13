@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
-import { MeetingManager } from './meetingManager';
+import { getNextOccurrence, MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
 import { isValidTeamsUrl } from './urlValidator';
 import { t, MeetingStatusState } from './i18n';
+import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
 
 function formatDuration(start: Date, end: Date): string {
   const durationMs = Math.max(0, end.getTime() - start.getTime());
@@ -38,13 +39,12 @@ export function getMeetingStatusState(meeting: Meeting, now: Date = new Date()):
     ? new Date(meeting.endTime)
     : new Date(start.getTime() + 30 * 60 * 1000);
   const diffMs = start.getTime() - now.getTime();
-  const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
   if (now >= start && now < end) {
     return 'ongoing';
-  } else if (diffMs > 0 && diffMinutes < 1) {
+  } else if (diffMs > 0 && diffMs < 60 * 1000) {
     return 'startingSoon';
-  } else if (diffMs > 0 && diffMinutes <= 5) {
+  } else if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
     return 'warning';
   }
   return 'normal';
@@ -269,24 +269,12 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     const now = this.now();
     let defaultTimeStr = '';
     if (parsed.startTime) {
-      const st = new Date(parsed.startTime.getTime());
-
-      if (parsed.startTime && parsed.endTime) {
-        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
-        while (new Date(st.getTime() + duration).getTime() <= now.getTime()) {
-          st.setDate(st.getDate() + 1);
-        }
-      } else {
-        while (st.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-          st.setDate(st.getDate() + 1);
-        }
-      }
-
-      const yyyy = st.getFullYear();
-      const mm = String(st.getMonth() + 1).padStart(2, '0');
-      const dd = String(st.getDate()).padStart(2, '0');
-      const hh = String(st.getHours()).padStart(2, '0');
-      const min = String(st.getMinutes()).padStart(2, '0');
+      const startParts = getZonedDateParts(parsed.startTime, parsed.timeZone);
+      const yyyy = startParts.year;
+      const mm = String(startParts.month + 1).padStart(2, '0');
+      const dd = String(startParts.day).padStart(2, '0');
+      const hh = String(startParts.hour).padStart(2, '0');
+      const min = String(startParts.minute).padStart(2, '0');
       defaultTimeStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
     } else {
       const defaultDate = new Date(now.getTime());
@@ -328,20 +316,10 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
         const year = parseInt(timeMatch[1], 10);
         const month = parseInt(timeMatch[2], 10) - 1;
         const day = parseInt(timeMatch[3], 10);
-        finalStartTime = new Date(year, month, day, hour, minute, 0);
+        finalStartTime = createDateInTimeZone(year, month, day, hour, minute, 0, 0, parsed.timeZone);
       } else {
-        finalStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
-      }
-
-      if (parsed.startTime && parsed.endTime) {
-        const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
-        while (new Date(finalStartTime.getTime() + duration).getTime() <= now.getTime()) {
-          finalStartTime.setDate(finalStartTime.getDate() + 1);
-        }
-      } else {
-        while (finalStartTime.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-          finalStartTime.setDate(finalStartTime.getDate() + 1);
-        }
+        const nowParts = getZonedDateParts(now, parsed.timeZone);
+        finalStartTime = createDateInTimeZone(nowParts.year, nowParts.month, nowParts.day, hour, minute, 0, 0, parsed.timeZone);
       }
     } else {
       return;
@@ -375,20 +353,55 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
     const recurrence: RecurrenceType = selectedRecurrence.type;
     const validationNow = this.now();
-    if (parsed.startTime && parsed.endTime) {
-      const duration = parsed.endTime.getTime() - parsed.startTime.getTime();
-      while (new Date(finalStartTime.getTime() + duration).getTime() <= validationNow.getTime()) {
-        finalStartTime.setDate(finalStartTime.getDate() + 1);
+    const duration = parsed.startTime && parsed.endTime
+      ? parsed.endTime.getTime() - parsed.startTime.getTime()
+      : 30 * 60 * 1000;
+    const selectedStartParts = getZonedDateParts(finalStartTime, parsed.timeZone);
+
+    const recurrenceFields: Partial<Meeting> = recurrence === 'once'
+      ? {}
+      : {
+          recurrenceInterval: 1,
+          recurrenceEndDate: parsed.recurrenceEndDate?.toISOString(),
+          ...(recurrence === 'weekly' ? {
+            daysOfWeek: parsed.recurrence === 'weekly' && parsed.daysOfWeek?.length
+              ? parsed.daysOfWeek
+              : [selectedStartParts.dayOfWeek],
+          } : {}),
+          ...(recurrence === 'monthly' ? {
+            dayOfMonth: parsed.recurrence === 'monthly' && parsed.dayOfMonth
+              ? parsed.dayOfMonth
+              : selectedStartParts.day,
+          } : {}),
+          ...(recurrence === 'yearly' ? {
+            monthOfYear: parsed.recurrence === 'yearly' && parsed.monthOfYear
+              ? parsed.monthOfYear
+              : selectedStartParts.month + 1,
+            dayOfYear: parsed.recurrence === 'yearly' && parsed.dayOfYear
+              ? parsed.dayOfYear
+              : selectedStartParts.day,
+          } : {}),
+        };
+
+    const occurrenceTemplate: Meeting = {
+      id: '',
+      title: finalTitle,
+      url: finalUrl,
+      startTime: finalStartTime.toISOString(),
+      endTime: new Date(finalStartTime.getTime() + duration).toISOString(),
+      timeZone: parsed.timeZone,
+      recurrence,
+      ...recurrenceFields,
+    };
+
+    if (recurrence === 'once') {
+      while (finalStartTime.getTime() + duration <= validationNow.getTime()) {
+        finalStartTime = addZonedDays(finalStartTime, 1, parsed.timeZone);
       }
     } else {
-      while (finalStartTime.getTime() + 30 * 60 * 1000 <= validationNow.getTime()) {
-        finalStartTime.setDate(finalStartTime.getDate() + 1);
-      }
-    }
-
-    if (recurrence === 'weekdays') {
-      while (finalStartTime.getDay() === 0 || finalStartTime.getDay() === 6) {
-        finalStartTime.setDate(finalStartTime.getDate() + 1);
+      const nextOccurrence = getNextOccurrence(occurrenceTemplate, new Date(validationNow.getTime() + 1));
+      if (nextOccurrence) {
+        finalStartTime = nextOccurrence;
       }
     }
 
@@ -406,13 +419,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       url: finalUrl,
       startTime: finalStartTime.toISOString(),
       endTime: finalEndTime?.toISOString(),
+      timeZone: parsed.timeZone,
       recurrence,
-      recurrenceInterval: parsed.recurrenceInterval,
-      daysOfWeek: parsed.daysOfWeek,
-      dayOfMonth: parsed.dayOfMonth,
-      monthOfYear: parsed.monthOfYear,
-      dayOfYear: parsed.dayOfYear,
-      recurrenceEndDate: parsed.recurrenceEndDate?.toISOString(),
+      ...recurrenceFields,
       organizer: parsed.organizer,
       meetingId: parsed.meetingId,
       passcode: parsed.passcode,

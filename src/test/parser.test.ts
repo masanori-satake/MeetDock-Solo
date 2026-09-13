@@ -272,6 +272,58 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
     assert.strictEqual(parsed.recurrenceEndDate.getDate(), 13);
   });
 
+  test('moves an implicit recurrence end year forward when its month and day precede the start date', () => {
+    const parsed = parseMeetingText(`
+      Subject: Daily rollover
+      2026-09-13 09:00
+      Daily until 09/12
+      https://teams.microsoft.com/l/meetup-join/19%3arollover
+    `);
+
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getFullYear(), 2027);
+    assert.strictEqual(parsed.recurrenceEndDate.getMonth(), 8);
+    assert.strictEqual(parsed.recurrenceEndDate.getDate(), 12);
+  });
+
+  test('keeps an implicit recurrence end year when its date is later in the start month', () => {
+    const parsed = parseMeetingText(`
+      Subject: Daily same year
+      2026-09-13 09:00
+      Daily until 09/14
+      https://teams.microsoft.com/l/meetup-join/19%3asame-year
+    `);
+
+    assert.ok(parsed.recurrenceEndDate);
+    assert.strictEqual(parsed.recurrenceEndDate.getFullYear(), 2026);
+  });
+
+  test('selects abbreviated weekdays from a Weekly recurrence line', () => {
+    const parsed = parseMeetingText(`
+      Subject: Abbreviated schedule
+      Sunday, September 13, 2026
+      09:00 - 09:30 (UTC)
+      Weekly on Tue, Wed
+      https://teams.microsoft.com/l/meetup-join/19%3aabbreviated
+    `);
+
+    assert.strictEqual(parsed.recurrence, 'weekly');
+    assert.deepStrictEqual(parsed.daysOfWeek, [2, 3]);
+  });
+
+  test('preserves the parsed IANA time zone', () => {
+    const parsed = parseMeetingText(`
+      Subject: Zoned meeting
+      Sunday, March 1, 2026
+      09:00 - 09:30 (America/New_York)
+      Weekly on Sunday
+      https://teams.microsoft.com/l/meetup-join/19%3azone
+    `);
+
+    assert.strictEqual(parsed.timeZone, 'America/New_York');
+    assert.strictEqual(parsed.startTime?.toISOString(), '2026-03-01T14:00:00.000Z');
+  });
+
   test('does not include a newline in the meeting ID', () => {
     const parsed = parseMeetingText(`
 Meeting ID: 123 456

@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import { MeetingTreeItem, MeetingDetailItem, MeetingTreeDataProvider } from '../treeProvider';
+import { getMeetingStatusState, MeetingTreeItem, MeetingDetailItem, MeetingTreeDataProvider } from '../treeProvider';
 import { MeetingManager } from '../meetingManager';
 import { Meeting } from '../types';
 
@@ -56,7 +56,7 @@ suite('TreeProvider Test Suite', () => {
     const warningItem = new MeetingTreeItem(meeting, new Date('2026-09-14T09:57:00.000Z'));
     assert.strictEqual((warningItem.iconPath as vscode.ThemeIcon).id, 'warning');
     assert.strictEqual((warningItem.iconPath as vscode.ThemeIcon).color?.id, 'charts.yellow');
-    assert.ok(String(warningItem.description).includes('(3分前)') || String(warningItem.description).includes('(In 3m)'));
+    assert.ok(String(warningItem.description).includes('(3分後)') || String(warningItem.description).includes('(In 3m)'));
 
     // 3. Starting soon state (30 seconds before)
     const soonItem = new MeetingTreeItem(meeting, new Date('2026-09-14T09:59:30.000Z'));
@@ -69,6 +69,9 @@ suite('TreeProvider Test Suite', () => {
     assert.strictEqual((ongoingItem.iconPath as vscode.ThemeIcon).id, 'radio-tower');
     assert.strictEqual((ongoingItem.iconPath as vscode.ThemeIcon).color?.id, 'charts.green');
     assert.ok(String(ongoingItem.description).includes('(開催中)') || String(ongoingItem.description).includes('(In progress)'));
+
+    assert.strictEqual(getMeetingStatusState(meeting, new Date('2026-09-14T09:55:00.000Z')), 'warning');
+    assert.strictEqual(getMeetingStatusState(meeting, new Date('2026-09-14T09:54:59.999Z')), 'normal');
   });
 
   test('MeetingTreeDataProvider checkStatusChange triggers refresh only when state changes', () => {

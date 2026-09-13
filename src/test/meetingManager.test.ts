@@ -291,6 +291,23 @@ suite('MeetingManager - processExpirations & Recurrence Schedule', () => {
     assert.strictEqual(next.getUTCDate(), 13);
   });
 
+  test('getNextOccurrence keeps the local meeting time across a DST transition', () => {
+    const meeting: Meeting = {
+      id: 'weeklyDst',
+      title: 'Weekly DST Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: '2026-03-01T14:00:00.000Z',
+      endTime: '2026-03-01T14:30:00.000Z',
+      timeZone: 'America/New_York',
+      recurrence: 'weekly',
+      daysOfWeek: [0],
+    };
+
+    const next = getNextOccurrence(meeting, new Date('2026-03-01T14:31:00.000Z'));
+    assert.ok(next);
+    assert.strictEqual(next.toISOString(), '2026-03-08T13:00:00.000Z');
+  });
+
   test('expires meeting when recurrenceEndDate is reached', async () => {
     const start = new Date('2026-09-13T14:30:00.000Z');
     const meeting: Meeting = {

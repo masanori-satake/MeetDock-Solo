@@ -127,7 +127,7 @@ export const t = {
     if (statusState === 'warning') {
       const diffMs = startTime.getTime() - now.getTime();
       const diffMinutes = Math.max(1, Math.floor(diffMs / (60 * 1000)));
-      return isJapanese() ? ` (${diffMinutes}分前)` : ` (In ${diffMinutes}m)`;
+      return isJapanese() ? ` (${diffMinutes}分後)` : ` (In ${diffMinutes}m)`;
     }
     return '';
   },

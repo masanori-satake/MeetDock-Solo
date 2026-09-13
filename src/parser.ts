@@ -1,5 +1,6 @@
 import { ParsedMeetingInfo, RecurrenceType } from './types';
 import { getTeamsUrlFromSafeLink, isValidTeamsUrl } from './urlValidator';
+import { createDateInTimeZone, getZonedDateParts, normalizeTimeZone } from './dateTime';
 
 const JAPANESE_ERA_START_YEAR = {
   令和: 2018,
@@ -24,53 +25,6 @@ const MONTH_NAMES: { [key: string]: number } = {
   december: 11, dec: 11,
 };
 
-function getTimezoneOffsetString(tzStr: string | undefined): string | null {
-  if (!tzStr) {
-    return null;
-  }
-  const clean = tzStr.trim();
-  if (/^(JST|日本標準時|Japan Standard Time)$/i.test(clean)) {
-    return '+09:00';
-  }
-  if (/^(EST|Eastern Standard Time)$/i.test(clean)) {
-    return '-05:00';
-  }
-  if (/^(EDT|Eastern Daylight Time)$/i.test(clean)) {
-    return '-04:00';
-  }
-  if (/^(CST|Central Standard Time)$/i.test(clean)) {
-    return '-06:00';
-  }
-  if (/^(CDT|Central Daylight Time)$/i.test(clean)) {
-    return '-05:00';
-  }
-  if (/^(MST|Mountain Standard Time)$/i.test(clean)) {
-    return '-07:00';
-  }
-  if (/^(MDT|Mountain Daylight Time)$/i.test(clean)) {
-    return '-06:00';
-  }
-  if (/^(PST|Pacific Standard Time)$/i.test(clean)) {
-    return '-08:00';
-  }
-  if (/^(PDT|Pacific Daylight Time)$/i.test(clean)) {
-    return '-07:00';
-  }
-  if (/^(UTC|GMT)$/i.test(clean)) {
-    return '+00:00';
-  }
-
-  const matchOffset = clean.match(/(?:UTC|GMT)?\s*([+-]\d{1,2})(?::?(\d{2}))?/i);
-  if (matchOffset) {
-    const sign = matchOffset[1].startsWith('-') ? '-' : '+';
-    const num = Math.abs(parseInt(matchOffset[1], 10));
-    const hh = String(num).padStart(2, '0');
-    const mm = matchOffset[2] ? matchOffset[2] : '00';
-    return `${sign}${hh}:${mm}`;
-  }
-  return null;
-}
-
 function createDateWithOffset(
   year: number,
   month: number,
@@ -78,25 +32,12 @@ function createDateWithOffset(
   hour: number,
   minute: number,
   second: number,
-  tzOffset: string | null
+  timeZone: string | undefined
 ): Date {
-  if (tzOffset) {
-    const yyyy = String(year).padStart(4, '0');
-    const mm = String(month + 1).padStart(2, '0');
-    const dd = String(day).padStart(2, '0');
-    const hh = String(hour).padStart(2, '0');
-    const min = String(minute).padStart(2, '0');
-    const ss = String(second).padStart(2, '0');
-    const isoString = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}${tzOffset}`;
-    const dateObj = new Date(isoString);
-    if (!isNaN(dateObj.getTime())) {
-      return dateObj;
-    }
-  }
-  return new Date(year, month, day, hour, minute, second);
+  return createDateInTimeZone(year, month, day, hour, minute, second, 0, timeZone);
 }
 
-function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
+function parseRecurrenceInfo(normalizedText: string, startTime?: Date, timeZone?: string): {
   recurrence: RecurrenceType;
   recurrenceInterval?: number;
   daysOfWeek?: number[];
@@ -116,18 +57,19 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
   // 1. Recurrence End Date
   const endDateMatch = normalizedText.match(/(?:(\d{4})[-/.]\s*)?(\d{1,2})[-/.]\s*(\d{1,2})\s*まで|until\s+(?:(\d{4})[-/.])?(\d{1,2})[-/.](\d{1,2})/i);
   if (endDateMatch) {
-    const startYear = startTime ? startTime.getFullYear() : new Date().getFullYear();
+    const startParts = startTime ? getZonedDateParts(startTime, timeZone) : undefined;
+    const startYear = startParts ? startParts.year : new Date().getFullYear();
     const parsedYear = endDateMatch[1] || endDateMatch[4] ? parseInt(endDateMatch[1] || endDateMatch[4], 10) : startYear;
     const parsedMonth = parseInt(endDateMatch[2] || endDateMatch[5], 10) - 1;
     const parsedDay = parseInt(endDateMatch[3] || endDateMatch[6], 10);
 
     let year = parsedYear;
     if (!endDateMatch[1] && !endDateMatch[4] && startTime) {
-      if (parsedMonth < startTime.getMonth()) {
+      if (parsedMonth < startParts!.month || (parsedMonth === startParts!.month && parsedDay < startParts!.day)) {
         year = startYear + 1;
       }
     }
-    recurrenceEndDate = new Date(year, parsedMonth, parsedDay, 23, 59, 59, 999);
+    recurrenceEndDate = createDateInTimeZone(year, parsedMonth, parsedDay, 23, 59, 59, 999, timeZone);
   }
 
   // 2. Interval
@@ -150,7 +92,7 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
     if (domMatch) {
       dayOfMonth = parseInt(domMatch[1], 10);
     } else if (startTime) {
-      dayOfMonth = startTime.getDate();
+      dayOfMonth = getZonedDateParts(startTime, timeZone).day;
     }
   } else if (/(?:年次|yearly|毎年|(\d+)\s*年ごと|(\d+)\s*年おき)/i.test(normalizedText)) {
     recurrence = 'yearly';
@@ -160,8 +102,9 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
       monthOfYear = parseInt(ymdMatch[1], 10);
       dayOfYear = parseInt(ymdMatch[2], 10);
     } else if (startTime) {
-      monthOfYear = startTime.getMonth() + 1;
-      dayOfYear = startTime.getDate();
+      const startParts = getZonedDateParts(startTime, timeZone);
+      monthOfYear = startParts.month + 1;
+      dayOfYear = startParts.day;
     }
   } else if (/(?:平日|weekdays|Monday through Friday)/i.test(normalizedText)) {
     recurrence = 'weekdays';
@@ -172,19 +115,19 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
     // Parse days of week
     const daysFound = new Set<number>();
     const dayPatterns: { day: number; regex: RegExp }[] = [
-      { day: 0, regex: /(?:日曜日?|sunday|sun)/i },
-      { day: 1, regex: /(?:月曜日?|monday|mon)/i },
-      { day: 2, regex: /(?:火曜日?|tuesday|tue)/i },
-      { day: 3, regex: /(?:水曜日?|wednesday|wed)/i },
-      { day: 4, regex: /(?:木曜日?|thursday|thu)/i },
-      { day: 5, regex: /(?:金曜日?|friday|fri)/i },
-      { day: 6, regex: /(?:土曜日?|saturday|sat)/i },
+      { day: 0, regex: /(?:日曜日?|\bsunday\b|\bsun\b)/i },
+      { day: 1, regex: /(?:月曜日?|\bmonday\b|\bmon\b)/i },
+      { day: 2, regex: /(?:火曜日?|\btuesday\b|\btue\b)/i },
+      { day: 3, regex: /(?:水曜日?|\bwednesday\b|\bwed\b)/i },
+      { day: 4, regex: /(?:木曜日?|\bthursday\b|\bthu\b)/i },
+      { day: 5, regex: /(?:金曜日?|\bfriday\b|\bfri\b)/i },
+      { day: 6, regex: /(?:土曜日?|\bsaturday\b|\bsat\b)/i },
     ];
 
     let searchTarget = normalizedText;
-    const linesWithDays = normalizedText.split('\n').filter(l => /(?:日|月|火|水|木|金|土)曜日?|monday|tuesday|wednesday|thursday|friday|saturday|sunday/i.test(l));
+    const linesWithDays = normalizedText.split('\n').filter(l => /(?:日|月|火|水|木|金|土)曜日?|\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|sun|mon|tue|wed|thu|fri|sat)\b/i.test(l));
     if (linesWithDays.length > 0) {
-      const recLine = linesWithDays.find(l => /(?:毎週|every|シリーズ|series|開催)/i.test(l));
+      const recLine = linesWithDays.find(l => /(?:毎週|weekly|every|シリーズ|series|開催)/i.test(l));
       if (recLine) {
         searchTarget = recLine;
       }
@@ -199,7 +142,7 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date): {
     if (daysFound.size > 0) {
       daysOfWeek = Array.from(daysFound).sort((a, b) => a - b);
     } else if (startTime) {
-      daysOfWeek = [startTime.getDay()];
+      daysOfWeek = [getZonedDateParts(startTime, timeZone).dayOfWeek];
     }
   }
 
@@ -380,7 +323,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   };
 
   const tzStr = timeRangeMatch ? timeRangeMatch[9] : (timeMatch ? timeMatch[5] : undefined);
-  const tzOffset = getTimezoneOffsetString(tzStr);
+  const timeZone = normalizeTimeZone(tzStr);
 
   if (year !== undefined && month !== undefined && day !== undefined) {
     let sHour = 9, sMinute = 0, sSecond = 0;
@@ -390,23 +333,23 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
       sHour = applyAmPm(parseInt(tr[1], 10), tr[4]);
       sMinute = parseInt(tr[2], 10);
       sSecond = tr[3] ? parseInt(tr[3], 10) : 0;
-      startTime = createDateWithOffset(year, month, day, sHour, sMinute, sSecond, tzOffset);
+      startTime = createDateWithOffset(year, month, day, sHour, sMinute, sSecond, timeZone);
 
       const eHour = applyAmPm(parseInt(tr[5], 10), tr[8]);
       const eMinute = parseInt(tr[6], 10);
       const eSecond = tr[7] ? parseInt(tr[7], 10) : 0;
-      endTime = createDateWithOffset(year, month, day, eHour, eMinute, eSecond, tzOffset);
+      endTime = createDateWithOffset(year, month, day, eHour, eMinute, eSecond, timeZone);
       if (endTime < startTime) {
-        endTime.setDate(endTime.getDate() + 1);
+        endTime = createDateWithOffset(year, month, day + 1, eHour, eMinute, eSecond, timeZone);
       }
     } else if (timeMatch) {
       const tm = timeMatch;
       sHour = applyAmPm(parseInt(tm[1], 10), tm[4]);
       sMinute = parseInt(tm[2], 10);
       sSecond = tm[3] ? parseInt(tm[3], 10) : 0;
-      startTime = createDateWithOffset(year, month, day, sHour, sMinute, sSecond, tzOffset);
+      startTime = createDateWithOffset(year, month, day, sHour, sMinute, sSecond, timeZone);
     } else {
-      startTime = createDateWithOffset(year, month, day, sHour, sMinute, sSecond, tzOffset);
+      startTime = createDateWithOffset(year, month, day, sHour, sMinute, sSecond, timeZone);
     }
   } else if (timeRangeMatch || timeMatch) {
     const now = new Date();
@@ -414,41 +357,44 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
       const tr = timeRangeMatch;
       const sHour = applyAmPm(parseInt(tr[1], 10), tr[4]);
       const sMinute = parseInt(tr[2], 10);
-      const candidateStart = createDateWithOffset(now.getFullYear(), now.getMonth(), now.getDate(), sHour, sMinute, 0, tzOffset);
+      const nowParts = getZonedDateParts(now, timeZone);
+      let candidateStart = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day, sHour, sMinute, 0, timeZone);
 
       const eHour = applyAmPm(parseInt(tr[5], 10), tr[8]);
       const eMinute = parseInt(tr[6], 10);
-      endTime = createDateWithOffset(now.getFullYear(), now.getMonth(), now.getDate(), eHour, eMinute, 0, tzOffset);
+      endTime = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day, eHour, eMinute, 0, timeZone);
       if (endTime < candidateStart) {
-        endTime.setDate(endTime.getDate() + 1);
+        endTime = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day + 1, eHour, eMinute, 0, timeZone);
       }
 
       if (endTime <= now) {
-        candidateStart.setDate(candidateStart.getDate() + 1);
-        endTime.setDate(endTime.getDate() + 1);
+        candidateStart = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day + 1, sHour, sMinute, 0, timeZone);
+        endTime = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day + 1, eHour, eMinute, 0, timeZone);
       }
       startTime = candidateStart;
     } else if (timeMatch) {
       const tm = timeMatch;
       const sHour = applyAmPm(parseInt(tm[1], 10), tm[4]);
       const sMinute = parseInt(tm[2], 10);
-      const candidateStart = createDateWithOffset(now.getFullYear(), now.getMonth(), now.getDate(), sHour, sMinute, 0, tzOffset);
+      const nowParts = getZonedDateParts(now, timeZone);
+      let candidateStart = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day, sHour, sMinute, 0, timeZone);
 
       if (candidateStart.getTime() + 30 * 60 * 1000 <= now.getTime()) {
-        candidateStart.setDate(candidateStart.getDate() + 1);
+        candidateStart = createDateWithOffset(nowParts.year, nowParts.month, nowParts.day + 1, sHour, sMinute, 0, timeZone);
       }
       startTime = candidateStart;
     }
   }
 
   // 6. Extract Recurrence Info
-  const recurrenceInfo = parseRecurrenceInfo(normalizedText, startTime);
+  const recurrenceInfo = parseRecurrenceInfo(normalizedText, startTime, timeZone);
 
   return {
     title,
     url,
     startTime,
     endTime,
+    timeZone,
     organizer,
     meetingId,
     passcode,

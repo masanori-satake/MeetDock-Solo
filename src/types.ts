@@ -6,6 +6,7 @@ export interface Meeting {
   url: string;
   startTime: string; // ISO 8601 string
   endTime?: string;  // ISO 8601 string (optional; defaults to startTime + 30 min if omitted)
+  timeZone?: string; // IANA time zone or fixed UTC offset used for recurrence calculations
   recurrence: RecurrenceType;
   recurrenceInterval?: number; // e.g., every 2 days / months / years
   daysOfWeek?: number[];       // 0 = Sun, 1 = Mon, ..., 6 = Sat
@@ -26,6 +27,7 @@ export interface ParsedMeetingInfo {
   url: string;
   startTime?: Date;
   endTime?: Date;
+  timeZone?: string;
   organizer?: string;
   meetingId?: string;
   passcode?: string;
