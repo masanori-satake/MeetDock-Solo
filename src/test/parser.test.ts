@@ -178,8 +178,26 @@ Meeting link: https://teams.microsoft.com/l/meetup-join/12345
     const parsedPartial = parseMeetingText(partialSample);
     assert.strictEqual(parsedPartial.url, 'https://teams.microsoft.com/l/meetup-join/12345');
     assert.ok(parsedPartial.startTime);
-    assert.strictEqual(parsedPartial.startTime.getMonth(), 11); // Dec
-    assert.strictEqual(parsedPartial.startTime.getDate(), 25);
+    assert.strictEqual(parsedPartial.startTime.toISOString(), '2026-12-25T01:00:00.000Z');
+  });
+
+  test('does not include a newline in the meeting ID', () => {
+    const parsed = parseMeetingText(`
+Meeting ID: 123 456
+789
+Passcode: abc123
+    `);
+
+    assert.strictEqual(parsed.meetingId, undefined);
+    assert.strictEqual(parsed.passcode, 'abc123');
+  });
+
+  test('rejects Safe Links whose decoded target is not a Teams host', () => {
+    const parsed = parseMeetingText(
+      'Meeting link: https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com.evil.example%2Fmeet%2F123'
+    );
+
+    assert.strictEqual(parsed.url, '');
   });
 
   test('advances candidate date to tomorrow if time-only is in the past', () => {

@@ -18,6 +18,7 @@ function getMeetingEndTime(meeting: Meeting): Date {
 
 export class MeetingManager {
   private context: vscode.ExtensionContext;
+  private saveQueue: Promise<void> = Promise.resolve();
   private _onDidChangeMeetings = new vscode.EventEmitter<void>();
   readonly onDidChangeMeetings = this._onDidChangeMeetings.event;
 
@@ -31,8 +32,20 @@ export class MeetingManager {
   }
 
   public async saveMeetings(meetings: Meeting[]): Promise<void> {
-    await this.context.globalState.update(STORAGE_KEY, meetings);
-    this._onDidChangeMeetings.fire();
+    const meetingsSnapshot = [...meetings];
+    const precedingSave = this.saveQueue;
+    let releaseNextSave!: () => void;
+    this.saveQueue = new Promise<void>(resolve => {
+      releaseNextSave = resolve;
+    });
+
+    try {
+      await precedingSave;
+      await this.context.globalState.update(STORAGE_KEY, meetingsSnapshot);
+      this._onDidChangeMeetings.fire();
+    } finally {
+      releaseNextSave();
+    }
   }
 
   public async addMeeting(meeting: Meeting): Promise<void> {
@@ -168,7 +181,9 @@ export class MeetingManager {
     }
 
     if (hasChanges) {
-      this.saveMeetings(activeMeetings).catch(() => {});
+      this.saveMeetings(activeMeetings).catch(error => {
+        console.error('Failed to save expired meeting updates.', error);
+      });
     }
 
     return activeMeetings.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());

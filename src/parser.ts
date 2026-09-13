@@ -1,4 +1,5 @@
 import { ParsedMeetingInfo, RecurrenceType } from './types';
+import { getTeamsUrlFromSafeLink, isValidTeamsUrl } from './urlValidator';
 
 const JAPANESE_ERA_START_YEAR = {
   令和: 2018,
@@ -107,16 +108,9 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   const safeLinksMatch = normalizedText.match(/https:\/\/[a-zA-Z0-9.-]+\.safelinks\.protection\.outlook\.com\/[^\s"<>'`]+/i);
   if (safeLinksMatch) {
     const safeUrl = safeLinksMatch[0].replace(/[.,;)]+$/, '');
-    try {
-      const urlObj = new URL(safeUrl);
-      const targetParam = urlObj.searchParams.get('url');
-      if (targetParam && /^https:\/\/teams\.(?:microsoft|live)\.com/i.test(targetParam)) {
-        url = targetParam.replace(/[.,;)]+$/, '');
-      } else {
-        url = safeUrl;
-      }
-    } catch {
-      url = safeUrl;
+    const targetUrl = getTeamsUrlFromSafeLink(safeUrl);
+    if (targetUrl) {
+      url = targetUrl.replace(/[.,;)]+$/, '');
     }
   }
 
@@ -139,6 +133,10 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     }
   }
 
+  if (url && !isValidTeamsUrl(url)) {
+    url = '';
+  }
+
   // 2. Extract Organizer
   let organizer: string | undefined = undefined;
   const jpOrgMatch = normalizedText.match(/^(.+?)\s+Microsoft Teams 会議(?:シリーズ)?に招待されました。/m);
@@ -152,7 +150,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   // 3. Extract Meeting ID & Passcode & Enterprise flag
   let meetingId: string | undefined = undefined;
   let passcode: string | undefined = undefined;
-  const meetingIdMatch = normalizedText.match(/(?:会議\s*ID|Meeting\s*ID):\s*([\d\s]{9,17})/i);
+  const meetingIdMatch = normalizedText.match(/(?:会議\s*ID|Meeting\s*ID):[^\S\r\n]*((?:\d|[^\S\r\n]){9,17})/i);
   if (meetingIdMatch) {
     meetingId = meetingIdMatch[1].replace(/\s+/g, '');
   }

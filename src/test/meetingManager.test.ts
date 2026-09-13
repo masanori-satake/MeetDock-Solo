@@ -213,3 +213,63 @@ suite('MeetingManager - processExpirations', () => {
     assert.strictEqual(updatedEnd.getTime() - updatedStart.getTime(), duration);
   });
 });
+
+suite('MeetingManager - save ordering', () => {
+  test('serializes saves in invocation order', async () => {
+    const updates: string[][] = [];
+    let releaseFirstUpdate!: () => void;
+    const firstUpdatePending = new Promise<void>(resolve => {
+      releaseFirstUpdate = resolve;
+    });
+    const context = {
+      globalState: {
+        get: <T>(_key: string, defaultValue: T): T => defaultValue,
+        update: async (_key: string, value: unknown): Promise<void> => {
+          updates.push((value as Meeting[]).map(meeting => meeting.id));
+          if (updates.length === 1) {
+            await firstUpdatePending;
+          }
+        },
+        keys: (): readonly string[] => [],
+        setKeysForSync: (_keys: readonly string[]): void => {},
+      },
+      subscriptions: [],
+    } as unknown as vscode.ExtensionContext;
+    const manager = new MeetingManager(context);
+
+    const firstSave = manager.saveMeetings([makeMeeting('first', 10)]);
+    const secondSave = manager.saveMeetings([makeMeeting('second', 20)]);
+    await Promise.resolve();
+
+    assert.deepStrictEqual(updates, [['first']]);
+    releaseFirstUpdate();
+    await Promise.all([firstSave, secondSave]);
+    assert.deepStrictEqual(updates, [['first'], ['second']]);
+  });
+
+  test('propagates a save failure and allows the next queued save to proceed', async () => {
+    let updateCount = 0;
+    const context = {
+      globalState: {
+        get: <T>(_key: string, defaultValue: T): T => defaultValue,
+        update: async (): Promise<void> => {
+          updateCount += 1;
+          if (updateCount === 1) {
+            throw new Error('storage unavailable');
+          }
+        },
+        keys: (): readonly string[] => [],
+        setKeysForSync: (_keys: readonly string[]): void => {},
+      },
+      subscriptions: [],
+    } as unknown as vscode.ExtensionContext;
+    const manager = new MeetingManager(context);
+
+    const failedSave = manager.saveMeetings([makeMeeting('first', 10)]);
+    const successfulSave = manager.saveMeetings([makeMeeting('second', 20)]);
+
+    await assert.rejects(failedSave, /storage unavailable/);
+    await successfulSave;
+    assert.strictEqual(updateCount, 2);
+  });
+});

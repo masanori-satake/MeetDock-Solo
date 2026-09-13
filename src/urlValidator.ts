@@ -1,6 +1,36 @@
 import * as vscode from 'vscode';
 import { t } from './i18n';
 
+const TEAMS_HOSTNAMES = new Set(['teams.microsoft.com', 'teams.live.com']);
+const SAFE_LINKS_HOST_SUFFIX = '.safelinks.protection.outlook.com';
+
+function isDirectTeamsUrl(url: URL): boolean {
+  return url.protocol === 'https:' && TEAMS_HOSTNAMES.has(url.hostname.toLowerCase());
+}
+
+/**
+ * Returns the decoded Teams destination from a Microsoft Safe Links URL.
+ */
+export function getTeamsUrlFromSafeLink(url: string): string | undefined {
+  try {
+    const safeLinksUrl = new URL(url.trim());
+    const hostname = safeLinksUrl.hostname.toLowerCase();
+    if (safeLinksUrl.protocol !== 'https:' || !hostname.endsWith(SAFE_LINKS_HOST_SUFFIX)) {
+      return undefined;
+    }
+
+    const targetParam = safeLinksUrl.searchParams.get('url');
+    if (!targetParam) {
+      return undefined;
+    }
+
+    const target = targetParam.trim();
+    return isDirectTeamsUrl(new URL(target)) ? target : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Validates that a string is a valid HTTPS Microsoft Teams URL.
  * Protects against unsafe schemes (e.g. javascript:, command:, file:) and invalid domains.
@@ -10,8 +40,14 @@ export function isValidTeamsUrl(url: string): boolean {
     return false;
   }
   const trimmed = url.trim();
-  // Ensure match for https://teams.microsoft.com/, https://teams.live.com/, or Safe Links (*.safelinks.protection.outlook.com)
-  return /^https:\/\/(?:teams\.(?:microsoft|live)\.com|[a-zA-Z0-9.-]+\.safelinks\.protection\.outlook\.com)\//i.test(trimmed);
+  try {
+    if (isDirectTeamsUrl(new URL(trimmed))) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return getTeamsUrlFromSafeLink(trimmed) !== undefined;
 }
 
 /**

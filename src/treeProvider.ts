@@ -13,6 +13,25 @@ function formatDuration(start: Date, end: Date): string {
   return t.duration(hours, minutes);
 }
 
+function isSameCalendarDate(start: Date, end: Date): boolean {
+  return start.getFullYear() === end.getFullYear()
+    && start.getMonth() === end.getMonth()
+    && start.getDate() === end.getDate();
+}
+
+function formatEndDateTime(start: Date, end: Date, includeYear: boolean): string {
+  const endHHmm = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (isSameCalendarDate(start, end)) {
+    return endHHmm;
+  }
+
+  const endMonth = String(end.getMonth() + 1).padStart(2, '0');
+  const endDay = String(end.getDate()).padStart(2, '0');
+  return includeYear
+    ? `${end.getFullYear()}/${endMonth}/${endDay} ${endHHmm}`
+    : `${end.getMonth() + 1}/${end.getDate()} ${endHHmm}`;
+}
+
 export class MeetingTreeItem extends vscode.TreeItem {
   public readonly meeting: Meeting;
 
@@ -23,7 +42,8 @@ export class MeetingTreeItem extends vscode.TreeItem {
       : new Date(startTimeDate.getTime() + 30 * 60 * 1000);
 
     const startHHmm = startTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    const endHHmm = endTimeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const descriptionEnd = formatEndDateTime(startTimeDate, endTimeDate, false);
+    const detailedEnd = formatEndDateTime(startTimeDate, endTimeDate, true);
     const dateStr = `${startTimeDate.getMonth() + 1}/${startTimeDate.getDate()}`;
     const durationStr = formatDuration(startTimeDate, endTimeDate);
 
@@ -33,11 +53,11 @@ export class MeetingTreeItem extends vscode.TreeItem {
     super(meeting.title, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.meeting = meeting;
-    this.description = `${dateStr} ${startHHmm}-${endHHmm} (${durationStr})${organizerStr}${recurrenceSuffix}`;
+    this.description = `${dateStr} ${startHHmm}-${descriptionEnd} (${durationStr})${organizerStr}${recurrenceSuffix}`;
     const yyyy = startTimeDate.getFullYear();
     const mm = String(startTimeDate.getMonth() + 1).padStart(2, '0');
     const dd = String(startTimeDate.getDate()).padStart(2, '0');
-    this.tooltip = `${meeting.title}\n${t.timeLabel(yyyy, mm, dd, startHHmm, endHHmm, durationStr)}${meeting.organizer ? `\n${t.organizerLabel(meeting.organizer)}` : ''}\n${t.recurrenceLabel(meeting.recurrence)}\nURL: ${meeting.url}`;
+    this.tooltip = `${meeting.title}\n${t.timeLabel(yyyy, mm, dd, startHHmm, detailedEnd, durationStr)}${meeting.organizer ? `\n${t.organizerLabel(meeting.organizer)}` : ''}\n${t.recurrenceLabel(meeting.recurrence)}\nURL: ${meeting.url}`;
 
     const iconName = meeting.recurrence === 'once' ? 'calendar' : 'sync';
     this.iconPath = new vscode.ThemeIcon(iconName);
@@ -93,8 +113,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       const mm = String(start.getMonth() + 1).padStart(2, '0');
       const dd = String(start.getDate()).padStart(2, '0');
       const startHHmm = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      const endHHmm = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      items.push(new MeetingDetailItem(t.timeLabel(yyyy, mm, dd, startHHmm, endHHmm, durationStr), 'clock'));
+      const detailedEnd = formatEndDateTime(start, end, true);
+      items.push(new MeetingDetailItem(t.timeLabel(yyyy, mm, dd, startHHmm, detailedEnd, durationStr), 'clock'));
 
       // 2. Organizer detail item (if present)
       if (m.organizer) {

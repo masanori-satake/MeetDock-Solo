@@ -7,6 +7,7 @@ suite('URL Validator Test Suite', () => {
     assert.strictEqual(isValidTeamsUrl('https://teams.live.com/l/meetup-join/19%3ameeting_xyz'), true);
     assert.strictEqual(isValidTeamsUrl('https://teams.live.com/meet/9398636609731?p=5tlDf18IUn3zDYR0UR'), true);
     assert.strictEqual(isValidTeamsUrl('https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com'), true);
+    assert.strictEqual(isValidTeamsUrl('https://teams.microsoft.com:443/l/meetup-join/test'), true);
     assert.strictEqual(isValidTeamsUrl('  https://teams.microsoft.com/l/meetup-join/test  '), true);
   });
 
@@ -17,6 +18,8 @@ suite('URL Validator Test Suite', () => {
     assert.strictEqual(isValidTeamsUrl('http://teams.microsoft.com/l/meetup-join/test'), false); // must be https
     assert.strictEqual(isValidTeamsUrl('https://evil-teams.microsoft.com/l/meetup-join'), false);
     assert.strictEqual(isValidTeamsUrl('https://teams.microsoft.com.evil.com/test'), false);
+    assert.strictEqual(isValidTeamsUrl('https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fexample.com%2Fphishing'), false);
+    assert.strictEqual(isValidTeamsUrl('https://nam12.safelinks.protection.outlook.com/?url=http%3A%2F%2Fteams.microsoft.com%2Fmeet%2F123'), false);
     assert.strictEqual(isValidTeamsUrl('https://example.com'), false);
     assert.strictEqual(isValidTeamsUrl(''), false);
   });
