@@ -1,5 +1,7 @@
 import * as assert from 'assert';
-import { isNewerVersion } from '../updateChecker';
+import * as https from 'https';
+import { EventEmitter } from 'events';
+import { fetchLatestReleaseTag, isNewerVersion } from '../updateChecker';
 
 suite('UpdateChecker Test Suite', () => {
   test('isNewerVersion correctly compares versions', () => {
@@ -47,5 +49,40 @@ suite('UpdateChecker Test Suite', () => {
     assert.strictEqual(isNewerVersion('01.2.3', '1.2.2'), false);
     assert.strictEqual(isNewerVersion('1.2.3-01', '1.2.3-1'), false);
     assert.strictEqual(isNewerVersion('1.2.3+build_1', '1.2.2'), false);
+  });
+
+  test('fetchLatestReleaseTag rejects when response size exceeds limit', async () => {
+    const mockGet = ((
+      options: https.RequestOptions | string | URL,
+      callback?: (res: EventEmitter & { statusCode?: number }) => void
+    ) => {
+      const req = new EventEmitter() as EventEmitter & { destroy: (err?: Error) => void };
+      req.destroy = (err?: Error) => {
+        req.emit('error', err || new Error('Request destroyed'));
+      };
+
+      process.nextTick(() => {
+        const res = new EventEmitter() as EventEmitter & { statusCode: number };
+        res.statusCode = 200;
+        if (callback) {
+          callback(res);
+        }
+        // Emit chunk larger than 100KB MAX_RESPONSE_SIZE
+        const oversizedChunk = Buffer.alloc(105 * 1024, 'a');
+        res.emit('data', oversizedChunk);
+        res.emit('end');
+      });
+
+      return req;
+    }) as typeof https.get;
+
+    await assert.rejects(
+      async () => {
+        await fetchLatestReleaseTag(mockGet);
+      },
+      (err: Error) => {
+        return err.message.includes('Response size limit exceeded') || err.message.includes('Request destroyed');
+      }
+    );
   });
 });
