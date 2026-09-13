@@ -194,5 +194,7 @@ export const t = {
   reminder5mMsg: (title: string, timeStr: string) => isJapanese() ? `【5分前リマインダー】「${title}」が ${timeStr} に開始します。` : `[5m Reminder] "${title}" starts at ${timeStr}.`,
   reminderStartMsg: (title: string) => isJapanese() ? `ミーティング「${title}」の時間になりました！` : `Time for meeting "${title}"!`,
   joinBtn: () => isJapanese() ? 'Teamsに参加' : 'Join Teams',
+  openChatBtn: () => isJapanese() ? 'チャットを開く' : 'Open Chat',
+  cannotOpenChatMsg: () => isJapanese() ? 'この会議URLからはチャット画面を開くことができません。' : 'Cannot open meeting chat from this meeting URL.',
   unsafeUrlMsg: () => isJapanese() ? '不安全または無効な Teams URL です。開くことができません。' : 'Unsafe or invalid Teams URL. Cannot open.',
 };

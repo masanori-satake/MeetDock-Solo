@@ -61,3 +61,44 @@ export async function openTeamsMeetingUrl(url: string): Promise<boolean> {
   }
   return await vscode.env.openExternal(vscode.Uri.parse(url.trim()));
 }
+
+/**
+ * Extracts the Teams chat URL from a meeting URL (for enterprise Teams meetings with a thread ID).
+ * Returns undefined if the URL cannot be converted to a chat URL (e.g. personal Teams meetings).
+ */
+export function getTeamsChatUrl(url: string): string | undefined {
+  if (!isValidTeamsUrl(url)) {
+    return undefined;
+  }
+
+  let targetUrl = url.trim();
+  const safeLink = getTeamsUrlFromSafeLink(targetUrl);
+  if (safeLink) {
+    targetUrl = safeLink;
+  }
+
+  try {
+    const decodedUrl = decodeURIComponent(targetUrl);
+    const match = decodedUrl.match(/19:[a-zA-Z0-9_\-=%]+@(thread\.[a-zA-Z0-9_\-]+|unq\.gbl\.spaces)/);
+    if (!match) {
+      return undefined;
+    }
+    const chatId = match[0];
+    return `https://teams.microsoft.com/l/chat/${chatId}/conversations`;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Opens the Teams meeting chat URL if possible.
+ * Displays a warning message if the chat URL cannot be extracted.
+ */
+export async function openTeamsChatUrl(url: string): Promise<boolean> {
+  const chatUrl = getTeamsChatUrl(url);
+  if (!chatUrl) {
+    vscode.window.showWarningMessage(t.cannotOpenChatMsg());
+    return false;
+  }
+  return await vscode.env.openExternal(vscode.Uri.parse(chatUrl));
+}
