@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { ReminderService } from '../reminderService';
 import { MeetingManager } from '../meetingManager';
 import { Meeting } from '../types';
+import { t } from '../i18n';
 
 // ---------------------------------------------------------------------------
 // Constants (must mirror reminderService.ts internals)
@@ -427,5 +428,109 @@ suite('ReminderService - Reminder Flags', () => {
       false,
       'notified5m should remain false for a meeting 10 min away'
     );
+  });
+
+  test('5-minute and start-time reminders omit openChat button when meeting has no chat URL', async () => {
+    const originalShow = vscode.window.showInformationMessage;
+    const calls: { msg: string; items: any[] }[] = [];
+    (vscode.window as any).showInformationMessage = (msg: string, ...items: any[]) => {
+      calls.push({ msg, items });
+      return Promise.resolve(undefined);
+    };
+
+    try {
+      // Personal Teams meeting (no chat thread ID) starting in 3 mins
+      const personalMeeting: Meeting = {
+        id: 'personal1',
+        title: '個人会議5m',
+        url: 'https://teams.live.com/meet/93735498380940?p=6kSddKYY6KaGxK5CF2',
+        startTime: new Date(now().getTime() + 3 * 60 * 1000).toISOString(),
+        recurrence: 'once',
+        notified5m: false,
+        notifiedStart: false,
+      };
+
+      mockManager.setMeetings([personalMeeting]);
+      await service.update();
+
+      assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].items.length, 1);
+      assert.strictEqual(calls[0].items[0], t.joinBtn());
+
+      // Personal Teams meeting starting now (0 mins away)
+      const personalMeetingStart: Meeting = {
+        id: 'personal2',
+        title: '個人会議Start',
+        url: 'https://teams.live.com/meet/93735498380940?p=6kSddKYY6KaGxK5CF2',
+        startTime: new Date(now().getTime() - 10 * 1000).toISOString(),
+        recurrence: 'once',
+        notified5m: true,
+        notifiedStart: false,
+      };
+
+      calls.length = 0;
+      mockManager.setMeetings([personalMeetingStart]);
+      await service.update();
+
+      assert.strictEqual(calls.length, 1);
+      // For modal info message: showInformationMessage(msg, { modal: true }, ...buttons)
+      // items are [{ modal: true }, joinBtnText]
+      const buttonItems = calls[0].items.filter(item => typeof item === 'string');
+      assert.strictEqual(buttonItems.length, 1);
+      assert.strictEqual(buttonItems[0], t.joinBtn());
+    } finally {
+      (vscode.window as any).showInformationMessage = originalShow;
+    }
+  });
+
+  test('5-minute and start-time reminders include openChat button when meeting has chat URL', async () => {
+    const originalShow = vscode.window.showInformationMessage;
+    const calls: { msg: string; items: any[] }[] = [];
+    (vscode.window as any).showInformationMessage = (msg: string, ...items: any[]) => {
+      calls.push({ msg, items });
+      return Promise.resolve(undefined);
+    };
+
+    try {
+      const enterpriseMeeting: Meeting = {
+        id: 'ent1',
+        title: '企業会議5m',
+        url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0',
+        startTime: new Date(now().getTime() + 3 * 60 * 1000).toISOString(),
+        recurrence: 'once',
+        notified5m: false,
+        notifiedStart: false,
+      };
+
+      mockManager.setMeetings([enterpriseMeeting]);
+      await service.update();
+
+      assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].items.length, 2);
+      assert.strictEqual(calls[0].items[0], t.joinBtn());
+      assert.strictEqual(calls[0].items[1], t.openChatBtn());
+
+      const enterpriseMeetingStart: Meeting = {
+        id: 'ent2',
+        title: '企業会議Start',
+        url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0',
+        startTime: new Date(now().getTime() - 10 * 1000).toISOString(),
+        recurrence: 'once',
+        notified5m: true,
+        notifiedStart: false,
+      };
+
+      calls.length = 0;
+      mockManager.setMeetings([enterpriseMeetingStart]);
+      await service.update();
+
+      assert.strictEqual(calls.length, 1);
+      const buttonItems = calls[0].items.filter(item => typeof item === 'string');
+      assert.strictEqual(buttonItems.length, 2);
+      assert.strictEqual(buttonItems[0], t.joinBtn());
+      assert.strictEqual(buttonItems[1], t.openChatBtn());
+    } finally {
+      (vscode.window as any).showInformationMessage = originalShow;
+    }
   });
 });

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { Meeting } from './types';
-import { openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
+import { getTeamsChatUrl, openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
 import { t } from './i18n';
 
 const MEETING_DURATION_MS = 30 * 60 * 1000;
@@ -175,10 +175,12 @@ export class ReminderService {
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
       const joinBtnText = t.joinBtn();
       const openChatBtnText = t.openChatBtn();
+      const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
+      const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
+
       vscode.window.showInformationMessage(
         t.reminder5mMsg(meeting.title, timeStr),
-        joinBtnText,
-        openChatBtnText
+        ...buttons
       ).then(selection => {
         if (selection === joinBtnText) {
           openTeamsMeetingUrl(meeting.url);
@@ -195,11 +197,13 @@ export class ReminderService {
 
       const joinBtnText = t.joinBtn();
       const openChatBtnText = t.openChatBtn();
+      const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
+      const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
+
       vscode.window.showInformationMessage(
         t.reminderStartMsg(meeting.title),
         { modal: true },
-        joinBtnText,
-        openChatBtnText
+        ...buttons
       ).then(selection => {
         if (selection === joinBtnText) {
           openTeamsMeetingUrl(meeting.url);
