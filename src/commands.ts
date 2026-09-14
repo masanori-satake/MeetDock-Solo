@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
 import { parseIcsContent } from './icsParser';
@@ -7,6 +6,7 @@ import { Meeting, RecurrenceType } from './types';
 import { isValidTeamsUrl } from './urlValidator';
 import { t } from './i18n';
 import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
+import { readIcsFile } from './icsContentReader';
 
 function parseIntegerInput(value: string, min: number, max = Number.MAX_SAFE_INTEGER): number | undefined {
   const trimmed = value.trim();
@@ -260,7 +260,7 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
   const fileUri = uris[0];
   let fileContent = '';
   try {
-    fileContent = await fs.promises.readFile(fileUri.fsPath, 'utf-8');
+    fileContent = await readIcsFile(fileUri.fsPath);
   } catch {
     vscode.window.showErrorMessage(t.icsErrorParseFailed());
     return;
