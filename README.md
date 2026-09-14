@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.9.2-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.10.0-blue.svg)](package.json)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -15,7 +15,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 ### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新のリリース（`v1.9.2` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.9.2.vsix`）をクリックしてダウンロードします。
+2. 最新のリリース（`v1.10.0` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.10.0.vsix`）をクリックしてダウンロードします。
 
 ### 手順 2: VS Code へのインストール
 以下のいずれかの方法でインストールできます。

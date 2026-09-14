@@ -1,4 +1,6 @@
 import * as assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { MeetingTreeItem } from '../treeProvider';
 import { MeetingManager } from '../meetingManager';
@@ -140,5 +142,38 @@ suite('Extension & openChat Command Test Suite', () => {
 
     assert.strictEqual(itemPersonal.contextValue, 'meetingItem');
     assert.strictEqual(itemEnterprise.contextValue, 'meetingItemWithChat');
+  });
+
+  test('package.json contributes viewsWelcome for meetdock-view and NLS files contain required instructions and recurrence note', () => {
+    const rootDir = path.resolve(__dirname, '../../');
+    const pkgPath = path.join(rootDir, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+    assert.ok(pkg.contributes?.viewsWelcome, 'viewsWelcome should be defined in package.json contributes');
+    const meetdockWelcome = pkg.contributes.viewsWelcome.find((vw: any) => vw.view === 'meetdock-view');
+    assert.ok(meetdockWelcome, 'meetdock-view should have viewsWelcome configuration');
+    assert.strictEqual(meetdockWelcome.contents, '%meetdock.welcome.contents%');
+
+    // Japanese NLS
+    const jaNlsPath = path.join(rootDir, 'package.nls.ja.json');
+    assert.ok(fs.existsSync(jaNlsPath), 'package.nls.ja.json should exist');
+    const jaNls = JSON.parse(fs.readFileSync(jaNlsPath, 'utf8'));
+    const jaContent = jaNls['meetdock.welcome.contents'];
+    assert.ok(jaContent.includes('企業(Enterprise)向けTeams'), 'Japanese welcome view should contain Enterprise Teams section');
+    assert.ok(jaContent.includes('個人(Personal)向けTeams'), 'Japanese welcome view should contain Personal Teams section');
+    assert.ok(jaContent.includes('繰り返しの情報が含まれていないため'), 'Japanese welcome view should mention .ics lack of recurrence info');
+    assert.ok(jaContent.includes('会議の登録後に繰り返しの設定が必要です'), 'Japanese welcome view should state post-registration recurrence configuration');
+    assert.ok(jaContent.includes('<font color="#d97706">') && jaContent.includes('**'), 'Japanese recurrence note should be styled with color and bold');
+
+    // English NLS
+    const enNlsPath = path.join(rootDir, 'package.nls.json');
+    assert.ok(fs.existsSync(enNlsPath), 'package.nls.json should exist');
+    const enNls = JSON.parse(fs.readFileSync(enNlsPath, 'utf8'));
+    const enContent = enNls['meetdock.welcome.contents'];
+    assert.ok(enContent.includes('Enterprise Teams'), 'English welcome view should contain Enterprise Teams section');
+    assert.ok(enContent.includes('Personal Teams'), 'English welcome view should contain Personal Teams section');
+    assert.ok(enContent.includes('do not contain recurrence information'), 'English welcome view should mention .ics lack of recurrence info');
+    assert.ok(enContent.includes('set up recurrence after registering'), 'English welcome view should state post-registration recurrence configuration');
+    assert.ok(enContent.includes('<font color="#d97706">') && enContent.includes('**'), 'English recurrence note should be styled with color and bold');
   });
 });
