@@ -98,10 +98,13 @@ export class MeetingTreeItem extends vscode.TreeItem {
 }
 
 export class MeetingDetailItem extends vscode.TreeItem {
-  constructor(label: string, iconName: string) {
+  constructor(label: string, iconName: string, command?: vscode.Command, contextValue: string = 'meetingDetailItem') {
     super(label, vscode.TreeItemCollapsibleState.None);
     this.iconPath = new vscode.ThemeIcon(iconName);
-    this.contextValue = 'meetingDetailItem';
+    this.contextValue = contextValue;
+    if (command) {
+      this.command = command;
+    }
   }
 }
 
@@ -226,7 +229,16 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
       // 3. Recurrence detail item
       const recIcon = m.recurrence === 'once' ? 'calendar' : 'sync';
-      items.push(new MeetingDetailItem(t.recurrenceLabel(m), recIcon));
+      items.push(new MeetingDetailItem(
+        t.recurrenceLabel(m),
+        recIcon,
+        {
+          command: 'meetdock-solo.editRecurrence',
+          title: t.editRecurrenceCommandTitle(),
+          arguments: [m]
+        },
+        'recurrenceDetailItem'
+      ));
 
       return items;
     }

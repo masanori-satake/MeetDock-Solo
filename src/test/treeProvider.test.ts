@@ -151,6 +151,33 @@ suite('TreeProvider Test Suite', () => {
     assert.strictEqual(detail.contextValue, 'meetingDetailItem');
   });
 
+  test('Recurrence detail item has editRecurrence command and recurrenceDetailItem contextValue', () => {
+    const meeting: Meeting = {
+      id: 'm1',
+      title: '繰り返しテスト',
+      url: 'https://teams.microsoft.com/meet/12345',
+      startTime: '2026-09-14T10:00:00.000Z',
+      endTime: '2026-09-14T10:30:00.000Z',
+      recurrence: 'once'
+    };
+    const treeItem = new MeetingTreeItem(meeting);
+    const manager = {
+      onDidChangeMeetings: () => ({ dispose: () => {} }),
+      getSortedMeetings: () => []
+    } as unknown as MeetingManager;
+    const provider = new MeetingTreeDataProvider(manager);
+    provider.stopStatusCheckTimer();
+
+    const children = provider.getChildren(treeItem) as vscode.TreeItem[];
+    const recItem = children.find(item => item.contextValue === 'recurrenceDetailItem');
+
+    assert.ok(recItem, 'Recurrence detail item should exist with contextValue recurrenceDetailItem');
+    assert.ok(recItem.command, 'Recurrence detail item should have a command');
+    assert.strictEqual(recItem.command.command, 'meetdock-solo.editRecurrence');
+    assert.deepStrictEqual(recItem.command.arguments, [meeting]);
+    provider.dispose();
+  });
+
   test('MeetingTreeItem sets contextValue meetingItemWithChat for meetings with chat thread ID and meetingItem for personal Teams or non-chat meetings', () => {
     const enterpriseMeeting: Meeting = {
       id: 'm1',
