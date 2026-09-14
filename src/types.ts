@@ -1,5 +1,10 @@
 export type RecurrenceType = 'once' | 'daily' | 'weekly' | 'weekdays' | 'monthly' | 'yearly';
 
+export interface RecurrenceByDay {
+  day: number;                  // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  setpos?: number;             // e.g. 1MO or -1FR
+}
+
 export interface Meeting {
   id: string;
   title: string;
@@ -13,6 +18,10 @@ export interface Meeting {
   dayOfMonth?: number;         // 1 - 31
   monthOfYear?: number;        // 1 - 12
   dayOfYear?: number;          // 1 - 31
+  recurrenceByDay?: RecurrenceByDay[];
+  recurrenceByMonthDay?: number[];
+  recurrenceByMonth?: number[];
+  recurrenceBySetPos?: number[];
   recurrenceEndDate?: string;  // ISO 8601 string (end date of recurrence series)
   organizer?: string;
   meetingId?: string;
@@ -45,6 +54,10 @@ export interface ParsedMeetingInfo {
   dayOfMonth?: number;
   monthOfYear?: number;
   dayOfYear?: number;
+  recurrenceByDay?: RecurrenceByDay[];
+  recurrenceByMonthDay?: number[];
+  recurrenceByMonth?: number[];
+  recurrenceBySetPos?: number[];
   recurrenceEndDate?: Date;
   uid?: string;
   sequence?: number;

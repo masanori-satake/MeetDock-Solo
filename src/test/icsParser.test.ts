@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
+import { pathToFileURL } from 'url';
 import { parseIcsContent, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
 import { MeetingManager } from '../meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from '../treeProvider';
@@ -56,19 +57,31 @@ suite('ICS Parser & Integration Test Suite', () => {
     assert.strictEqual(monthlyDate.recurrence, 'monthly');
     assert.strictEqual(monthlyDate.dayOfMonth, 15);
 
-    const monthlyNth = parseIcsContent(readFixture('monthly_nthday_jp.ics'), now)[0];
+    const monthlyNth = parseIcsContent(
+      readFixture('monthly_nthday_jp.ics'),
+      new Date('2026-10-06T00:00:00Z')
+    )[0];
     assert.strictEqual(monthlyNth.recurrence, 'monthly');
+    assert.strictEqual(monthlyNth.startTime?.toISOString(), '2026-11-02T01:00:00.000Z');
 
-    const monthlyLast = parseIcsContent(readFixture('monthly_lastweekday_jp.ics'), now)[0];
+    const monthlyLast = parseIcsContent(
+      readFixture('monthly_lastweekday_jp.ics'),
+      new Date('2026-10-31T00:00:00Z')
+    )[0];
     assert.strictEqual(monthlyLast.recurrence, 'monthly');
+    assert.strictEqual(monthlyLast.startTime?.toISOString(), '2026-11-30T01:00:00.000Z');
 
     const yearlyDate = parseIcsContent(readFixture('yearly_date_jp.ics'), now)[0];
     assert.strictEqual(yearlyDate.recurrence, 'yearly');
     assert.strictEqual(yearlyDate.monthOfYear, 10);
     assert.strictEqual(yearlyDate.dayOfYear, 5);
 
-    const yearlyNth = parseIcsContent(readFixture('yearly_nthday_jp.ics'), now)[0];
+    const yearlyNth = parseIcsContent(
+      readFixture('yearly_nthday_jp.ics'),
+      new Date('2026-10-06T00:00:00Z')
+    )[0];
     assert.strictEqual(yearlyNth.recurrence, 'yearly');
+    assert.strictEqual(yearlyNth.startTime?.toISOString(), '2027-10-04T01:00:00.000Z');
   });
 
   // 3. COUNT / UNTIL / no-end
@@ -98,6 +111,22 @@ END:VCALENDAR`;
     const now = new Date('2026-10-01T00:00:00Z');
     const resCount = parseIcsContent(icsCount, now)[0];
     assert.strictEqual(resCount.recurrence, 'daily');
+    assert.strictEqual(resCount.recurrenceEndDate?.toISOString(), '2026-10-07T10:00:00.000Z');
+    assert.deepStrictEqual(parseIcsContent(icsCount, new Date('2026-10-08T00:00:00Z')), []);
+
+    const ordinalCountIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:ordinal-count@example.invalid
+DTSTART:20261005T100000Z
+RRULE:FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1;COUNT=3
+SUMMARY:First Monday Count 3
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+END:VCALENDAR`;
+    const ordinalCount = parseIcsContent(ordinalCountIcs, now)[0];
+    assert.strictEqual(ordinalCount.recurrenceEndDate?.toISOString(), '2026-12-07T10:00:00.000Z');
+    assert.deepStrictEqual(parseIcsContent(ordinalCountIcs, new Date('2026-12-08T00:00:00Z')), []);
 
     const resUntil = parseIcsContent(icsUntil, now)[0];
     assert.strictEqual(resUntil.recurrence, 'daily');
@@ -189,7 +218,8 @@ END:VCALENDAR`;
 
     const res = parseIcsContent(dstIcs, new Date('2026-05-01T00:00:00Z'));
     assert.strictEqual(res.length, 1);
-    assert.ok(res[0].startTime);
+    assert.strictEqual(res[0].timeZone, 'America/New_York');
+    assert.strictEqual(res[0].startTime?.toISOString(), '2026-06-01T14:00:00.000Z');
   });
 
   // 16, 17, 18, 19. Teams URL recognition & fallback order & invalid URLs
@@ -289,7 +319,7 @@ END:VCALENDAR`;
 
     // 22b. File URI drop
     const fixturePath = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_en.ics');
-    const fileUri = `file://${fixturePath}`;
+    const fileUri = pathToFileURL(fixturePath).href;
     const dataTransfer2 = {
       get: (mime: string) => mime === 'text/uri-list' ? { asString: async () => fileUri } : null
     } as any;
@@ -298,6 +328,24 @@ END:VCALENDAR`;
     meetings = manager.getMeetings();
     assert.strictEqual(meetings.length, 2);
     assert.strictEqual(meetings[1].title, 'One-time Sync Meeting');
+
+    const existingId = meetings[1].id;
+    await provider.handleDrop(undefined, dataTransfer2, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 2);
+    assert.strictEqual(meetings[1].id, existingId);
+
+    const nextOccurrenceIcs = readFixture('single_en.ics')
+      .replace('20261005T100000', '20261006T100000')
+      .replace('20261005T103000', '20261006T103000');
+    const dataTransfer3 = {
+      get: (mime: string) => mime === 'text/calendar' ? { asString: async () => nextOccurrenceIcs } : null
+    } as any;
+    await provider.handleDrop(undefined, dataTransfer3, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 3);
+    assert.strictEqual(meetings[2].uid, meetings[1].uid);
+    assert.notStrictEqual(meetings[2].startTime, meetings[1].startTime);
   });
 
   test('25. Handles RDATE recurrence correctly', () => {

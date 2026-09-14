@@ -262,9 +262,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             filePath = line.replace(/^file:\/\//i, '');
           }
         }
-        if (filePath.endsWith('.ics') && fs.existsSync(filePath)) {
+        if (filePath.endsWith('.ics')) {
           try {
-            icsContent = fs.readFileSync(filePath, 'utf-8');
+            icsContent = await fs.promises.readFile(filePath, 'utf-8');
             break;
           } catch {
             // ignore failure, fallback to droppedText
@@ -287,6 +287,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
         let addedCount = 0;
         let missingUrlCount = 0;
+        const knownOccurrences = this.meetingManager.getMeetings()
+          .filter(meeting => meeting.uid)
+          .map(meeting => ({ uid: meeting.uid, startTime: meeting.startTime }));
 
         for (const info of parsedMeetings) {
           if (!info.url || !isValidTeamsUrl(info.url)) {
@@ -297,12 +300,19 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
           const duration = info.startTime && info.endTime
             ? info.endTime.getTime() - info.startTime.getTime()
             : 30 * 60 * 1000;
+          const startTime = (info.startTime || now).toISOString();
+          const existingOccurrence = info.uid
+            ? knownOccurrences.some(meeting => meeting.uid === info.uid && meeting.startTime === startTime)
+            : undefined;
+          if (existingOccurrence) {
+            continue;
+          }
 
           const newMeeting: Meeting = {
             id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
             title: info.title || 'Teams Meeting',
             url: info.url,
-            startTime: (info.startTime || now).toISOString(),
+            startTime,
             endTime: info.endTime ? info.endTime.toISOString() : new Date((info.startTime || now).getTime() + duration).toISOString(),
             timeZone: info.timeZone,
             recurrence: info.recurrence || 'once',
@@ -311,6 +321,10 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             dayOfMonth: info.dayOfMonth,
             monthOfYear: info.monthOfYear,
             dayOfYear: info.dayOfYear,
+            recurrenceByDay: info.recurrenceByDay,
+            recurrenceByMonthDay: info.recurrenceByMonthDay,
+            recurrenceByMonth: info.recurrenceByMonth,
+            recurrenceBySetPos: info.recurrenceBySetPos,
             recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
             organizer: info.organizer,
             meetingId: info.meetingId,
@@ -326,6 +340,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
           };
 
           await this.meetingManager.addMeeting(newMeeting);
+          if (newMeeting.uid) {
+            knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
+          }
           addedCount++;
         }
 

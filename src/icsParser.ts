@@ -607,13 +607,21 @@ export function parseSingleVEvent(
   let dayOfMonth: number | undefined = undefined;
   let monthOfYear: number | undefined = undefined;
   let dayOfYear: number | undefined = undefined;
+  let recurrenceByDay: ParsedRrule['byday'] = undefined;
+  let recurrenceByMonthDay: number[] | undefined = undefined;
+  let recurrenceByMonth: number[] | undefined = undefined;
+  let recurrenceBySetPos: number[] | undefined = undefined;
   let recurrenceEndDate: Date | undefined = undefined;
 
   if (rruleProp) {
     const pr = parseRrule(rruleProp.value, timeZoneAliasMap);
     if (pr) {
       recurrenceInterval = pr.interval;
-      if (pr.until) {
+      recurrenceByDay = pr.byday && pr.byday.length > 0 ? pr.byday : undefined;
+      recurrenceByMonthDay = pr.bymonthday && pr.bymonthday.length > 0 ? pr.bymonthday : undefined;
+      recurrenceByMonth = pr.bymonth && pr.bymonth.length > 0 ? pr.bymonth : undefined;
+      recurrenceBySetPos = pr.bysetpos && pr.bysetpos.length > 0 ? pr.bysetpos : undefined;
+      if (pr.until && !(pr.count && pr.count > 0)) {
         recurrenceEndDate = pr.until;
       }
 
@@ -635,7 +643,9 @@ export function parseSingleVEvent(
         recurrence = 'monthly';
         if (pr.bymonthday && pr.bymonthday.length > 0) {
           dayOfMonth = pr.bymonthday[0];
-        } else if (startTime) {
+        } else if ((!pr.byday || pr.byday.length === 0)
+                   && (!pr.bysetpos || pr.bysetpos.length === 0)
+                   && startTime) {
           dayOfMonth = getZonedDateParts(startTime, timeZone).day;
         }
       } else if (pr.freq === 'YEARLY') {
@@ -651,6 +661,37 @@ export function parseSingleVEvent(
         } else if (startTime) {
           dayOfYear = getZonedDateParts(startTime, timeZone).day;
         }
+      }
+
+      if (pr.count && pr.count > 0 && startTime && recurrence !== 'once') {
+        const duration = endTime ? endTime.getTime() - startTime.getTime() : 30 * 60 * 1000;
+        const recurrenceTemplate: Meeting = {
+          id: uid || 'ics-count',
+          title,
+          url,
+          startTime: startTime.toISOString(),
+          endTime: endTime?.toISOString(),
+          timeZone,
+          recurrence,
+          recurrenceInterval,
+          daysOfWeek,
+          dayOfMonth,
+          monthOfYear,
+          dayOfYear,
+          recurrenceByDay,
+          recurrenceByMonthDay,
+          recurrenceByMonth,
+          recurrenceBySetPos,
+        };
+        let countEnd = startTime;
+        for (let occurrence = 1; occurrence < pr.count; occurrence++) {
+          const next = getNextOccurrence(recurrenceTemplate, new Date(countEnd.getTime() + duration + 1));
+          if (!next) {
+            break;
+          }
+          countEnd = next;
+        }
+        recurrenceEndDate = countEnd;
       }
     }
   }
@@ -679,6 +720,10 @@ export function parseSingleVEvent(
     dayOfMonth,
     monthOfYear,
     dayOfYear,
+    recurrenceByDay,
+    recurrenceByMonthDay,
+    recurrenceByMonth,
+    recurrenceBySetPos,
     recurrenceEndDate,
     uid,
     sequence,
@@ -782,6 +827,10 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
       dayOfMonth: baseInfo.dayOfMonth,
       monthOfYear: baseInfo.monthOfYear,
       dayOfYear: baseInfo.dayOfYear,
+      recurrenceByDay: baseInfo.recurrenceByDay,
+      recurrenceByMonthDay: baseInfo.recurrenceByMonthDay,
+      recurrenceByMonth: baseInfo.recurrenceByMonth,
+      recurrenceBySetPos: baseInfo.recurrenceBySetPos,
       recurrenceEndDate: baseInfo.recurrenceEndDate ? baseInfo.recurrenceEndDate.toISOString() : undefined,
       organizer: baseInfo.organizer,
       meetingId: baseInfo.meetingId,
