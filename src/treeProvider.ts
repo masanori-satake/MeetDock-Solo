@@ -105,8 +105,20 @@ export class MeetingDetailItem extends vscode.TreeItem {
   }
 }
 
+async function readDataTransferFile(file: vscode.DataTransferFile): Promise<string> {
+  if (file.uri && file.uri.scheme === 'file') {
+    try {
+      return await fs.promises.readFile(file.uri.fsPath, 'utf-8');
+    } catch {
+      // fallback to file.data()
+    }
+  }
+  const bytes = await file.data();
+  return Buffer.from(bytes).toString('utf-8');
+}
+
 export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
-  dropMimeTypes = ['text/calendar', 'application/ics', 'text/plain', 'text/html', 'text/uri-list'];
+  dropMimeTypes = ['files', 'text/calendar', 'application/ics', 'text/plain', 'text/html', 'text/uri-list'];
   dragMimeTypes = [];
 
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -225,21 +237,55 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   async handleDrop(target: vscode.TreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
     let droppedText = '';
 
-    const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
-    if (calItem) {
-      droppedText = await calItem.asString();
-    } else {
-      const htmlItem = dataTransfer.get('text/html');
-      if (htmlItem) {
-        droppedText = await htmlItem.asString();
+    const filesItem = dataTransfer.get('files');
+    if (filesItem) {
+      const file = filesItem.asFile();
+      if (file) {
+        try {
+          droppedText = await readDataTransferFile(file);
+        } catch {
+          // ignore error and try fallback
+        }
+      }
+    }
+
+    if (!droppedText && typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
+      try {
+        for (const [, item] of dataTransfer) {
+          const file = item?.asFile ? item.asFile() : undefined;
+          if (file) {
+            try {
+              droppedText = await readDataTransferFile(file);
+              if (droppedText) {
+                break;
+              }
+            } catch {
+              // ignore error
+            }
+          }
+        }
+      } catch {
+        // ignore iteration error
+      }
+    }
+
+    if (!droppedText) {
+      const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
+      if (calItem) {
+        droppedText = await calItem.asString();
       } else {
-        const textItem = dataTransfer.get('text/plain');
-        if (textItem) {
-          droppedText = await textItem.asString();
+        const htmlItem = dataTransfer.get('text/html');
+        if (htmlItem) {
+          droppedText = await htmlItem.asString();
         } else {
-          const uriItem = dataTransfer.get('text/uri-list');
-          if (uriItem) {
-            droppedText = await uriItem.asString();
+          const textItem = dataTransfer.get('text/plain');
+          if (textItem) {
+            droppedText = await textItem.asString();
+          } else {
+            const uriItem = dataTransfer.get('text/uri-list');
+            if (uriItem) {
+              droppedText = await uriItem.asString();
+            }
           }
         }
       }
