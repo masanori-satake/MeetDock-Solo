@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
-import { addFromClipboardCommand, addFromFileCommand, editRecurrenceCommand } from './commands';
+import { addFromClipboardCommand, addFromFileCommand, deleteMeetingCommand, editRecurrenceCommand } from './commands';
 import { checkForUpdates } from './updateChecker';
 import { getTeamsChatUrl, openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
 import { Meeting } from './types';
@@ -17,41 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Check for updates in background asynchronously without blocking activation
   checkForUpdates(context).catch(() => {});
 
-  const HAS_EVER_REGISTERED_KEY = 'meetdock.hasEverRegisteredMeeting';
-  let hasEverRegistered = context.globalState.get<boolean>(HAS_EVER_REGISTERED_KEY, false);
-
   const meetingManager = new MeetingManager(context);
-
-  // Check initial meeting state: if meetings exist on activation, ensure flag is true
-  if (!hasEverRegistered && meetingManager.getMeetings().length > 0) {
-    hasEverRegistered = true;
-    context.globalState.update(HAS_EVER_REGISTERED_KEY, true);
-  }
-
-  // Set context key for view visibility
-  vscode.commands.executeCommand('setContext', 'meetdock:hasEverRegisteredMeeting', hasEverRegistered);
-
-  let showGuideManual = false;
-
-  const updateRegisteredStateOnAdd = async () => {
-    if (!hasEverRegistered) {
-      hasEverRegistered = true;
-      await context.globalState.update(HAS_EVER_REGISTERED_KEY, true);
-      await vscode.commands.executeCommand('setContext', 'meetdock:hasEverRegisteredMeeting', true);
-    }
-    // Automatically collapse/hide manual guide toggle whenever a meeting is added
-    if (showGuideManual) {
-      showGuideManual = false;
-      await vscode.commands.executeCommand('setContext', 'meetdock:showGuide', false);
-    }
-  };
-
-  // Listen to meeting addition
-  meetingManager.onDidChangeMeetings(() => {
-    if (meetingManager.getMeetings().length > 0) {
-      updateRegisteredStateOnAdd();
-    }
-  });
 
   const treeDataProvider = new MeetingTreeDataProvider(meetingManager);
   const reminderService = new ReminderService(meetingManager);
@@ -141,46 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   const deleteMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.deleteMeeting', async (item?: any) => {
-    let meeting: Meeting | undefined = item?.meeting || (item?.id && item?.title ? item : undefined);
-
-    if (!meeting) {
-      const sortedMeetings = meetingManager.getSortedMeetings();
-      if (sortedMeetings.length === 0) {
-        vscode.window.showInformationMessage(t.noMeetingsToDelete());
-        return;
-      }
-
-      type MeetingQuickPickItem = vscode.QuickPickItem & { meeting: Meeting };
-      const items: MeetingQuickPickItem[] = sortedMeetings.map(m => {
-        const start = new Date(m.startTime);
-        const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
-        return {
-          label: `$(trash) ${m.title}`,
-          description: `${timeStr} (${m.recurrence})`,
-          meeting: m
-        };
-      });
-
-      const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: t.selectMeetingToDeletePlaceholder()
-      });
-
-      if (!selected) {
-        return;
-      }
-      meeting = selected.meeting;
-    }
-
-    const confirm = await vscode.window.showWarningMessage(
-      t.deleteConfirm(meeting.title),
-      { modal: true },
-      t.deleteBtn()
-    );
-
-    if (confirm === t.deleteBtn()) {
-      await meetingManager.removeMeeting(meeting.id);
-      vscode.window.showInformationMessage(t.meetingDeleted(meeting.title));
-    }
+    await deleteMeetingCommand(meetingManager, item);
   });
 
   const editRecurrenceDisposable = vscode.commands.registerCommand('meetdock-solo.editRecurrence', async (item?: any) => {
@@ -192,8 +119,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   const toggleGuideDisposable = vscode.commands.registerCommand('meetdock-solo.toggleGuide', async () => {
-    showGuideManual = !showGuideManual;
-    await vscode.commands.executeCommand('setContext', 'meetdock:showGuide', showGuideManual);
+    await vscode.commands.executeCommand('meetdock-guide-view.focus');
   });
 
   const selectMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.selectMeeting', async () => {

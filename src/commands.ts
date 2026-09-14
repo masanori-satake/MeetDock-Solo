@@ -367,6 +367,52 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
 /**
  * Allows editing the recurrence pattern and details of an existing meeting.
  */
+/**
+ * Prompts user for confirmation and deletes a meeting from storage.
+ */
+export async function deleteMeetingCommand(meetingManager: MeetingManager, item?: any): Promise<void> {
+  let meeting: Meeting | undefined = item?.meeting || (item?.id && item?.title ? item : undefined);
+
+  if (!meeting) {
+    const sortedMeetings = meetingManager.getSortedMeetings();
+    if (sortedMeetings.length === 0) {
+      vscode.window.showInformationMessage(t.noMeetingsToDelete());
+      return;
+    }
+
+    type MeetingQuickPickItem = vscode.QuickPickItem & { meeting: Meeting };
+    const items: MeetingQuickPickItem[] = sortedMeetings.map(m => {
+      const start = new Date(m.startTime);
+      const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      return {
+        label: `$(trash) ${m.title}`,
+        description: `${timeStr} (${m.recurrence})`,
+        meeting: m
+      };
+    });
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: t.selectMeetingToDeletePlaceholder()
+    });
+
+    if (!selected) {
+      return;
+    }
+    meeting = selected.meeting;
+  }
+
+  const confirm = await vscode.window.showWarningMessage(
+    t.deleteConfirm(meeting.title),
+    { modal: true },
+    t.deleteBtn()
+  );
+
+  if (confirm === t.deleteBtn()) {
+    await meetingManager.removeMeeting(meeting.id);
+    vscode.window.showInformationMessage(t.meetingDeleted(meeting.title));
+  }
+}
+
 export async function editRecurrenceCommand(meetingManager: MeetingManager, target?: any): Promise<void> {
   let meeting: Meeting | undefined = undefined;
 
