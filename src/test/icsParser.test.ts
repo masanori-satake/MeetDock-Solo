@@ -375,6 +375,38 @@ END:VCALENDAR`;
     const meetings2 = manager2.getMeetings();
     assert.strictEqual(meetings2.length, 1);
     assert.strictEqual(meetings2[0].title, '単発定例会議');
+
+    // 22d. Ignore non-ICS files and continue to a later ICS file
+    let nonIcsFileRead = false;
+    const nonIcsFileItem = {
+      asFile: () => ({
+        name: 'notes.txt',
+        data: async () => {
+          nonIcsFileRead = true;
+          return Buffer.from('not a calendar');
+        }
+      })
+    };
+    const icsFileItem = {
+      asFile: () => ({
+        name: 'single_en.ics',
+        data: async () => Buffer.from(readFixture('single_en.ics'))
+      })
+    };
+    const dataTransfer5 = {
+      get: (mime: string) => mime === 'files' ? nonIcsFileItem : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', nonIcsFileItem];
+        yield ['application/ics', icsFileItem];
+      }
+    } as any;
+    const manager3 = new MeetingManager(mockContext);
+    const provider3 = new MeetingTreeDataProvider(manager3, () => new Date('2026-10-01T00:00:00Z'));
+    await provider3.handleDrop(undefined, dataTransfer5, {} as any);
+    const meetings3 = manager3.getMeetings();
+    assert.strictEqual(nonIcsFileRead, false);
+    assert.strictEqual(meetings3.length, 1);
+    assert.strictEqual(meetings3[0].title, 'One-time Sync Meeting');
   });
 
   test('25. Handles RDATE recurrence correctly', () => {

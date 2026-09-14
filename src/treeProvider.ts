@@ -241,7 +241,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     const filesItem = dataTransfer.get('files');
     if (filesItem) {
       const file = filesItem.asFile();
-      if (file) {
+      if (file?.name.toLowerCase().endsWith('.ics')) {
         try {
           droppedText = await readDataTransferFile(file);
         } catch {
@@ -254,7 +254,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       try {
         for (const [, item] of dataTransfer) {
           const file = item?.asFile ? item.asFile() : undefined;
-          if (file) {
+          if (file?.name.toLowerCase().endsWith('.ics')) {
             try {
               droppedText = await readDataTransferFile(file);
               if (droppedText) {
