@@ -123,7 +123,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 ## 📋 動作要件 (Requirements)
 
-- **VS Code**: `v1.137.0` 以降
+- **VS Code**: `v1.109.0` 以降
 - **対応 OS**: Windows, macOS, Linux
 - Microsoft Teams の会議 URL (`https://teams.microsoft.com/...` または `https://teams.live.com/...`) を使用する環境
 
