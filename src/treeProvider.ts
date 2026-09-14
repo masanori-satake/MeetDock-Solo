@@ -105,6 +105,7 @@ export class MeetingDetailItem extends vscode.TreeItem {
   }
 }
 
+/** Reads a dropped file as UTF-8, falling back to its in-memory data when needed. */
 async function readDataTransferFile(file: vscode.DataTransferFile): Promise<string> {
   if (file.uri && file.uri.scheme === 'file') {
     try {
