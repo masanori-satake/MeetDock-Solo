@@ -698,8 +698,10 @@ export function parseSingleVEvent(
 
   // Meeting ID & Passcode checks
   const fullText = `${description || ''}\n${title}`;
-  const meetingIdMatch = fullText.match(/(?:会議\s*ID|Meeting\s*ID):[^\S\r\n]*((?:\d|[^\S\r\n]){9,17})/i);
-  const meetingId = meetingIdMatch ? meetingIdMatch[1].replace(/\s+/g, '') : undefined;
+  const meetingId = Array.from(
+    fullText.matchAll(/(?:会議\s*ID|Meeting\s*ID):\s*([\d\s]{9,25})/gi),
+    match => match[1].replace(/\s+/g, '')
+  ).find(candidate => /^\d{9,17}$/.test(candidate));
   const passcodeMatch = fullText.match(/(?:パスコード|Passcode):\s*([A-Za-z0-9]+)/i);
   const passcode = passcodeMatch ? passcodeMatch[1] : undefined;
   const isEnterprise = Boolean(meetingId || passcode || /(?:会議\s*ID|Meeting\s*ID)/i.test(fullText));
@@ -768,6 +770,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
   }
 
   const results: ParsedMeetingInfo[] = [];
+  const matchedExceptionEvents = new Set<IcsComponent>();
 
   for (const baseVevent of baseEvents) {
     const baseInfo = parseSingleVEvent(baseVevent, timeZoneAliasMap);
@@ -807,6 +810,10 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
       const uidProp = exc.properties.find(p => p.name === 'UID');
       return uidProp && unescapeIcsText(uidProp.value).trim() === baseInfo.uid;
     });
+
+    for (const exc of relatedExceptions) {
+      matchedExceptionEvents.add(exc);
+    }
 
     // Compute the effective next occurrence for MeetDock
     // 1. Convert baseInfo to Meeting template
@@ -925,6 +932,25 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
         if (!alreadyAdded) {
           results.push(excInfo);
         }
+      }
+    }
+  }
+
+  // Process standalone orphan exception VEVENTs (no matching base VEVENT in baseEvents)
+  for (const exc of exceptionEvents) {
+    if (matchedExceptionEvents.has(exc)) {
+      continue;
+    }
+    const excInfo = parseSingleVEvent(exc, timeZoneAliasMap);
+    const excStart = excInfo.startTime;
+    if (excInfo.status !== 'CANCELLED' && excStart) {
+      const alreadyAdded = results.some(r =>
+        r.uid && excInfo.uid
+          ? r.uid === excInfo.uid && r.startTime?.getTime() === excStart.getTime()
+          : r.startTime && Math.abs(r.startTime.getTime() - excStart.getTime()) < 1000 && r.title === excInfo.title
+      );
+      if (!alreadyAdded) {
+        results.push(excInfo);
       }
     }
   }
