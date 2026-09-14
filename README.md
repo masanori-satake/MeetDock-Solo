@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.7.6-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.8.0-blue.svg)](package.json)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -15,7 +15,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 ### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新のリリース（`v1.7.6` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.7.6.vsix`）をクリックしてダウンロードします。
+2. 最新のリリース（`v1.8.0` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.8.0.vsix`）をクリックしてダウンロードします。
 
 ### 手順 2: VS Code へのインストール
 以下のいずれかの方法でインストールできます。
@@ -38,7 +38,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 ## 💡 主な機能
 
 1. **直感的な会議登録**
-   - **ドラッグ＆ドロップ**: メールやチャットの会議招待テキストをサイドバー（TreeView）にドラッグ＆ドロップするだけで、URL・タイトル・開始日時を自動抽出して登録できます。
+   - **.ics ファイル / テキストのドラッグ＆ドロップ**: 企業版 Teams や Outlook から保存した `.ics` カレンダーファイル、またはメール・チャットの会議招待テキストをサイドバー（TreeView）へドラッグ＆ドロップするだけで、RFC 5545 準拠で解析し、Teams URL・件名・日時・主催者・繰り返し設定を自動抽出してリマインダーに登録できます。
    - **クリップボード解析 (`Alt+M` / `Option+M`)**: コピーしたテキストから自動解析し、入力ダイアログで迅速に登録できます。
 
 2. **ステータスバー表示とリアルタイムカウントダウン**
@@ -74,9 +74,8 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 #### 方法 A: サイドバーへドラッグ＆ドロップ
 1. VS Code のアクティビティバーにあるカレンダーアイコン **MeetDock-Solo** を開きます。
-2. Teams の会議URLを含むテキスト（メール本文、チャットメッセージ、Webページの選択テキストなど）をサイドバービュー（`Meetings`）へドラッグ＆ドロップします。
-3. 自動抽出された URL・件名・日時を確認し、必要に応じて修正して Enter キーを押します。
-4. 繰り返し設定（`単発` / `日次` / `毎週` / `平日` / `月次` / `年次`）を選択して登録完了です。
+2. 企業版 Teams / Outlook からダウンロード・保存した `.ics` ファイル（または Teams 会議URLを含むテキスト）をサイドバービュー（`Meetings`）へ直接ドラッグ＆ドロップします。
+3. `.ics` ファイルの場合は自動的に解析され、ダイアログなしで即座に会議が登録されます（URLが自動抽出できなかった場合やエラー時には適切な通知が表示されます）。テキストドロップの場合は抽出された項目を確認・編集して登録を完了します。
 
 #### 方法 B: クリップボードから追加
 1. Outlook や Teams 等で会議情報を含むテキストをコピー (`Ctrl+C` / `Cmd+C`) します。
