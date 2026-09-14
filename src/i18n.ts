@@ -198,4 +198,11 @@ export const t = {
   openChatBtn: () => isJapanese() ? 'チャットを開く' : 'Open Chat',
   cannotOpenChatMsg: () => isJapanese() ? 'この会議URLからはチャット画面を開くことができません。' : 'Cannot open meeting chat from this meeting URL.',
   unsafeUrlMsg: () => isJapanese() ? '不安全または無効な Teams URL です。開くことができません。' : 'Unsafe or invalid Teams URL. Cannot open.',
+
+  // ICS Drop Notifications & UI States
+  icsParsing: () => isJapanese() ? 'MeetDock: .ics ファイルを解析中...' : 'MeetDock: Parsing .ics file...',
+  icsSuccess: (count: number) => isJapanese() ? `MeetDock: ${count} 件の会議を .ics ファイルから登録しました。` : `MeetDock: Registered ${count} meeting(s) from .ics file.`,
+  icsWarningNoUrl: () => isJapanese() ? 'MeetDock: .ics ファイルから有効な Teams 参加 URL が見つかりませんでした。' : 'MeetDock: No valid Teams join URL was found in the .ics file.',
+  icsWarningNoEvents: () => isJapanese() ? 'MeetDock: .ics ファイルに有効な会議イベントが存在しません。' : 'MeetDock: No valid meeting events found in the .ics file.',
+  icsErrorParseFailed: () => isJapanese() ? 'MeetDock: .ics ファイルの解析に失敗しました。ファイル形式を確認してください。' : 'MeetDock: Failed to parse .ics file. Please check file format.',
 };

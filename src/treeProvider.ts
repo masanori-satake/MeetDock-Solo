@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { getNextOccurrence, MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
+import { parseIcsContent } from './icsParser';
 import { getTeamsChatUrl, isValidTeamsUrl } from './urlValidator';
 import { t, MeetingStatusState } from './i18n';
 import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
@@ -104,7 +106,7 @@ export class MeetingDetailItem extends vscode.TreeItem {
 }
 
 export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
-  dropMimeTypes = ['text/plain', 'text/html', 'text/uri-list'];
+  dropMimeTypes = ['text/calendar', 'application/ics', 'text/plain', 'text/html', 'text/uri-list'];
   dragMimeTypes = [];
 
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -223,22 +225,118 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   async handleDrop(target: vscode.TreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
     let droppedText = '';
 
-    const htmlItem = dataTransfer.get('text/html');
-    if (htmlItem) {
-      droppedText = await htmlItem.asString();
+    const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
+    if (calItem) {
+      droppedText = await calItem.asString();
     } else {
-      const textItem = dataTransfer.get('text/plain');
-      if (textItem) {
-        droppedText = await textItem.asString();
+      const htmlItem = dataTransfer.get('text/html');
+      if (htmlItem) {
+        droppedText = await htmlItem.asString();
       } else {
-        const uriItem = dataTransfer.get('text/uri-list');
-        if (uriItem) {
-          droppedText = await uriItem.asString();
+        const textItem = dataTransfer.get('text/plain');
+        if (textItem) {
+          droppedText = await textItem.asString();
+        } else {
+          const uriItem = dataTransfer.get('text/uri-list');
+          if (uriItem) {
+            droppedText = await uriItem.asString();
+          }
         }
       }
     }
 
     if (!droppedText || !droppedText.trim()) {
+      return;
+    }
+
+    // If droppedText contains file URI(s) or file path, read file content from disk
+    let icsContent = droppedText;
+    if (/^file:\/\//i.test(droppedText.trim()) || droppedText.trim().endsWith('.ics')) {
+      const uriLines = droppedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      for (const line of uriLines) {
+        let filePath = line;
+        if (line.startsWith('file://')) {
+          try {
+            filePath = vscode.Uri.parse(line).fsPath;
+          } catch {
+            filePath = line.replace(/^file:\/\//i, '');
+          }
+        }
+        if (filePath.endsWith('.ics') && fs.existsSync(filePath)) {
+          try {
+            icsContent = fs.readFileSync(filePath, 'utf-8');
+            break;
+          } catch {
+            // ignore failure, fallback to droppedText
+          }
+        }
+      }
+    }
+
+    // Check if dropped content is an ICS file format or contains BEGIN:VCALENDAR
+    const isIcs = /BEGIN:VCALENDAR/i.test(icsContent) || /BEGIN:VEVENT/i.test(icsContent);
+    if (isIcs) {
+      try {
+        const now = this.now();
+        const parsedMeetings = parseIcsContent(icsContent, now);
+
+        if (parsedMeetings.length === 0) {
+          vscode.window.showWarningMessage(t.icsWarningNoEvents());
+          return;
+        }
+
+        let addedCount = 0;
+        let missingUrlCount = 0;
+
+        for (const info of parsedMeetings) {
+          if (!info.url || !isValidTeamsUrl(info.url)) {
+            missingUrlCount++;
+            continue;
+          }
+
+          const duration = info.startTime && info.endTime
+            ? info.endTime.getTime() - info.startTime.getTime()
+            : 30 * 60 * 1000;
+
+          const newMeeting: Meeting = {
+            id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
+            title: info.title || 'Teams Meeting',
+            url: info.url,
+            startTime: (info.startTime || now).toISOString(),
+            endTime: info.endTime ? info.endTime.toISOString() : new Date((info.startTime || now).getTime() + duration).toISOString(),
+            timeZone: info.timeZone,
+            recurrence: info.recurrence || 'once',
+            recurrenceInterval: info.recurrenceInterval,
+            daysOfWeek: info.daysOfWeek,
+            dayOfMonth: info.dayOfMonth,
+            monthOfYear: info.monthOfYear,
+            dayOfYear: info.dayOfYear,
+            recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
+            organizer: info.organizer,
+            meetingId: info.meetingId,
+            passcode: info.passcode,
+            isEnterprise: info.isEnterprise,
+            uid: info.uid,
+            sequence: info.sequence,
+            status: info.status,
+            location: info.location,
+            description: info.description,
+            attendees: info.attendees,
+            alarmMinutes: info.alarmMinutes,
+          };
+
+          await this.meetingManager.addMeeting(newMeeting);
+          addedCount++;
+        }
+
+        if (addedCount > 0) {
+          vscode.window.showInformationMessage(t.icsSuccess(addedCount));
+        } else if (missingUrlCount > 0) {
+          vscode.window.showWarningMessage(t.icsWarningNoUrl());
+        }
+      } catch (err) {
+        vscode.window.showErrorMessage(t.icsErrorParseFailed());
+      }
       return;
     }
 

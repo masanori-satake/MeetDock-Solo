@@ -20,6 +20,13 @@ export interface Meeting {
   isEnterprise?: boolean;
   notified5m?: boolean;
   notifiedStart?: boolean;
+  uid?: string;
+  sequence?: number;
+  status?: string;
+  location?: string;
+  description?: string;
+  attendees?: string[];
+  alarmMinutes?: number;
 }
 
 export interface ParsedMeetingInfo {
@@ -39,4 +46,11 @@ export interface ParsedMeetingInfo {
   monthOfYear?: number;
   dayOfYear?: number;
   recurrenceEndDate?: Date;
+  uid?: string;
+  sequence?: number;
+  status?: string;
+  location?: string;
+  description?: string;
+  attendees?: string[];
+  alarmMinutes?: number;
 }
