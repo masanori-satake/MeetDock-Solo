@@ -120,6 +120,50 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.deepStrictEqual(multiChat.map(m => m.id), ['e1', 'e2']);
   });
 
+  test('deleteMeeting command cancels when modal dialog is dismissed and deletes when confirmed', async () => {
+    const store: Record<string, any> = {};
+    const mockContext: any = {
+      subscriptions: [],
+      globalState: {
+        get: (key: string, defaultVal: any) => store[key] ?? defaultVal,
+        update: async (key: string, val: any) => { store[key] = val; }
+      }
+    };
+    const manager = new MeetingManager(mockContext);
+    const meeting: Meeting = {
+      id: 'm-del',
+      title: '削除用会議',
+      url: 'https://teams.microsoft.com/l/meetup-join/1',
+      startTime: '2026-09-14T10:00:00.000Z',
+      recurrence: 'once'
+    };
+
+    let confirmResponse: string | undefined = undefined;
+    const warningModalCalls: { msg: string; modal: boolean; buttons: string[] }[] = [];
+
+    (vscode.window as any).showWarningMessage = (msg: string, options?: any, ...buttons: string[]) => {
+      if (options && typeof options === 'object' && options.modal) {
+        warningModalCalls.push({ msg, modal: true, buttons });
+        return Promise.resolve(confirmResponse);
+      }
+      return Promise.resolve(undefined);
+    };
+
+    const treeItem = new MeetingTreeItem(meeting);
+
+    // Scenario A: User cancels confirmation -> meeting is NOT deleted
+    confirmResponse = undefined;
+    await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
+    assert.strictEqual(warningModalCalls.length, 1);
+    assert.strictEqual(warningModalCalls[0].msg, t.deleteConfirm(meeting.title));
+    assert.strictEqual(warningModalCalls[0].buttons[0], t.deleteBtn());
+
+    // Scenario B: User confirms deletion
+    confirmResponse = t.deleteBtn();
+    await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
+    assert.strictEqual(warningModalCalls.length, 2);
+  });
+
   test('MeetingTreeItem contextValue differs for chat-capable and non-chat meetings', () => {
     const personalMeeting: Meeting = {
       id: 'p1',
