@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { MeetingManager } from './meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
-import { addFromClipboardCommand, addFromFileCommand, editRecurrenceCommand } from './commands';
+import { addFromClipboardCommand, editRecurrenceCommand } from './commands';
 import { checkForUpdates } from './updateChecker';
 import { getTeamsChatUrl, openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
 import { Meeting } from './types';
@@ -33,10 +33,6 @@ export function activate(context: vscode.ExtensionContext) {
   // Register Commands
   const addClipboardDisposable = vscode.commands.registerCommand('meetdock-solo.addFromClipboard', async () => {
     await addFromClipboardCommand(meetingManager);
-  });
-
-  const addFileDisposable = vscode.commands.registerCommand('meetdock-solo.addFromFile', async () => {
-    await addFromFileCommand(meetingManager);
   });
 
   const openMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.openMeeting', async (item?: MeetingTreeItem) => {
@@ -166,7 +162,6 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider,
     reminderService,
     addClipboardDisposable,
-    addFileDisposable,
     openMeetingDisposable,
     openChatDisposable,
     deleteMeetingDisposable,
