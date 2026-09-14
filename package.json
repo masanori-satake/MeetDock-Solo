@@ -2,7 +2,7 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.11.5",
+  "version": "1.12.0",
   "description": "Prevent missing Teams meetings while coding. A lightweight, 100% local VSCode extension.",
   "author": {
     "name": "Masanori Satake"
@@ -50,13 +50,18 @@
       "meetdock-container": [
         {
           "id": "meetdock-view",
-          "name": "Meetings"
+          "name": "%meetdock.view.meetings.title%"
+        },
+        {
+          "id": "meetdock-guide-view",
+          "name": "%meetdock.view.guide.title%",
+          "when": "!meetdock:hasEverRegisteredMeeting || meetdock:showGuide"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "meetdock-view",
+        "view": "meetdock-guide-view",
         "contents": "%meetdock.welcome.contents%"
       }
     ],
@@ -99,6 +104,11 @@
       {
         "command": "meetdock-solo.selectMeeting",
         "title": "MeetDock: ミーティング一覧から選択"
+      },
+      {
+        "command": "meetdock-solo.toggleGuide",
+        "title": "%meetdock.command.toggleGuide.title%",
+        "icon": "$(question)"
       }
     ],
     "keybindings": [
@@ -113,12 +123,22 @@
         {
           "command": "meetdock-solo.addFromClipboard",
           "when": "view == meetdock-view",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "meetdock-solo.addFromFile",
+          "when": "view == meetdock-view",
+          "group": "navigation@2"
         },
         {
           "command": "meetdock-solo.refreshView",
           "when": "view == meetdock-view",
-          "group": "navigation"
+          "group": "navigation@3"
+        },
+        {
+          "command": "meetdock-solo.toggleGuide",
+          "when": "view == meetdock-view && meetdock:hasEverRegisteredMeeting",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
