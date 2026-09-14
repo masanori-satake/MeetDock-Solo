@@ -6,6 +6,7 @@ import { MeetingTreeItem } from '../treeProvider';
 import { MeetingManager } from '../meetingManager';
 import { Meeting } from '../types';
 import { getTeamsChatUrl, openTeamsChatUrl } from '../urlValidator';
+import { deleteMeetingCommand } from '../commands';
 import { t } from '../i18n';
 
 suite('Extension & openChat Command Test Suite', () => {
@@ -139,8 +140,6 @@ suite('Extension & openChat Command Test Suite', () => {
     let confirmResponse: string | undefined = undefined;
     const warningModalCalls: { msg: string; modal: boolean; buttons: string[] }[] = [];
     const removedMeetingIds: string[] = [];
-    const originalGetSortedMeetings = MeetingManager.prototype.getSortedMeetings;
-    const originalRemoveMeeting = MeetingManager.prototype.removeMeeting;
 
     (vscode.window as any).showWarningMessage = (msg: string, options?: any, ...buttons: string[]) => {
       if (options && typeof options === 'object' && options.modal) {
@@ -150,45 +149,42 @@ suite('Extension & openChat Command Test Suite', () => {
       return Promise.resolve(undefined);
     };
 
-    MeetingManager.prototype.getSortedMeetings = () => [meeting, quickPickMeeting];
-    MeetingManager.prototype.removeMeeting = async (id: string) => {
-      removedMeetingIds.push(id);
+    const mockManager: any = {
+      getSortedMeetings: () => [meeting, quickPickMeeting],
+      removeMeeting: async (id: string) => {
+        removedMeetingIds.push(id);
+      }
     };
 
-    try {
-      const treeItem = new MeetingTreeItem(meeting);
+    const treeItem = new MeetingTreeItem(meeting);
 
-      // Scenario A: User cancels confirmation -> meeting is NOT deleted
-      confirmResponse = undefined;
-      await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
-      assert.strictEqual(warningModalCalls.length, 1);
-      assert.strictEqual(warningModalCalls[0].msg, t.deleteConfirm(meeting.title));
-      assert.strictEqual(warningModalCalls[0].buttons[0], t.deleteBtn());
-      assert.deepStrictEqual(removedMeetingIds, []);
+    // Scenario A: User cancels confirmation -> meeting is NOT deleted
+    confirmResponse = undefined;
+    await deleteMeetingCommand(mockManager, treeItem);
+    assert.strictEqual(warningModalCalls.length, 1);
+    assert.strictEqual(warningModalCalls[0].msg, t.deleteConfirm(meeting.title));
+    assert.strictEqual(warningModalCalls[0].buttons[0], t.deleteBtn());
+    assert.deepStrictEqual(removedMeetingIds, []);
 
-      // Scenario B: User confirms deletion from a tree item
-      confirmResponse = t.deleteBtn();
-      await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
-      assert.strictEqual(warningModalCalls.length, 2);
-      assert.deepStrictEqual(removedMeetingIds, [meeting.id]);
+    // Scenario B: User confirms deletion from a tree item
+    confirmResponse = t.deleteBtn();
+    await deleteMeetingCommand(mockManager, treeItem);
+    assert.strictEqual(warningModalCalls.length, 2);
+    assert.deepStrictEqual(removedMeetingIds, [meeting.id]);
 
-      // Scenario C: Command palette invocation selects a meeting before confirmation
-      removedMeetingIds.length = 0;
-      (vscode.window as any).showQuickPick = (items: any[]) => {
-        quickPickItemsList.push(items);
-        return Promise.resolve(items.find(item => item.meeting.id === quickPickMeeting.id));
-      };
-      await vscode.commands.executeCommand('meetdock-solo.deleteMeeting');
-      assert.strictEqual(quickPickItemsList.length, 1);
-      assert.deepStrictEqual(quickPickItemsList[0].map(item => item.meeting.id), [meeting.id, quickPickMeeting.id]);
-      assert.strictEqual(warningModalCalls.length, 3);
-      assert.strictEqual(warningModalCalls[2].msg, t.deleteConfirm(quickPickMeeting.title));
-      assert.deepStrictEqual(removedMeetingIds, [quickPickMeeting.id]);
-      assert.strictEqual(infoCalls.at(-1)?.msg, t.meetingDeleted(quickPickMeeting.title));
-    } finally {
-      MeetingManager.prototype.getSortedMeetings = originalGetSortedMeetings;
-      MeetingManager.prototype.removeMeeting = originalRemoveMeeting;
-    }
+    // Scenario C: Command palette invocation selects a meeting before confirmation
+    removedMeetingIds.length = 0;
+    (vscode.window as any).showQuickPick = (items: any[]) => {
+      quickPickItemsList.push(items);
+      return Promise.resolve(items.find(item => item.meeting.id === quickPickMeeting.id));
+    };
+    await deleteMeetingCommand(mockManager);
+    assert.strictEqual(quickPickItemsList.length, 1);
+    assert.deepStrictEqual(quickPickItemsList[0].map(item => item.meeting.id), [meeting.id, quickPickMeeting.id]);
+    assert.strictEqual(warningModalCalls.length, 3);
+    assert.strictEqual(warningModalCalls[2].msg, t.deleteConfirm(quickPickMeeting.title));
+    assert.deepStrictEqual(removedMeetingIds, [quickPickMeeting.id]);
+    assert.strictEqual(infoCalls.at(-1)?.msg, t.meetingDeleted(quickPickMeeting.title));
   });
 
   test('MeetingTreeItem contextValue differs for chat-capable and non-chat meetings', () => {
@@ -276,7 +272,7 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(jaContent.includes('繰り返しルール (RRULE) が含まれていない場合があります'), 'Japanese welcome view should describe the optional lack of a recurrence rule');
     assert.ok(jaContent.includes('会議の登録後に設定を変更してください'), 'Japanese welcome view should state post-registration recurrence configuration');
     assert.ok(jaContent.includes('$(warning)') && jaContent.includes('(command:meetdock-solo.addFromClipboard)') && jaContent.includes('(command:meetdock-solo.addFromFile)'), 'Japanese welcome view should retain the warning icon and command links');
-    assert.ok(!jaContent.includes('ドラッグ＆ドロップ'), 'Japanese welcome view should not contain drag-and-drop instructions');
+    assert.ok(jaContent.includes('ドラッグ＆ドロップ'), 'Japanese welcome view should contain drag-and-drop instructions');
     assert.ok(!jaContent.includes('###') && !jaContent.includes('**') && !jaContent.includes('>'), 'Japanese welcome view should avoid unsupported Markdown syntax (###, **, >)');
     assert.ok(!jaContent.split('\n').map((l: string) => l.trim()).some((l: string) => l.startsWith('-')), 'Japanese welcome view should not contain list items starting with -');
 
@@ -291,8 +287,14 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(enContent.includes('may contain only an individual occurrence (RECURRENCE-ID) and no recurrence rule (RRULE)'), 'English welcome view should describe the optional lack of a recurrence rule');
     assert.ok(enContent.includes('configure recurrence after registering'), 'English welcome view should state post-registration recurrence configuration');
     assert.ok(enContent.includes('$(warning)') && enContent.includes('(command:meetdock-solo.addFromClipboard)') && enContent.includes('(command:meetdock-solo.addFromFile)'), 'English welcome view should retain the warning icon and command links');
-    assert.ok(!enContent.toLowerCase().includes('drag'), 'English welcome view should not contain drag-and-drop instructions');
+    assert.ok(enContent.toLowerCase().includes('drag'), 'English welcome view should contain drag-and-drop instructions');
     assert.ok(!enContent.includes('###') && !enContent.includes('**') && !enContent.includes('>'), 'English welcome view should avoid unsupported Markdown syntax (###, **, >)');
     assert.ok(!enContent.split('\n').map((l: string) => l.trim()).some((l: string) => l.startsWith('-')), 'English welcome view should not contain list items starting with -');
+
+    // Verify view visibility configuration in package.json
+    const guideView = pkg.contributes.views['meetdock-container'].find((v: any) => v.id === 'meetdock-guide-view');
+    assert.ok(guideView, 'meetdock-guide-view should exist in contributes.views');
+    assert.strictEqual(guideView.visibility, 'collapsed', 'meetdock-guide-view visibility should be set to collapsed');
+    assert.strictEqual(guideView.when, undefined, 'meetdock-guide-view should not have when condition hiding it');
   });
 });
