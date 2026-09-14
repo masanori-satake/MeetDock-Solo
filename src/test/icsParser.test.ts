@@ -177,6 +177,39 @@ END:VCALENDAR`;
     assert.strictEqual(res[0].title, 'BOM付き定例会議');
   });
 
+  // 26. Standalone RECURRENCE-ID VEVENT (user provided ICS pattern)
+  test('26. Parses standalone exception VEVENT with RECURRENCE-ID and no base VEVENT', () => {
+    const standaloneRecurrenceIdIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Microsoft//Outlook Web//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:040000008200E00074C5B7101A82E00807EA090E74B63E1713C3DC01000000000000000
+ 0100000003ED3C74B4C73E0478AFF38F43CD687C0
+DTSTAMP:20260914T005824Z
+DTSTART:20260914T043000Z
+DTEND:20260914T051500Z
+RECURRENCE-ID:20260914T043000Z
+SUMMARY:LUI週報会（第1部）
+LOCATION:Microsoft Teams 会議
+DESCRIPTION:2026年4月以降のLUI週報会の案内を送ります。\\n\\n
+ 参加する:\\nhttps://teams.microsoft.com/meet/226316127041374?p=0FSrfCT5yJkIJ5fHnN\\n\\n会議 ID:\\n226 316 127 041 374\\n\\nパスコード:\\nB56Q6pu6
+ORGANIZER;CN=Taro Yamada:mailto:taro.yamada@example.com
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR`;
+
+    const now = new Date('2026-09-01T00:00:00Z');
+    const res = parseIcsContent(standaloneRecurrenceIdIcs, now);
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].title, 'LUI週報会（第1部）');
+    assert.strictEqual(res[0].url, 'https://teams.microsoft.com/meet/226316127041374?p=0FSrfCT5yJkIJ5fHnN');
+    assert.strictEqual(res[0].organizer, 'Taro Yamada');
+    assert.strictEqual(res[0].meetingId, '226316127041374');
+    assert.strictEqual(res[0].passcode, 'B56Q6pu6');
+  });
+
   // 11, 12. Quoted parameters & TEXT escaping
   test('11-12. Handles quoted parameters and RFC 5545 / RFC 6868 escaping', () => {
     const lineWithQuote = 'ORGANIZER;CN="Doe, John ^\'The Boss^\'":mailto:boss@example.com';
