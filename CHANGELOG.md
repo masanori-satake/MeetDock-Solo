@@ -2,6 +2,20 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.8.1] - 2026-09-14
+
+### 修正 (Fixed)
+- ICS の `RRULE` に含まれる `COUNT`、序数曜日、`BYSETPOS` を実際の繰り返し候補へ反映し、終了後の予定を登録しないよう修正
+- ICS ファイルの非同期読み込みと、同一 UID・開始時刻の予定を重複登録しないインポート処理へ改善
+
+## [1.8.0] - 2026-09-14
+
+### 追加 (Added)
+- 企業版 Microsoft Teams / Outlook の `.ics` カレンダーファイルの直接ドラッグ＆ドロップ読み込み機能の追加
+- RFC 5545 及び RFC 6868 規格に準拠した非依存型 `.ics` パーサーエンジン (`src/icsParser.ts`) の新規実装（BOM除去、CRLF正規化、75 octet line folding/unfolding、escaped characters/quoted parameters パース）
+- 優先順位（`X-MICROSOFT-SKYPETEAMSMEETINGURL` -> `URL` -> `DESCRIPTION` -> `X-ALT-DESC`）に従う厳格な Teams 参加 URL 抽出および Safe Links 解読
+- 日次/平日/週次/月次/年次等の繰り返し（`RRULE`）および例外予定（`EXDATE`, `RDATE`, `RECURRENCE-ID`, `STATUS:CANCELLED`）の算出・リマインド登録対応
+
 ## [1.7.6] - 2026-09-13
 
 ### セキュリティ強化 (Security Enhancements)
