@@ -206,7 +206,7 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(jaContent.includes('会議の登録後に設定を変更してください'), 'Japanese welcome view should state post-registration recurrence configuration');
     assert.ok(jaContent.includes('$(warning)') && jaContent.includes('(command:meetdock-solo.addFromClipboard)') && jaContent.includes('(command:meetdock-solo.addFromFile)'), 'Japanese welcome view should retain the warning icon and command links');
     assert.ok(!jaContent.includes('ドラッグ＆ドロップ'), 'Japanese welcome view should not contain drag-and-drop instructions');
-    assert.ok(jaContent.includes('###') && jaContent.includes('**') && jaContent.includes('>'), 'Japanese welcome view should support Markdown headings, bold, and quote formatting');
+    assert.ok(!jaContent.includes('###') && !jaContent.includes('**') && !jaContent.includes('>'), 'Japanese welcome view should avoid unsupported Markdown syntax (###, **, >)');
 
     // English NLS
     const enNlsPath = path.join(rootDir, 'package.nls.json');
@@ -220,6 +220,6 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(enContent.includes('configure recurrence after registering'), 'English welcome view should state post-registration recurrence configuration');
     assert.ok(enContent.includes('$(warning)') && enContent.includes('(command:meetdock-solo.addFromClipboard)') && enContent.includes('(command:meetdock-solo.addFromFile)'), 'English welcome view should retain the warning icon and command links');
     assert.ok(!enContent.toLowerCase().includes('drag'), 'English welcome view should not contain drag-and-drop instructions');
-    assert.ok(enContent.includes('###') && enContent.includes('**') && enContent.includes('>'), 'English welcome view should support Markdown headings, bold, and quote formatting');
+    assert.ok(!enContent.includes('###') && !enContent.includes('**') && !enContent.includes('>'), 'English welcome view should avoid unsupported Markdown syntax (###, **, >)');
   });
 });
