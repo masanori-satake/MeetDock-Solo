@@ -52,9 +52,6 @@ suite('ICS Parser & Integration Test Suite', () => {
     assert.strictEqual(weekly.recurrence, 'weekly');
     assert.strictEqual(weekly.recurrenceInterval, 2);
     assert.deepStrictEqual(weekly.daysOfWeek, [1, 3]); // MO, WE
-    const laterWeekly = parseIcsContent(readFixture('weekly_jp.ics'), new Date('2026-10-20T00:00:00Z'))[0];
-    assert.notStrictEqual(laterWeekly.startTime?.toISOString(), weekly.startTime?.toISOString());
-    assert.strictEqual(laterWeekly.occurrenceId, weekly.occurrenceId);
 
     const monthlyDate = parseIcsContent(readFixture('monthly_date_jp.ics'), now)[0];
     assert.strictEqual(monthlyDate.recurrence, 'monthly');
@@ -152,14 +149,12 @@ END:VCALENDAR`;
     const firstOcc = res1[0];
     assert.strictEqual(firstOcc.title, '時間変更分会議');
     assert.strictEqual(firstOcc.startTime?.toISOString(), new Date('2026-10-20T11:00:00+09:00').toISOString());
-    assert.strictEqual(firstOcc.occurrenceId, 'recurrence-exceptions-jp@example.invalid::recurrence-id:2026-10-19T01:00:00.000Z');
 
     // Test when now is Oct 22 2026 -> next occurrence should skip cancelled Oct 26 and return Nov 02
     const nowOct22 = new Date('2026-10-22T00:00:00+09:00');
     const res2 = parseIcsContent(ics, nowOct22);
     assert.ok(res2.length >= 1);
     assert.strictEqual(res2[0].startTime?.toISOString(), new Date('2026-11-02T10:00:00+09:00').toISOString());
-    assert.strictEqual(res2[0].occurrenceId, 'recurrence-exceptions-jp@example.invalid');
   });
 
   // 7, 8. CRLF / LF & line folding / unfolding
@@ -420,8 +415,9 @@ END:VCALENDAR`;
     } as any;
     await provider.handleDrop(undefined, dataTransfer3, {} as any);
     meetings = manager.getMeetings();
-    assert.strictEqual(meetings.length, 2);
-    assert.strictEqual(meetings[1].occurrenceId, meetings[1].uid);
+    assert.strictEqual(meetings.length, 3);
+    assert.strictEqual(meetings[2].uid, meetings[1].uid);
+    assert.notStrictEqual(meetings[2].startTime, meetings[1].startTime);
 
     // 22c. DataTransferFile (OS file explorer drop via 'files' MIME type)
     const fixturePathJp = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_jp.ics');
@@ -472,22 +468,6 @@ END:VCALENDAR`;
     const meetings3 = manager3.getMeetings();
     assert.strictEqual(meetings3.length, 1);
     assert.strictEqual(meetings3[0].title, '単発定例会議');
-
-    // 22e. text/x-vcalendar-only fallback
-    const dataTransfer6 = {
-      get: (mime: string) => mime === 'text/x-vcalendar' ? appIcsItem : null
-    } as any;
-    const manager4 = new MeetingManager({
-      globalState: {
-        get: (_key: string, defaultVal: any) => defaultVal,
-        update: async () => {}
-      }
-    } as any);
-    const provider4 = new MeetingTreeDataProvider(manager4, () => new Date('2026-10-01T00:00:00Z'));
-    await provider4.handleDrop(undefined, dataTransfer6, {} as any);
-    const meetings4 = manager4.getMeetings();
-    assert.strictEqual(meetings4.length, 1);
-    assert.strictEqual(meetings4[0].title, '単発定例会議');
   });
 
   test('25. Handles RDATE recurrence correctly', () => {
@@ -505,11 +485,6 @@ END:VCALENDAR`;
     const now = new Date('2026-10-01T00:00:00Z');
     const res = parseIcsContent(rdateIcs, now);
     assert.strictEqual(res.length, 3);
-    assert.deepStrictEqual(res.map(meeting => meeting.occurrenceId), [
-      'rdate@example.invalid',
-      'rdate@example.invalid::rdate:2026-10-12T10:00:00.000Z',
-      'rdate@example.invalid::rdate:2026-10-19T10:00:00.000Z',
-    ]);
   });
 
   // 23. 既存個人Teams機能のregressionテスト

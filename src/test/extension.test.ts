@@ -156,11 +156,7 @@ suite('Extension & openChat Command Test Suite', () => {
 
     const fixturePath = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_jp.ics');
     const originalShowOpenDialog = vscode.window.showOpenDialog;
-    let openDialogOptions: vscode.OpenDialogOptions | undefined;
-    (vscode.window as any).showOpenDialog = async (options: vscode.OpenDialogOptions) => {
-      openDialogOptions = options;
-      return [vscode.Uri.file(fixturePath)];
-    };
+    (vscode.window as any).showOpenDialog = async () => [vscode.Uri.file(fixturePath)];
 
     try {
       const { addFromFileCommand } = require('../commands');
@@ -169,7 +165,6 @@ suite('Extension & openChat Command Test Suite', () => {
       const meetings = manager.getMeetings();
       assert.strictEqual(meetings.length, 1);
       assert.strictEqual(meetings[0].title, '単発定例会議');
-      assert.strictEqual(openDialogOptions?.openLabel, t.importIcsOpenLabel());
     } finally {
       (vscode.window as any).showOpenDialog = originalShowOpenDialog;
     }
@@ -184,15 +179,12 @@ suite('Extension & openChat Command Test Suite', () => {
     const meetdockWelcome = pkg.contributes.viewsWelcome.find((vw: any) => vw.view === 'meetdock-view');
     assert.ok(meetdockWelcome, 'meetdock-view should have viewsWelcome configuration');
     assert.strictEqual(meetdockWelcome.contents, '%meetdock.welcome.contents%');
-    const addFromFileCommand = pkg.contributes.commands.find((command: any) => command.command === 'meetdock-solo.addFromFile');
-    assert.strictEqual(addFromFileCommand.title, '%meetdock.command.addFromFile.title%');
 
     // Japanese NLS
     const jaNlsPath = path.join(rootDir, 'package.nls.ja.json');
     assert.ok(fs.existsSync(jaNlsPath), 'package.nls.ja.json should exist');
     const jaNls = JSON.parse(fs.readFileSync(jaNlsPath, 'utf8'));
     const jaContent = jaNls['meetdock.welcome.contents'];
-    assert.strictEqual(jaNls['meetdock.command.addFromFile.title'], 'MeetDock: .ics ファイルから会議を追加');
     assert.ok(jaContent.includes('企業 (Enterprise) 向け Teams'), 'Japanese welcome view should contain Enterprise Teams section');
     assert.ok(jaContent.includes('個人 (Personal) 向け Teams'), 'Japanese welcome view should contain Personal Teams section');
     assert.ok(jaContent.includes('一部の .ics ファイル'), 'Japanese welcome view should limit the recurrence warning to some .ics files');
@@ -206,7 +198,6 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(fs.existsSync(enNlsPath), 'package.nls.json should exist');
     const enNls = JSON.parse(fs.readFileSync(enNlsPath, 'utf8'));
     const enContent = enNls['meetdock.welcome.contents'];
-    assert.strictEqual(enNls['meetdock.command.addFromFile.title'], 'MeetDock: Add Meetings from .ics File');
     assert.ok(enContent.includes('Enterprise Teams'), 'English welcome view should contain Enterprise Teams section');
     assert.ok(enContent.includes('Personal Teams'), 'English welcome view should contain Personal Teams section');
     assert.ok(enContent.includes('Some .ics files'), 'English welcome view should limit the recurrence warning to some .ics files');

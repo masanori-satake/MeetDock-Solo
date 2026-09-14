@@ -156,7 +156,6 @@ export const t = {
   timeRequired: () => isJapanese() ? '開始日時は必須です。' : 'Start date/time is required.',
   timeInvalid: () => isJapanese() ? '正しい日時形式 (例: 2026-04-01 14:00 または 14:00) で入力してください。' : 'Please use correct format (e.g. 2026-04-01 14:00 or 14:00).',
   timeParseError: () => isJapanese() ? '開始日時の解析に失敗しました。' : 'Failed to parse start date/time.',
-  importIcsOpenLabel: () => isJapanese() ? 'インポート' : 'Import',
   recurrencePlaceholder: () => isJapanese() ? '繰り返し設定を選択してください' : 'Select recurrence setting',
   recurrenceOnceLabel: (isParsed: boolean) => isJapanese() ? (isParsed ? '単発 (Once) [パース結果]' : '単発 (Once)') : (isParsed ? 'Once [Parsed]' : 'Once'),
   recurrenceOnceDesc: () => isJapanese() ? '今回のみ' : 'One-time meeting',
