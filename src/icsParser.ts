@@ -698,9 +698,10 @@ export function parseSingleVEvent(
 
   // Meeting ID & Passcode checks
   const fullText = `${description || ''}\n${title}`;
-  const meetingIdMatch = fullText.match(/(?:会議\s*ID|Meeting\s*ID):\s*([\d\s]{9,25})/i);
-  const meetingIdRaw = meetingIdMatch ? meetingIdMatch[1].replace(/\s+/g, '') : undefined;
-  const meetingId = meetingIdRaw && meetingIdRaw.length >= 9 && meetingIdRaw.length <= 17 ? meetingIdRaw : undefined;
+  const meetingId = Array.from(
+    fullText.matchAll(/(?:会議\s*ID|Meeting\s*ID):\s*([\d\s]{9,25})/gi),
+    match => match[1].replace(/\s+/g, '')
+  ).find(candidate => /^\d{9,17}$/.test(candidate));
   const passcodeMatch = fullText.match(/(?:パスコード|Passcode):\s*([A-Za-z0-9]+)/i);
   const passcode = passcodeMatch ? passcodeMatch[1] : undefined;
   const isEnterprise = Boolean(meetingId || passcode || /(?:会議\s*ID|Meeting\s*ID)/i.test(fullText));
@@ -944,8 +945,9 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
     const excStart = excInfo.startTime;
     if (excInfo.status !== 'CANCELLED' && excStart) {
       const alreadyAdded = results.some(r =>
-        (r.uid && excInfo.uid && r.uid === excInfo.uid && r.startTime?.getTime() === excStart.getTime()) ||
-        (r.startTime && Math.abs(r.startTime.getTime() - excStart.getTime()) < 1000 && r.title === excInfo.title)
+        r.uid && excInfo.uid
+          ? r.uid === excInfo.uid && r.startTime?.getTime() === excStart.getTime()
+          : r.startTime && Math.abs(r.startTime.getTime() - excStart.getTime()) < 1000 && r.title === excInfo.title
       );
       if (!alreadyAdded) {
         results.push(excInfo);

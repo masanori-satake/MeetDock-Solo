@@ -210,6 +210,45 @@ END:VCALENDAR`;
     assert.strictEqual(res[0].passcode, 'B56Q6pu6');
   });
 
+  test('uses a later valid meeting ID when an earlier candidate is too long', () => {
+    const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:meeting-id@example.invalid
+SUMMARY:Meeting ID fallback
+DTSTART:20261005T100000Z
+DESCRIPTION:Meeting ID: 123456789012345678\\nMeeting ID: 987 654 321
+END:VEVENT
+END:VCALENDAR`;
+
+    const res = parseIcsContent(ics, new Date('2026-10-01T00:00:00Z'));
+
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].meetingId, '987654321');
+  });
+
+  test('keeps orphan exceptions with a different UID at the same title and start time', () => {
+    const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:base@example.invalid
+SUMMARY:Shared title
+DTSTART:20261005T100000Z
+END:VEVENT
+BEGIN:VEVENT
+UID:orphan@example.invalid
+SUMMARY:Shared title
+DTSTART:20261005T100000Z
+RECURRENCE-ID:20261005T100000Z
+END:VEVENT
+END:VCALENDAR`;
+
+    const res = parseIcsContent(ics, new Date('2026-10-01T00:00:00Z'));
+
+    assert.strictEqual(res.length, 2);
+    assert.deepStrictEqual(res.map(meeting => meeting.uid), ['base@example.invalid', 'orphan@example.invalid']);
+  });
+
   // 11, 12. Quoted parameters & TEXT escaping
   test('11-12. Handles quoted parameters and RFC 5545 / RFC 6868 escaping', () => {
     const lineWithQuote = 'ORGANIZER;CN="Doe, John ^\'The Boss^\'":mailto:boss@example.com';
