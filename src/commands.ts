@@ -284,7 +284,9 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
 
       let addedCount = 0;
       let missingUrlCount = 0;
-      const knownOccurrences = meetingManager.getMeetings()
+      const existingMeetings = meetingManager.getMeetings();
+      const newMeetings: Meeting[] = [];
+      const knownOccurrences = existingMeetings
         .filter(m => m.uid)
         .map(m => ({ uid: m.uid, startTime: m.startTime }));
 
@@ -336,17 +338,23 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
           alarmMinutes: info.alarmMinutes,
         };
 
-        await meetingManager.addMeeting(newMeeting);
+        newMeetings.push(newMeeting);
         if (newMeeting.uid) {
           knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
         }
         addedCount++;
       }
 
+      if (newMeetings.length > 0) {
+        await meetingManager.saveMeetings([...existingMeetings, ...newMeetings]);
+      }
+
       if (addedCount > 0) {
         vscode.window.showInformationMessage(t.icsSuccess(addedCount));
       } else if (missingUrlCount > 0) {
         vscode.window.showWarningMessage(t.icsWarningNoUrl());
+      } else {
+        vscode.window.showInformationMessage(t.icsAlreadyRegistered());
       }
     } catch {
       vscode.window.showErrorMessage(t.icsErrorParseFailed());

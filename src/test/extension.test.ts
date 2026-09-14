@@ -144,29 +144,43 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.strictEqual(itemEnterprise.contextValue, 'meetingItemWithChat');
   });
 
-  test('addFromFileCommand parses file and registers meeting correctly', async () => {
+  test('addFromFileCommand persists once and reports an already registered meeting', async () => {
     const store: Record<string, any> = {};
+    let updateCount = 0;
     const mockContext: any = {
       globalState: {
         get: (key: string, defaultVal: any) => store[key] ?? defaultVal,
-        update: async (key: string, val: any) => { store[key] = val; }
+        update: async (key: string, val: any) => {
+          updateCount++;
+          store[key] = val;
+        }
       }
     };
     const manager = new MeetingManager(mockContext);
 
     const fixturePath = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_jp.ics');
     const originalShowOpenDialog = vscode.window.showOpenDialog;
+    const originalShowInformationMessage = vscode.window.showInformationMessage;
+    const informationMessages: string[] = [];
     (vscode.window as any).showOpenDialog = async () => [vscode.Uri.file(fixturePath)];
+    (vscode.window as any).showInformationMessage = async (message: string) => {
+      informationMessages.push(message);
+      return undefined;
+    };
 
     try {
       const { addFromFileCommand } = require('../commands');
+      await addFromFileCommand(manager);
       await addFromFileCommand(manager);
 
       const meetings = manager.getMeetings();
       assert.strictEqual(meetings.length, 1);
       assert.strictEqual(meetings[0].title, '単発定例会議');
+      assert.strictEqual(updateCount, 1, 'the duplicate import should not trigger another save');
+      assert.strictEqual(informationMessages.at(-1), t.icsAlreadyRegistered());
     } finally {
       (vscode.window as any).showOpenDialog = originalShowOpenDialog;
+      (vscode.window as any).showInformationMessage = originalShowInformationMessage;
     }
   });
 
@@ -191,6 +205,7 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(jaContent.includes('繰り返しルール (RRULE) が含まれていない場合があります'), 'Japanese welcome view should describe the optional lack of a recurrence rule');
     assert.ok(jaContent.includes('会議の登録後に設定を変更してください'), 'Japanese welcome view should state post-registration recurrence configuration');
     assert.ok(jaContent.includes('$(warning)') && jaContent.includes('(command:meetdock-solo.addFromClipboard)') && jaContent.includes('(command:meetdock-solo.addFromFile)'), 'Japanese welcome view should retain the warning icon and command links');
+    assert.ok(!jaContent.includes('ドラッグ＆ドロップ'), 'Japanese welcome view should not contain drag-and-drop instructions');
     assert.ok(jaContent.includes('###') && jaContent.includes('**') && jaContent.includes('>'), 'Japanese welcome view should support Markdown headings, bold, and quote formatting');
 
     // English NLS
@@ -204,6 +219,7 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.ok(enContent.includes('may contain only an individual occurrence (RECURRENCE-ID) and no recurrence rule (RRULE)'), 'English welcome view should describe the optional lack of a recurrence rule');
     assert.ok(enContent.includes('configure recurrence after registering'), 'English welcome view should state post-registration recurrence configuration');
     assert.ok(enContent.includes('$(warning)') && enContent.includes('(command:meetdock-solo.addFromClipboard)') && enContent.includes('(command:meetdock-solo.addFromFile)'), 'English welcome view should retain the warning icon and command links');
+    assert.ok(!enContent.toLowerCase().includes('drag'), 'English welcome view should not contain drag-and-drop instructions');
     assert.ok(enContent.includes('###') && enContent.includes('**') && enContent.includes('>'), 'English welcome view should support Markdown headings, bold, and quote formatting');
   });
 });
