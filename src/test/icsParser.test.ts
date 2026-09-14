@@ -584,6 +584,22 @@ END:VCALENDAR`;
     assert.deepStrictEqual(res, []);
   });
 
+  test('28a. Rejects direct multibyte ICS content exceeding the byte limit', () => {
+    const oversizedMultibyteIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:multibyte-size@example.invalid
+DTSTART:20261005T100000Z
+SUMMARY:${'あ'.repeat(Math.floor(MAX_ICS_CONTENT_SIZE / 3))}
+URL:https://teams.microsoft.com/meet/99999
+END:VEVENT
+END:VCALENDAR`;
+
+    assert.ok(oversizedMultibyteIcs.length <= MAX_ICS_CONTENT_SIZE);
+    assert.ok(Buffer.byteLength(oversizedMultibyteIcs, 'utf-8') > MAX_ICS_CONTENT_SIZE);
+    assert.deepStrictEqual(parseIcsContent(oversizedMultibyteIcs, new Date('2026-10-01T00:00:00Z')), []);
+  });
+
   test('28b. Rejects oversized file bytes before decoding', async () => {
     assert.throws(
       () => decodeIcsBytes(Buffer.alloc(MAX_ICS_CONTENT_SIZE + 1)),

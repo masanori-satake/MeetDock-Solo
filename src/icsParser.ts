@@ -759,7 +759,7 @@ export function parseSingleVEvent(
  * Returns array of ParsedMeetingInfo / Meeting objects resolved with EXDATE, RDATE, RECURRENCE-ID, and CANCELLED overrides.
  */
 export function parseIcsContent(icsContent: string, now: Date = new Date()): ParsedMeetingInfo[] {
-  if (!icsContent || icsContent.length > MAX_ICS_CONTENT_SIZE) {
+  if (!icsContent || Buffer.byteLength(icsContent, 'utf-8') > MAX_ICS_CONTENT_SIZE) {
     return [];
   }
   const root = parseIcsComponents(icsContent);
