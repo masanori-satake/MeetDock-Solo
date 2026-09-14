@@ -226,4 +226,10 @@ export const t = {
   endDateInvalid: () => isJapanese() ? '正しい日付形式 (例: 2026-12-31) で入力してください。' : 'Please enter a valid date format (e.g. 2026-12-31).',
   recurrenceUpdated: (title: string) => isJapanese() ? `MeetDock: ミーティング「${title}」の繰り返し設定を更新しました。` : `MeetDock: Updated recurrence settings for "${title}".`,
   editRecurrenceCommandTitle: () => isJapanese() ? '繰り返し設定を変更' : 'Edit Recurrence',
+
+  // Delete Meeting
+  deleteConfirm: (title: string) => isJapanese() ? `ミーティング「${title}」を削除してもよろしいですか？` : `Are you sure you want to delete meeting "${title}"?`,
+  deleteBtn: () => isJapanese() ? '削除' : 'Delete',
+  selectMeetingToDeletePlaceholder: () => isJapanese() ? '削除する Teams ミーティングを選択してください' : 'Select a Teams meeting to delete',
+  noMeetingsToDelete: () => isJapanese() ? '削除できる登録済みミーティングはありません。' : 'There are no registered meetings to delete.',
 };
