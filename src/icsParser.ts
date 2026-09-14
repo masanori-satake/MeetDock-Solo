@@ -541,6 +541,13 @@ export function parseSingleVEvent(
   // 1. UID & Sequence & Status
   const uidProp = getProp('UID');
   const uid = uidProp ? unescapeIcsText(uidProp.value).trim() : undefined;
+  const recurrenceIdProp = getProp('RECURRENCE-ID');
+  const recurrenceId = recurrenceIdProp
+    ? parseIcsDateTime(recurrenceIdProp, timeZoneAliasMap).date.toISOString()
+    : undefined;
+  const occurrenceId = uid
+    ? recurrenceId ? `${uid}::recurrence-id:${recurrenceId}` : uid
+    : undefined;
 
   const seqProp = getProp('SEQUENCE');
   const sequence = seqProp ? parseInt(seqProp.value, 10) : 0;
@@ -728,6 +735,7 @@ export function parseSingleVEvent(
     recurrenceBySetPos,
     recurrenceEndDate,
     uid,
+    occurrenceId,
     sequence,
     status,
     location,
@@ -847,7 +855,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
 
     let effectiveStart: Date | null = null;
     let effectiveEnd: Date | null = null;
-    let isCancelledOccurrence = false;
+    let effectiveOccurrenceId = baseInfo.occurrenceId;
 
     if (baseInfo.recurrence === 'once') {
       effectiveStart = baseInfo.startTime;
@@ -887,6 +895,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
           // Overridden occurrence
           effectiveStart = excInfo.startTime || candidate;
           effectiveEnd = excInfo.endTime || new Date(effectiveStart.getTime() + duration);
+          effectiveOccurrenceId = excInfo.occurrenceId;
           if (excInfo.title) { baseInfo.title = excInfo.title; }
           if (excInfo.url) { baseInfo.url = excInfo.url; }
           break;
@@ -901,6 +910,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
     if (effectiveStart) {
       results.push({
         ...baseInfo,
+        occurrenceId: effectiveOccurrenceId,
         startTime: effectiveStart,
         endTime: effectiveEnd || new Date(effectiveStart.getTime() + duration),
       });
@@ -913,6 +923,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
         if (!alreadyAdded) {
           results.push({
             ...baseInfo,
+            occurrenceId: baseInfo.uid ? `${baseInfo.uid}::rdate:${rdate.toISOString()}` : undefined,
             startTime: rdate,
             endTime: new Date(rdate.getTime() + duration),
           });

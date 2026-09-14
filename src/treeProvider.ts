@@ -282,7 +282,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     }
 
     if (!droppedText) {
-      const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
+      const calItem = dataTransfer.get('text/calendar')
+        || dataTransfer.get('text/x-vcalendar')
+        || dataTransfer.get('application/ics');
       if (calItem) {
         droppedText = await calItem.asString();
       } else {
@@ -348,7 +350,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
         let missingUrlCount = 0;
         const knownOccurrences = this.meetingManager.getMeetings()
           .filter(meeting => meeting.uid)
-          .map(meeting => ({ uid: meeting.uid, startTime: meeting.startTime }));
+          .map(meeting => ({ occurrenceId: meeting.occurrenceId, uid: meeting.uid, startTime: meeting.startTime }));
 
         for (const info of parsedMeetings) {
           if (!info.url || !isValidTeamsUrl(info.url)) {
@@ -360,8 +362,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             ? info.endTime.getTime() - info.startTime.getTime()
             : 30 * 60 * 1000;
           const startTime = (info.startTime || now).toISOString();
-          const existingOccurrence = info.uid
-            ? knownOccurrences.some(meeting => meeting.uid === info.uid && meeting.startTime === startTime)
+          const existingOccurrence = info.occurrenceId
+            ? knownOccurrences.some(meeting => meeting.occurrenceId === info.occurrenceId
+              || (!meeting.occurrenceId && meeting.uid === info.uid && meeting.startTime === startTime))
             : undefined;
           if (existingOccurrence) {
             continue;
@@ -390,6 +393,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             passcode: info.passcode,
             isEnterprise: info.isEnterprise,
             uid: info.uid,
+            occurrenceId: info.occurrenceId,
             sequence: info.sequence,
             status: info.status,
             location: info.location,
@@ -400,7 +404,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
           await this.meetingManager.addMeeting(newMeeting);
           if (newMeeting.uid) {
-            knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
+            knownOccurrences.push({ occurrenceId: newMeeting.occurrenceId, uid: newMeeting.uid, startTime: newMeeting.startTime });
           }
           addedCount++;
         }

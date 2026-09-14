@@ -250,7 +250,7 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
       'Calendar Files (*.ics)': ['ics', 'ical'],
       'All Files': ['*']
     },
-    openLabel: 'インポート'
+    openLabel: t.importIcsOpenLabel()
   });
 
   if (!uris || uris.length === 0) {
@@ -286,7 +286,7 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
       let missingUrlCount = 0;
       const knownOccurrences = meetingManager.getMeetings()
         .filter(m => m.uid)
-        .map(m => ({ uid: m.uid, startTime: m.startTime }));
+        .map(m => ({ occurrenceId: m.occurrenceId, uid: m.uid, startTime: m.startTime }));
 
       for (const info of parsedMeetings) {
         if (!info.url || !isValidTeamsUrl(info.url)) {
@@ -298,8 +298,9 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
           ? info.endTime.getTime() - info.startTime.getTime()
           : 30 * 60 * 1000;
         const startTime = (info.startTime || now).toISOString();
-        const existingOccurrence = info.uid
-          ? knownOccurrences.some(m => m.uid === info.uid && m.startTime === startTime)
+        const existingOccurrence = info.occurrenceId
+          ? knownOccurrences.some(m => m.occurrenceId === info.occurrenceId
+            || (!m.occurrenceId && m.uid === info.uid && m.startTime === startTime))
           : undefined;
         if (existingOccurrence) {
           continue;
@@ -328,6 +329,7 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
           passcode: info.passcode,
           isEnterprise: info.isEnterprise,
           uid: info.uid,
+          occurrenceId: info.occurrenceId,
           sequence: info.sequence,
           status: info.status,
           location: info.location,
@@ -338,7 +340,7 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
 
         await meetingManager.addMeeting(newMeeting);
         if (newMeeting.uid) {
-          knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
+          knownOccurrences.push({ occurrenceId: newMeeting.occurrenceId, uid: newMeeting.uid, startTime: newMeeting.startTime });
         }
         addedCount++;
       }

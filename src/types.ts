@@ -30,6 +30,7 @@ export interface Meeting {
   notified5m?: boolean;
   notifiedStart?: boolean;
   uid?: string;
+  occurrenceId?: string;
   sequence?: number;
   status?: string;
   location?: string;
@@ -60,6 +61,7 @@ export interface ParsedMeetingInfo {
   recurrenceBySetPos?: number[];
   recurrenceEndDate?: Date;
   uid?: string;
+  occurrenceId?: string;
   sequence?: number;
   status?: string;
   location?: string;
