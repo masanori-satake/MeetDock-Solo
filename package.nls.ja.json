@@ -1,0 +1,3 @@
+{
+  "meetdock.welcome.contents": "登録されている会議はありません。\n\n🏢 企業(Enterprise)向けTeamsの場合\n.ics ファイルのドラッグ＆ドロップ: TeamsやOutlookからダウンロードした .ics ファイルをこのペインへ直接ドラッグ＆ドロップすると自動登録されます。\nクリップボードから追加: 会議招待テキストをコピーし、[クリップボードから追加](command:meetdock-solo.addFromClipboard)（Alt+M / Option+M）をクリックします。\n\n$(warning) 企業(Enterprise)向けTeamsの場合: メール本文の添付ファイルや特定の通知メールから保存した一部の .ics ファイルには、特定回の情報 (RECURRENCE-ID) のみが含まれ、繰り返しルール (RRULE) が含まれていない場合があります。その場合、単発の会議として登録されます。繰り返しを設定するには、会議の登録後に設定を変更してください。\n\n👤 個人(Personal)向けTeamsの場合\nクリップボード・テキストから追加: 会議参加リンクや案内テキストをコピーし、[クリップボードから追加](command:meetdock-solo.addFromClipboard)（Alt+M / Option+M）をクリック（またはテキストを本ペインへドラッグ＆ドロップ）します。\n設定の指定: 入力ダイアログでタイトル・日時・繰り返しパターンを指定して登録します。\n\n[クリップボードから会議を追加](command:meetdock-solo.addFromClipboard)"
+}

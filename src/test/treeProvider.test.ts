@@ -201,4 +201,48 @@ suite('TreeProvider Test Suite', () => {
     const itemNoChat = new MeetingTreeItem(personalMeeting);
     assert.strictEqual(itemNoChat.contextValue, 'meetingItem');
   });
+
+  test('when sole meeting is deleted, getChildren returns empty array triggering tree refresh for welcome view', async () => {
+    let meetings: Meeting[] = [{
+      id: 'm1',
+      title: 'テスト会議',
+      url: 'https://teams.microsoft.com/l/meetup-join/1',
+      startTime: '2026-09-14T10:00:00.000Z',
+      endTime: '2026-09-14T10:30:00.000Z',
+      recurrence: 'once'
+    }];
+
+    const listeners: (() => void)[] = [];
+    const manager = {
+      onDidChangeMeetings: (listener: () => void) => {
+        listeners.push(listener);
+        return { dispose: () => {} };
+      },
+      getSortedMeetings: () => meetings
+    } as unknown as MeetingManager;
+
+    const provider = new MeetingTreeDataProvider(manager);
+    provider.stopStatusCheckTimer();
+
+    // With 1 meeting, getChildren returns 1 item
+    let items = provider.getChildren() as vscode.TreeItem[];
+    assert.strictEqual(items.length, 1);
+
+    let refreshFired = false;
+    provider.onDidChangeTreeData(() => {
+      refreshFired = true;
+    });
+
+    // Delete the single meeting
+    meetings = [];
+    listeners.forEach(cb => cb());
+
+    assert.ok(refreshFired, 'onDidChangeTreeData should fire when meeting is deleted');
+
+    // Now getChildren returns [] (empty array), causing VS Code to show viewsWelcome
+    items = provider.getChildren() as vscode.TreeItem[];
+    assert.strictEqual(items.length, 0);
+
+    provider.dispose();
+  });
 });
