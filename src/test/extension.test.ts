@@ -121,15 +121,6 @@ suite('Extension & openChat Command Test Suite', () => {
   });
 
   test('deleteMeeting command cancels when modal dialog is dismissed and deletes when confirmed', async () => {
-    const store: Record<string, any> = {};
-    const mockContext: any = {
-      subscriptions: [],
-      globalState: {
-        get: (key: string, defaultVal: any) => store[key] ?? defaultVal,
-        update: async (key: string, val: any) => { store[key] = val; }
-      }
-    };
-    const manager = new MeetingManager(mockContext);
     const meeting: Meeting = {
       id: 'm-del',
       title: '削除用会議',
@@ -137,9 +128,19 @@ suite('Extension & openChat Command Test Suite', () => {
       startTime: '2026-09-14T10:00:00.000Z',
       recurrence: 'once'
     };
+    const quickPickMeeting: Meeting = {
+      id: 'm-del-picked',
+      title: '選択された削除用会議',
+      url: 'https://teams.microsoft.com/l/meetup-join/2',
+      startTime: '2026-09-14T11:00:00.000Z',
+      recurrence: 'once'
+    };
 
     let confirmResponse: string | undefined = undefined;
     const warningModalCalls: { msg: string; modal: boolean; buttons: string[] }[] = [];
+    const removedMeetingIds: string[] = [];
+    const originalGetSortedMeetings = MeetingManager.prototype.getSortedMeetings;
+    const originalRemoveMeeting = MeetingManager.prototype.removeMeeting;
 
     (vscode.window as any).showWarningMessage = (msg: string, options?: any, ...buttons: string[]) => {
       if (options && typeof options === 'object' && options.modal) {
@@ -149,19 +150,45 @@ suite('Extension & openChat Command Test Suite', () => {
       return Promise.resolve(undefined);
     };
 
-    const treeItem = new MeetingTreeItem(meeting);
+    MeetingManager.prototype.getSortedMeetings = () => [meeting, quickPickMeeting];
+    MeetingManager.prototype.removeMeeting = async (id: string) => {
+      removedMeetingIds.push(id);
+    };
 
-    // Scenario A: User cancels confirmation -> meeting is NOT deleted
-    confirmResponse = undefined;
-    await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
-    assert.strictEqual(warningModalCalls.length, 1);
-    assert.strictEqual(warningModalCalls[0].msg, t.deleteConfirm(meeting.title));
-    assert.strictEqual(warningModalCalls[0].buttons[0], t.deleteBtn());
+    try {
+      const treeItem = new MeetingTreeItem(meeting);
 
-    // Scenario B: User confirms deletion
-    confirmResponse = t.deleteBtn();
-    await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
-    assert.strictEqual(warningModalCalls.length, 2);
+      // Scenario A: User cancels confirmation -> meeting is NOT deleted
+      confirmResponse = undefined;
+      await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
+      assert.strictEqual(warningModalCalls.length, 1);
+      assert.strictEqual(warningModalCalls[0].msg, t.deleteConfirm(meeting.title));
+      assert.strictEqual(warningModalCalls[0].buttons[0], t.deleteBtn());
+      assert.deepStrictEqual(removedMeetingIds, []);
+
+      // Scenario B: User confirms deletion from a tree item
+      confirmResponse = t.deleteBtn();
+      await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
+      assert.strictEqual(warningModalCalls.length, 2);
+      assert.deepStrictEqual(removedMeetingIds, [meeting.id]);
+
+      // Scenario C: Command palette invocation selects a meeting before confirmation
+      removedMeetingIds.length = 0;
+      (vscode.window as any).showQuickPick = (items: any[]) => {
+        quickPickItemsList.push(items);
+        return Promise.resolve(items.find(item => item.meeting.id === quickPickMeeting.id));
+      };
+      await vscode.commands.executeCommand('meetdock-solo.deleteMeeting');
+      assert.strictEqual(quickPickItemsList.length, 1);
+      assert.deepStrictEqual(quickPickItemsList[0].map(item => item.meeting.id), [meeting.id, quickPickMeeting.id]);
+      assert.strictEqual(warningModalCalls.length, 3);
+      assert.strictEqual(warningModalCalls[2].msg, t.deleteConfirm(quickPickMeeting.title));
+      assert.deepStrictEqual(removedMeetingIds, [quickPickMeeting.id]);
+      assert.strictEqual(infoCalls.at(-1)?.msg, t.meetingDeleted(quickPickMeeting.title));
+    } finally {
+      MeetingManager.prototype.getSortedMeetings = originalGetSortedMeetings;
+      MeetingManager.prototype.removeMeeting = originalRemoveMeeting;
+    }
   });
 
   test('MeetingTreeItem contextValue differs for chat-capable and non-chat meetings', () => {
