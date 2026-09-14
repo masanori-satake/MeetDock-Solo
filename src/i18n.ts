@@ -208,6 +208,7 @@ export const t = {
 
   // Edit Recurrence
   editRecurrenceTitle: (title: string) => isJapanese() ? `繰り返し設定の変更: ${title}` : `Edit Recurrence: ${title}`,
+  noMeetingsToEditRecurrence: () => isJapanese() ? '繰り返し設定を編集できる登録済みミーティングはありません。' : 'There are no registered meetings whose recurrence settings can be edited.',
   intervalPrompt: (unit: string) => isJapanese() ? `繰り返し間隔を入力してください (単位: ${unit})` : `Enter recurrence interval (Unit: ${unit})`,
   intervalInvalid: () => isJapanese() ? '1以上の整数を入力してください。' : 'Please enter an integer greater than or equal to 1.',
   intervalUnitDays: () => isJapanese() ? '日' : 'day(s)',

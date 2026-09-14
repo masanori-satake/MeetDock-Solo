@@ -6,6 +6,22 @@ import { isValidTeamsUrl } from './urlValidator';
 import { t } from './i18n';
 import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
 
+function parseIntegerInput(value: string, min: number, max = Number.MAX_SAFE_INTEGER): number | undefined {
+  const trimmed = value.trim();
+  if (!/^[0-9]+$/.test(trimmed)) {
+    return undefined;
+  }
+
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : undefined;
+}
+
+function isCalendarDate(year: number, month: number, day: number, timeZone?: string): boolean {
+  const date = createDateInTimeZone(year, month, day, 12, 0, 0, 0, timeZone);
+  const parts = getZonedDateParts(date, timeZone);
+  return parts.year === year && parts.month === month && parts.day === day;
+}
+
 /**
  * Prompts for meeting details parsed from the clipboard and saves the meeting.
  */
@@ -237,7 +253,7 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
   if (!meeting) {
     const sortedMeetings = meetingManager.getSortedMeetings();
     if (sortedMeetings.length === 0) {
-      vscode.window.showInformationMessage(t.noMeetingsPrompt());
+      vscode.window.showInformationMessage(t.noMeetingsToEditRecurrence());
       return;
     }
 
@@ -319,7 +335,15 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
         if (!val || !val.trim()) {
           return null; // Empty means no end date
         }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+        const match = val.trim().match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+        if (!match) {
+          return t.endDateInvalid();
+        }
+
+        const year = Number(match[1]);
+        const month = Number(match[2]) - 1;
+        const day = Number(match[3]);
+        if (!isCalendarDate(year, month, day, meeting!.timeZone)) {
           return t.endDateInvalid();
         }
         return null;
@@ -335,9 +359,9 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
     }
 
     const [yStr, mStr, dStr] = inputEndDate.trim().split('-');
-    const year = parseInt(yStr, 10);
-    const month = parseInt(mStr, 10) - 1;
-    const day = parseInt(dStr, 10);
+    const year = Number(yStr);
+    const month = Number(mStr) - 1;
+    const day = Number(dStr);
     return createDateInTimeZone(year, month, day, 23, 59, 59, 999, meeting!.timeZone).toISOString();
   };
 
@@ -347,12 +371,11 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
       prompt: t.intervalPrompt(t.intervalUnitDays()),
       value: String(meeting.recurrenceInterval || 1),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+        return parseIntegerInput(val, 1) === undefined ? t.intervalInvalid() : null;
       }
     });
     if (!inputInterval) { return; }
-    newInterval = parseInt(inputInterval.trim(), 10);
+    newInterval = Number(inputInterval.trim());
 
     const endDateResult = await promptEndDate();
     if (endDateResult === undefined) { return; }
@@ -364,12 +387,11 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
       prompt: t.intervalPrompt(t.intervalUnitWeeks()),
       value: String(meeting.recurrenceInterval || 1),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+        return parseIntegerInput(val, 1) === undefined ? t.intervalInvalid() : null;
       }
     });
     if (!inputInterval) { return; }
-    newInterval = parseInt(inputInterval.trim(), 10);
+    newInterval = Number(inputInterval.trim());
 
     // Prompt days of week
     const currentDays = meeting.daysOfWeek || [startParts.dayOfWeek];
@@ -418,24 +440,22 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
       prompt: t.intervalPrompt(t.intervalUnitMonths()),
       value: String(meeting.recurrenceInterval || 1),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+        return parseIntegerInput(val, 1) === undefined ? t.intervalInvalid() : null;
       }
     });
     if (!inputInterval) { return; }
-    newInterval = parseInt(inputInterval.trim(), 10);
+    newInterval = Number(inputInterval.trim());
 
     // Prompt day of month
     const inputDayOfMonth = await vscode.window.showInputBox({
       prompt: t.dayOfMonthPrompt(),
       value: String(meeting.dayOfMonth || startParts.day),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1 || num > 31) ? t.dayOfMonthInvalid() : null;
+        return parseIntegerInput(val, 1, 31) === undefined ? t.dayOfMonthInvalid() : null;
       }
     });
     if (!inputDayOfMonth) { return; }
-    newDayOfMonth = parseInt(inputDayOfMonth.trim(), 10);
+    newDayOfMonth = Number(inputDayOfMonth.trim());
 
     const endDateResult = await promptEndDate();
     if (endDateResult === undefined) { return; }
@@ -447,36 +467,38 @@ export async function editRecurrenceCommand(meetingManager: MeetingManager, targ
       prompt: t.intervalPrompt(t.intervalUnitYears()),
       value: String(meeting.recurrenceInterval || 1),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+        return parseIntegerInput(val, 1) === undefined ? t.intervalInvalid() : null;
       }
     });
     if (!inputInterval) { return; }
-    newInterval = parseInt(inputInterval.trim(), 10);
+    newInterval = Number(inputInterval.trim());
 
     // Prompt month of year
     const inputMonth = await vscode.window.showInputBox({
       prompt: t.monthOfYearPrompt(),
       value: String(meeting.monthOfYear || startParts.month + 1),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1 || num > 12) ? t.monthOfYearInvalid() : null;
+        return parseIntegerInput(val, 1, 12) === undefined ? t.monthOfYearInvalid() : null;
       }
     });
     if (!inputMonth) { return; }
-    newMonthOfYear = parseInt(inputMonth.trim(), 10);
+    newMonthOfYear = Number(inputMonth.trim());
 
     // Prompt day of year
     const inputDay = await vscode.window.showInputBox({
       prompt: t.dayOfMonthPrompt(),
       value: String(meeting.dayOfYear || meeting.dayOfMonth || startParts.day),
       validateInput: (val) => {
-        const num = parseInt(val.trim(), 10);
-        return (!val || isNaN(num) || num < 1 || num > 31) ? t.dayOfMonthInvalid() : null;
+        const day = parseIntegerInput(val, 1, 31);
+        return day === undefined
+          || newMonthOfYear === undefined
+          || !isCalendarDate(2000, newMonthOfYear - 1, day, meeting!.timeZone)
+          ? t.dayOfMonthInvalid()
+          : null;
       }
     });
     if (!inputDay) { return; }
-    newDayOfYear = parseInt(inputDay.trim(), 10);
+    newDayOfYear = Number(inputDay.trim());
 
     const endDateResult = await promptEndDate();
     if (endDateResult === undefined) { return; }
