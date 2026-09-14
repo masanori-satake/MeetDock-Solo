@@ -7,6 +7,7 @@ import { MeetingManager } from '../meetingManager';
 import { Meeting } from '../types';
 import { getTeamsChatUrl, openTeamsChatUrl } from '../urlValidator';
 import { t } from '../i18n';
+import type { MeetDockExtensionApi } from '../extension';
 
 suite('Extension & openChat Command Test Suite', () => {
   let originalWarning: typeof vscode.window.showWarningMessage;
@@ -148,23 +149,12 @@ suite('Extension & openChat Command Test Suite', () => {
       return Promise.resolve(undefined);
     };
 
-    const store: Record<string, any> = {
-      'meetdock-solo.meetings': [meeting, quickPickMeeting]
-    };
-    const mockContext: any = {
-      globalState: {
-        get: (key: string, defaultVal: any) => store[key] ?? defaultVal,
-        update: async (key: string, val: any) => {
-          store[key] = val;
-        }
-      }
-    };
-    const realManager = new MeetingManager(mockContext);
-
-    const ext = vscode.extensions.getExtension('masanori-satake.meetdock-solo');
-    if (ext && !ext.isActive) {
-      await ext.activate();
-    }
+    const ext = vscode.extensions.getExtension<MeetDockExtensionApi>('masanori-satake.meetdock-solo');
+    assert.ok(ext, 'MeetDock extension should be available');
+    const extensionApi = await ext.activate();
+    const extensionManager = extensionApi.meetingManager;
+    const originalMeetings = extensionManager.getMeetings();
+    await extensionManager.saveMeetings([meeting, quickPickMeeting]);
 
     try {
       const treeItem = new MeetingTreeItem(meeting);
@@ -175,12 +165,13 @@ suite('Extension & openChat Command Test Suite', () => {
       assert.strictEqual(warningModalCalls.length, 1);
       assert.strictEqual(warningModalCalls[0].msg, t.deleteConfirm(meeting.title));
       assert.strictEqual(warningModalCalls[0].buttons[0], t.deleteBtn());
-      assert.strictEqual(realManager.getMeetings().length, 2);
+      assert.strictEqual(extensionManager.getMeetings().length, 2);
 
       // Scenario B: User confirms deletion from a tree item
       confirmResponse = t.deleteBtn();
       await vscode.commands.executeCommand('meetdock-solo.deleteMeeting', treeItem);
       assert.strictEqual(warningModalCalls.length, 2);
+      assert.strictEqual(extensionManager.getMeetings().length, 1);
 
       // Scenario C: Command palette invocation selects a meeting before confirmation
       (vscode.window as any).showQuickPick = (items: any[]) => {
@@ -192,8 +183,9 @@ suite('Extension & openChat Command Test Suite', () => {
       assert.strictEqual(warningModalCalls.length, 3);
       assert.strictEqual(warningModalCalls[2].msg, t.deleteConfirm(quickPickMeeting.title));
       assert.strictEqual(infoCalls.at(-1)?.msg, t.meetingDeleted(quickPickMeeting.title));
+      assert.strictEqual(extensionManager.getMeetings().length, 0);
     } finally {
-      // restore
+      await extensionManager.saveMeetings(originalMeetings);
     }
   });
 
