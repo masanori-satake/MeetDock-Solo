@@ -250,14 +250,14 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       }
     }
 
-    if (!droppedText && typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
+    if (!droppedText.trim() && typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
       try {
         for (const [, item] of dataTransfer) {
           const file = item?.asFile ? item.asFile() : undefined;
           if (file?.name.toLowerCase().endsWith('.ics')) {
             try {
               droppedText = await readDataTransferFile(file);
-              if (droppedText) {
+              if (droppedText.trim()) {
                 break;
               }
             } catch {
@@ -270,7 +270,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       }
     }
 
-    if (!droppedText) {
+    if (!droppedText.trim()) {
       const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
       if (calItem) {
         droppedText = await calItem.asString();

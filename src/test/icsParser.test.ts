@@ -407,6 +407,32 @@ END:VCALENDAR`;
     assert.strictEqual(nonIcsFileRead, false);
     assert.strictEqual(meetings3.length, 1);
     assert.strictEqual(meetings3[0].title, 'One-time Sync Meeting');
+
+    // 22e. Skip whitespace-only ICS file content and continue to the next ICS file
+    const whitespaceIcsFileItem = {
+      asFile: () => ({
+        name: 'empty.ics',
+        data: async () => Buffer.from(' \n\t ')
+      })
+    };
+    const dataTransfer6 = {
+      get: (mime: string) => mime === 'files' ? whitespaceIcsFileItem : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', whitespaceIcsFileItem];
+        yield ['application/ics', icsFileItem];
+      }
+    } as any;
+    const manager4 = new MeetingManager({
+      globalState: {
+        get: (_key: string, defaultVal: any) => defaultVal,
+        update: async () => undefined
+      }
+    } as any);
+    const provider4 = new MeetingTreeDataProvider(manager4, () => new Date('2026-10-01T00:00:00Z'));
+    await provider4.handleDrop(undefined, dataTransfer6, {} as any);
+    const meetings4 = manager4.getMeetings();
+    assert.strictEqual(meetings4.length, 1);
+    assert.strictEqual(meetings4[0].title, 'One-time Sync Meeting');
   });
 
   test('25. Handles RDATE recurrence correctly', () => {
