@@ -294,8 +294,8 @@ END:VCALENDAR`;
     assert.strictEqual(resMulti[1].title, 'Event 2');
   });
 
-  // 22. Drag-and-drop integration with TreeProvider (Raw text & File URI)
-  test('22. Handles drag-and-drop of ICS raw text and File URI in TreeProvider', async () => {
+  // 22. Drag-and-drop integration with TreeProvider (Raw text & File URI & DataTransferFile)
+  test('22. Handles drag-and-drop of ICS raw text, File URI, and DataTransferFile in TreeProvider', async () => {
     const store: Record<string, any> = {};
     const mockContext: any = {
       globalState: {
@@ -346,6 +346,35 @@ END:VCALENDAR`;
     assert.strictEqual(meetings.length, 3);
     assert.strictEqual(meetings[2].uid, meetings[1].uid);
     assert.notStrictEqual(meetings[2].startTime, meetings[1].startTime);
+
+    // 22c. DataTransferFile (OS file explorer drop via 'files' MIME type)
+    const fixturePathJp = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_jp.ics');
+    const fileItem = {
+      asFile: () => ({
+        name: 'single_jp.ics',
+        uri: { scheme: 'file', fsPath: fixturePathJp },
+        data: async () => Buffer.from(readFixture('single_jp.ics'))
+      })
+    };
+    const dataTransfer4 = {
+      get: (mime: string) => mime === 'files' ? fileItem : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', fileItem];
+      }
+    } as any;
+    let store2: Record<string, any> = {};
+    const mockContext2: any = {
+      globalState: {
+        get: (key: string, defaultVal: any) => store2[key] ?? defaultVal,
+        update: async (key: string, val: any) => { store2[key] = val; }
+      }
+    };
+    const manager2 = new MeetingManager(mockContext2);
+    const provider2 = new MeetingTreeDataProvider(manager2, () => new Date('2026-10-01T00:00:00Z'));
+    await provider2.handleDrop(undefined, dataTransfer4, {} as any);
+    const meetings2 = manager2.getMeetings();
+    assert.strictEqual(meetings2.length, 1);
+    assert.strictEqual(meetings2[0].title, '単発定例会議');
   });
 
   test('25. Handles RDATE recurrence correctly', () => {
