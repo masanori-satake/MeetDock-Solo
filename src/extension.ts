@@ -8,14 +8,10 @@ import { getTeamsChatUrl, openTeamsChatUrl, openTeamsMeetingUrl } from './urlVal
 import { Meeting } from './types';
 import { t } from './i18n';
 
-export interface MeetDockExtensionApi {
-  meetingManager: MeetingManager;
-}
-
 /**
  * Activates MeetDock and registers its tree view, reminders, and commands.
  */
-export function activate(context: vscode.ExtensionContext): MeetDockExtensionApi {
+export function activate(context: vscode.ExtensionContext) {
   console.log('MeetDock-Solo is now active!');
 
   // Check for updates in background asynchronously without blocking activation
@@ -50,14 +46,11 @@ export function activate(context: vscode.ExtensionContext): MeetDockExtensionApi
     }
   };
 
-  // Listen to meeting additions without reacting to edits or removals.
-  let previousMeetingCount = meetingManager.getMeetings().length;
+  // Listen to meeting addition
   meetingManager.onDidChangeMeetings(() => {
-    const meetingCount = meetingManager.getMeetings().length;
-    if (meetingCount > previousMeetingCount) {
-      void updateRegisteredStateOnAdd();
+    if (meetingManager.getMeetings().length > 0) {
+      updateRegisteredStateOnAdd();
     }
-    previousMeetingCount = meetingCount;
   });
 
   const treeDataProvider = new MeetingTreeDataProvider(meetingManager);
@@ -268,8 +261,6 @@ export function activate(context: vscode.ExtensionContext): MeetDockExtensionApi
     selectMeetingDisposable,
     toggleGuideDisposable
   );
-
-  return { meetingManager };
 }
 
 /**
