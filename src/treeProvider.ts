@@ -121,7 +121,7 @@ async function readDataTransferFile(file: vscode.DataTransferFile): Promise<stri
 }
 
 export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
-  dropMimeTypes = ['files', 'text/calendar', 'application/ics', 'text/plain', 'text/html', 'text/uri-list'];
+  dropMimeTypes = ['files', 'text/calendar', 'text/x-vcalendar', 'application/ics', 'text/plain', 'text/html', 'text/uri-list'];
   dragMimeTypes = [];
 
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -309,8 +309,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
     // If droppedText contains file URI(s) or file path, read file content from disk
     let icsContent = droppedText;
-    if (/^file:\/\//i.test(droppedText.trim()) || droppedText.trim().endsWith('.ics')) {
-      const uriLines = droppedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const cleanText = droppedText.trim().replace(/^["']|["']$/g, '');
+    if (/^file:\/\//i.test(cleanText) || cleanText.endsWith('.ics')) {
+      const uriLines = droppedText.split(/\r?\n/).map(l => l.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
       for (const line of uriLines) {
         let filePath = line;
         if (line.startsWith('file://')) {

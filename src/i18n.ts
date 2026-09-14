@@ -203,6 +203,7 @@ export const t = {
   icsParsing: () => isJapanese() ? 'MeetDock: .ics ファイルを解析中...' : 'MeetDock: Parsing .ics file...',
   icsSuccess: (count: number) => isJapanese() ? `MeetDock: ${count} 件の会議を .ics ファイルから登録しました。` : `MeetDock: Registered ${count} meeting(s) from .ics file.`,
   icsWarningNoUrl: () => isJapanese() ? 'MeetDock: .ics ファイルから有効な Teams 参加 URL が見つかりませんでした。' : 'MeetDock: No valid Teams join URL was found in the .ics file.',
+  icsAlreadyRegistered: () => isJapanese() ? 'MeetDock: .ics ファイル内の会議はすべて登録済みです。' : 'MeetDock: All meetings in the .ics file are already registered.',
   icsWarningNoEvents: () => isJapanese() ? 'MeetDock: .ics ファイルに有効な会議イベントが存在しません。' : 'MeetDock: No valid meeting events found in the .ics file.',
   icsErrorParseFailed: () => isJapanese() ? 'MeetDock: .ics ファイルの解析に失敗しました。ファイル形式を確認してください。' : 'MeetDock: Failed to parse .ics file. Please check file format.',
 
