@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
 import { MeetingManager } from './meetingManager';
 import { parseMeetingText } from './parser';
+import { parseIcsContent } from './icsParser';
 import { Meeting, RecurrenceType } from './types';
 import { isValidTeamsUrl } from './urlValidator';
 import { t } from './i18n';
@@ -234,6 +236,124 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
 
   await meetingManager.addMeeting(newMeeting);
   vscode.window.showInformationMessage(t.meetingSaved(newMeeting.title));
+}
+
+/**
+ * Prompts user to select an .ics or calendar file from disk and imports contained meetings.
+ */
+export async function addFromFileCommand(meetingManager: MeetingManager): Promise<void> {
+  const uris = await vscode.window.showOpenDialog({
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    filters: {
+      'Calendar Files (*.ics)': ['ics', 'ical'],
+      'All Files': ['*']
+    },
+    openLabel: 'インポート'
+  });
+
+  if (!uris || uris.length === 0) {
+    return;
+  }
+
+  const fileUri = uris[0];
+  let fileContent = '';
+  try {
+    fileContent = await fs.promises.readFile(fileUri.fsPath, 'utf-8');
+  } catch {
+    vscode.window.showErrorMessage(t.icsErrorParseFailed());
+    return;
+  }
+
+  if (!fileContent || !fileContent.trim()) {
+    vscode.window.showWarningMessage(t.icsWarningNoEvents());
+    return;
+  }
+
+  const now = new Date();
+  const isIcs = /BEGIN:VCALENDAR/i.test(fileContent) || /BEGIN:VEVENT/i.test(fileContent);
+
+  if (isIcs) {
+    try {
+      const parsedMeetings = parseIcsContent(fileContent, now);
+      if (parsedMeetings.length === 0) {
+        vscode.window.showWarningMessage(t.icsWarningNoEvents());
+        return;
+      }
+
+      let addedCount = 0;
+      let missingUrlCount = 0;
+      const knownOccurrences = meetingManager.getMeetings()
+        .filter(m => m.uid)
+        .map(m => ({ uid: m.uid, startTime: m.startTime }));
+
+      for (const info of parsedMeetings) {
+        if (!info.url || !isValidTeamsUrl(info.url)) {
+          missingUrlCount++;
+          continue;
+        }
+
+        const duration = info.startTime && info.endTime
+          ? info.endTime.getTime() - info.startTime.getTime()
+          : 30 * 60 * 1000;
+        const startTime = (info.startTime || now).toISOString();
+        const existingOccurrence = info.uid
+          ? knownOccurrences.some(m => m.uid === info.uid && m.startTime === startTime)
+          : undefined;
+        if (existingOccurrence) {
+          continue;
+        }
+
+        const newMeeting: Meeting = {
+          id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
+          title: info.title || 'Teams Meeting',
+          url: info.url,
+          startTime,
+          endTime: info.endTime ? info.endTime.toISOString() : new Date((info.startTime || now).getTime() + duration).toISOString(),
+          timeZone: info.timeZone,
+          recurrence: info.recurrence || 'once',
+          recurrenceInterval: info.recurrenceInterval,
+          daysOfWeek: info.daysOfWeek,
+          dayOfMonth: info.dayOfMonth,
+          monthOfYear: info.monthOfYear,
+          dayOfYear: info.dayOfYear,
+          recurrenceByDay: info.recurrenceByDay,
+          recurrenceByMonthDay: info.recurrenceByMonthDay,
+          recurrenceByMonth: info.recurrenceByMonth,
+          recurrenceBySetPos: info.recurrenceBySetPos,
+          recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
+          organizer: info.organizer,
+          meetingId: info.meetingId,
+          passcode: info.passcode,
+          isEnterprise: info.isEnterprise,
+          uid: info.uid,
+          sequence: info.sequence,
+          status: info.status,
+          location: info.location,
+          description: info.description,
+          attendees: info.attendees,
+          alarmMinutes: info.alarmMinutes,
+        };
+
+        await meetingManager.addMeeting(newMeeting);
+        if (newMeeting.uid) {
+          knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
+        }
+        addedCount++;
+      }
+
+      if (addedCount > 0) {
+        vscode.window.showInformationMessage(t.icsSuccess(addedCount));
+      } else if (missingUrlCount > 0) {
+        vscode.window.showWarningMessage(t.icsWarningNoUrl());
+      }
+    } catch {
+      vscode.window.showErrorMessage(t.icsErrorParseFailed());
+    }
+  } else {
+    vscode.window.showWarningMessage(t.icsWarningNoEvents());
+  }
 }
 
 /**

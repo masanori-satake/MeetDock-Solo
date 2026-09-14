@@ -67,6 +67,11 @@
         "icon": "$(add)"
       },
       {
+        "command": "meetdock-solo.addFromFile",
+        "title": "MeetDock: .ics ファイルから会議を追加",
+        "icon": "$(file-add)"
+      },
+      {
         "command": "meetdock-solo.openMeeting",
         "title": "Teamsに参加",
         "icon": "$(link-external)"
