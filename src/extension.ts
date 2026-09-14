@@ -17,14 +17,58 @@ export function activate(context: vscode.ExtensionContext) {
   // Check for updates in background asynchronously without blocking activation
   checkForUpdates(context).catch(() => {});
 
+  const HAS_EVER_REGISTERED_KEY = 'meetdock.hasEverRegisteredMeeting';
+  let hasEverRegistered = context.globalState.get<boolean>(HAS_EVER_REGISTERED_KEY, false);
+
   const meetingManager = new MeetingManager(context);
+
+  // Check initial meeting state: if meetings exist on activation, ensure flag is true
+  if (!hasEverRegistered && meetingManager.getMeetings().length > 0) {
+    hasEverRegistered = true;
+    context.globalState.update(HAS_EVER_REGISTERED_KEY, true);
+  }
+
+  // Set context key for view visibility
+  vscode.commands.executeCommand('setContext', 'meetdock:hasEverRegisteredMeeting', hasEverRegistered);
+
+  let showGuideManual = false;
+
+  const updateRegisteredStateOnAdd = async () => {
+    if (!hasEverRegistered) {
+      hasEverRegistered = true;
+      await context.globalState.update(HAS_EVER_REGISTERED_KEY, true);
+      await vscode.commands.executeCommand('setContext', 'meetdock:hasEverRegisteredMeeting', true);
+    }
+    // Automatically collapse/hide manual guide toggle whenever a meeting is added
+    if (showGuideManual) {
+      showGuideManual = false;
+      await vscode.commands.executeCommand('setContext', 'meetdock:showGuide', false);
+    }
+  };
+
+  // Listen to meeting addition
+  meetingManager.onDidChangeMeetings(() => {
+    if (meetingManager.getMeetings().length > 0) {
+      updateRegisteredStateOnAdd();
+    }
+  });
+
   const treeDataProvider = new MeetingTreeDataProvider(meetingManager);
   const reminderService = new ReminderService(meetingManager);
 
-  // Register TreeView with Drag & Drop support
+  // Register Meetings TreeView with Drag & Drop support
   const treeView = vscode.window.createTreeView('meetdock-view', {
     treeDataProvider,
     dragAndDropController: treeDataProvider
+  });
+
+  // Dummy provider for guide view welcome content
+  class GuideTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+    getTreeItem(element: vscode.TreeItem): vscode.TreeItem { return element; }
+    getChildren(): vscode.ProviderResult<vscode.TreeItem[]> { return []; }
+  }
+  const guideTreeView = vscode.window.createTreeView('meetdock-guide-view', {
+    treeDataProvider: new GuideTreeDataProvider()
   });
 
   // Start Reminder Service
@@ -147,6 +191,11 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider.refresh();
   });
 
+  const toggleGuideDisposable = vscode.commands.registerCommand('meetdock-solo.toggleGuide', async () => {
+    showGuideManual = !showGuideManual;
+    await vscode.commands.executeCommand('setContext', 'meetdock:showGuide', showGuideManual);
+  });
+
   const selectMeetingDisposable = vscode.commands.registerCommand('meetdock-solo.selectMeeting', async () => {
     const sortedMeetings = meetingManager.getSortedMeetings();
     if (sortedMeetings.length === 0) {
@@ -199,6 +248,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     treeView,
+    guideTreeView,
     treeDataProvider,
     reminderService,
     addClipboardDisposable,
@@ -208,7 +258,8 @@ export function activate(context: vscode.ExtensionContext) {
     deleteMeetingDisposable,
     editRecurrenceDisposable,
     refreshViewDisposable,
-    selectMeetingDisposable
+    selectMeetingDisposable,
+    toggleGuideDisposable
   );
 }
 

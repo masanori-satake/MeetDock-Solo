@@ -255,14 +255,14 @@ suite('Extension & openChat Command Test Suite', () => {
     }
   });
 
-  test('package.json contributes viewsWelcome for meetdock-view and NLS files contain required instructions and recurrence note', () => {
+  test('package.json contributes viewsWelcome for meetdock-guide-view and NLS files contain required instructions and recurrence note', () => {
     const rootDir = path.resolve(__dirname, '../../');
     const pkgPath = path.join(rootDir, 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
     assert.ok(pkg.contributes?.viewsWelcome, 'viewsWelcome should be defined in package.json contributes');
-    const meetdockWelcome = pkg.contributes.viewsWelcome.find((vw: any) => vw.view === 'meetdock-view');
-    assert.ok(meetdockWelcome, 'meetdock-view should have viewsWelcome configuration');
+    const meetdockWelcome = pkg.contributes.viewsWelcome.find((vw: any) => vw.view === 'meetdock-guide-view');
+    assert.ok(meetdockWelcome, 'meetdock-guide-view should have viewsWelcome configuration');
     assert.strictEqual(meetdockWelcome.contents, '%meetdock.welcome.contents%');
 
     // Japanese NLS

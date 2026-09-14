@@ -227,6 +227,10 @@ export const t = {
   recurrenceUpdated: (title: string) => isJapanese() ? `MeetDock: ミーティング「${title}」の繰り返し設定を更新しました。` : `MeetDock: Updated recurrence settings for "${title}".`,
   editRecurrenceCommandTitle: () => isJapanese() ? '繰り返し設定を変更' : 'Edit Recurrence',
 
+  // Drop zone hint when empty
+  dropZoneHint: () => isJapanese() ? '.ics ファイルまたは招待テキストをここにドロップ' : 'Drop .ics file or invitation text here',
+  dropZoneTooltip: () => isJapanese() ? 'ここに .ics ファイルや Teams 招待テキストをドラッグ＆ドロップして登録できます' : 'Drag & drop .ics files or Teams invitation text here to register meetings',
+
   // Delete Meeting
   deleteConfirm: (title: string) => isJapanese() ? `ミーティング「${title}」を削除してもよろしいですか？` : `Are you sure you want to delete meeting "${title}"?`,
   deleteBtn: () => isJapanese() ? '削除' : 'Delete',

@@ -239,9 +239,10 @@ suite('TreeProvider Test Suite', () => {
 
     assert.ok(refreshFired, 'onDidChangeTreeData should fire when meeting is deleted');
 
-    // Now getChildren returns [] (empty array), causing VS Code to show viewsWelcome
+    // Now getChildren returns [dropHintItem] when empty
     items = provider.getChildren() as vscode.TreeItem[];
-    assert.strictEqual(items.length, 0);
+    assert.strictEqual(items.length, 1);
+    assert.strictEqual(items[0].contextValue, 'emptyDropHintItem');
 
     provider.dispose();
   });

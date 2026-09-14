@@ -205,6 +205,16 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
     if (!element) {
       const meetings = this.meetingManager.getSortedMeetings();
+      if (meetings.length === 0) {
+        const dropHintItem = new vscode.TreeItem(
+          t.dropZoneHint(),
+          vscode.TreeItemCollapsibleState.None
+        );
+        dropHintItem.iconPath = new vscode.ThemeIcon('file-add');
+        dropHintItem.tooltip = t.dropZoneTooltip();
+        dropHintItem.contextValue = 'emptyDropHintItem';
+        return [dropHintItem];
+      }
       const currentDate = this.now();
       return meetings.map(m => new MeetingTreeItem(m, currentDate));
     }
