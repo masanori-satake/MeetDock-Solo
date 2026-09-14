@@ -76,6 +76,11 @@
         "icon": "$(trash)"
       },
       {
+        "command": "meetdock-solo.editRecurrence",
+        "title": "繰り返し設定の変更",
+        "icon": "$(edit)"
+      },
+      {
         "command": "meetdock-solo.refreshView",
         "title": "更新",
         "icon": "$(refresh)"
@@ -120,6 +125,11 @@
           "command": "meetdock-solo.deleteMeeting",
           "when": "view == meetdock-view && viewItem =~ /meetingItem/",
           "group": "inline@3"
+        },
+        {
+          "command": "meetdock-solo.editRecurrence",
+          "when": "view == meetdock-view && (viewItem =~ /meetingItem/ || viewItem == recurrenceDetailItem)",
+          "group": "inline@4"
         }
       ]
     }

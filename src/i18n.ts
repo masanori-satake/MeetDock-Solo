@@ -205,4 +205,23 @@ export const t = {
   icsWarningNoUrl: () => isJapanese() ? 'MeetDock: .ics ファイルから有効な Teams 参加 URL が見つかりませんでした。' : 'MeetDock: No valid Teams join URL was found in the .ics file.',
   icsWarningNoEvents: () => isJapanese() ? 'MeetDock: .ics ファイルに有効な会議イベントが存在しません。' : 'MeetDock: No valid meeting events found in the .ics file.',
   icsErrorParseFailed: () => isJapanese() ? 'MeetDock: .ics ファイルの解析に失敗しました。ファイル形式を確認してください。' : 'MeetDock: Failed to parse .ics file. Please check file format.',
+
+  // Edit Recurrence
+  editRecurrenceTitle: (title: string) => isJapanese() ? `繰り返し設定の変更: ${title}` : `Edit Recurrence: ${title}`,
+  intervalPrompt: (unit: string) => isJapanese() ? `繰り返し間隔を入力してください (単位: ${unit})` : `Enter recurrence interval (Unit: ${unit})`,
+  intervalInvalid: () => isJapanese() ? '1以上の整数を入力してください。' : 'Please enter an integer greater than or equal to 1.',
+  intervalUnitDays: () => isJapanese() ? '日' : 'day(s)',
+  intervalUnitWeeks: () => isJapanese() ? '週' : 'week(s)',
+  intervalUnitMonths: () => isJapanese() ? 'か月' : 'month(s)',
+  intervalUnitYears: () => isJapanese() ? '年' : 'year(s)',
+  daysOfWeekPrompt: () => isJapanese() ? '繰り返しを行う曜日を選択してください' : 'Select day(s) of the week for recurrence',
+  daysOfWeekRequired: () => isJapanese() ? '少なくとも1つの曜日を選択してください。' : 'Please select at least one day.',
+  dayOfMonthPrompt: () => isJapanese() ? '開催日の日付を入力してください (1-31)' : 'Enter day of the month (1-31)',
+  dayOfMonthInvalid: () => isJapanese() ? '1から31の間の整数を入力してください。' : 'Please enter an integer between 1 and 31.',
+  monthOfYearPrompt: () => isJapanese() ? '開催月を入力してください (1-12)' : 'Enter month of the year (1-12)',
+  monthOfYearInvalid: () => isJapanese() ? '1から12の間の整数を入力してください。' : 'Please enter an integer between 1 and 12.',
+  endDatePrompt: () => isJapanese() ? '繰り返しの終了日を入力してください (形式: YYYY-MM-DD、未指定の場合は空欄)' : 'Enter recurrence end date (Format: YYYY-MM-DD, leave empty for no end date)',
+  endDateInvalid: () => isJapanese() ? '正しい日付形式 (例: 2026-12-31) で入力してください。' : 'Please enter a valid date format (e.g. 2026-12-31).',
+  recurrenceUpdated: (title: string) => isJapanese() ? `MeetDock: ミーティング「${title}」の繰り返し設定を更新しました。` : `MeetDock: Updated recurrence settings for "${title}".`,
+  editRecurrenceCommandTitle: () => isJapanese() ? '繰り返し設定を変更' : 'Edit Recurrence',
 };

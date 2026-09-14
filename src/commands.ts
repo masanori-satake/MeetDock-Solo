@@ -219,3 +219,286 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
   await meetingManager.addMeeting(newMeeting);
   vscode.window.showInformationMessage(t.meetingSaved(newMeeting.title));
 }
+
+/**
+ * Allows editing the recurrence pattern and details of an existing meeting.
+ */
+export async function editRecurrenceCommand(meetingManager: MeetingManager, target?: any): Promise<void> {
+  let meeting: Meeting | undefined = undefined;
+
+  if (target) {
+    if (target.meeting) {
+      meeting = target.meeting;
+    } else if (target.id && target.title) {
+      meeting = target as Meeting;
+    }
+  }
+
+  if (!meeting) {
+    const sortedMeetings = meetingManager.getSortedMeetings();
+    if (sortedMeetings.length === 0) {
+      vscode.window.showInformationMessage(t.noMeetingsPrompt());
+      return;
+    }
+
+    type MeetingQuickPickItem = vscode.QuickPickItem & { meeting: Meeting };
+    const items: MeetingQuickPickItem[] = sortedMeetings.map(m => {
+      const start = new Date(m.startTime);
+      const timeStr = start.toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
+      return {
+        label: `$(sync) ${m.title}`,
+        description: `${timeStr} (${m.recurrence})`,
+        meeting: m
+      };
+    });
+
+    const selected = await vscode.window.showQuickPick(items, {
+      placeHolder: t.selectMeetingPlaceholder()
+    });
+
+    if (!selected) {
+      return;
+    }
+    meeting = selected.meeting;
+  }
+
+  // 1. Prompt for Recurrence Pattern
+  const currentRecurrence = meeting.recurrence || 'once';
+  const recurrenceItems: { label: string; description: string; type: RecurrenceType }[] = [
+    { label: t.recurrenceOnceLabel(currentRecurrence === 'once'), description: t.recurrenceOnceDesc(), type: 'once' },
+    { label: t.recurrenceDailyLabel(currentRecurrence === 'daily'), description: t.recurrenceDailyDesc(), type: 'daily' },
+    { label: t.recurrenceWeeklyLabel(currentRecurrence === 'weekly'), description: t.recurrenceWeeklyDesc(), type: 'weekly' },
+    { label: t.recurrenceWeekdaysLabel(currentRecurrence === 'weekdays'), description: t.recurrenceWeekdaysDesc(), type: 'weekdays' },
+    { label: t.recurrenceMonthlyLabel(currentRecurrence === 'monthly'), description: t.recurrenceMonthlyDesc(), type: 'monthly' },
+    { label: t.recurrenceYearlyLabel(currentRecurrence === 'yearly'), description: t.recurrenceYearlyDesc(), type: 'yearly' }
+  ];
+
+  if (currentRecurrence !== 'once') {
+    const idx = recurrenceItems.findIndex(item => item.type === currentRecurrence);
+    if (idx > 0) {
+      const [item] = recurrenceItems.splice(idx, 1);
+      recurrenceItems.unshift(item);
+    }
+  }
+
+  const selectedRecurrence = await vscode.window.showQuickPick(recurrenceItems, {
+    placeHolder: t.recurrencePlaceholder(),
+    title: t.editRecurrenceTitle(meeting.title)
+  });
+
+  if (!selectedRecurrence) {
+    return; // User canceled
+  }
+
+  const newRecurrence = selectedRecurrence.type;
+  const startTime = new Date(meeting.startTime);
+  const startParts = getZonedDateParts(startTime, meeting.timeZone);
+
+  let newInterval: number | undefined = undefined;
+  let newDaysOfWeek: number[] | undefined = undefined;
+  let newDayOfMonth: number | undefined = undefined;
+  let newMonthOfYear: number | undefined = undefined;
+  let newDayOfYear: number | undefined = undefined;
+  let newEndDate: string | undefined = undefined;
+
+  // Helper for End Date input
+  const promptEndDate = async (): Promise<string | null | undefined> => {
+    let defaultEndDateStr = '';
+    if (meeting!.recurrenceEndDate) {
+      const edParts = getZonedDateParts(new Date(meeting!.recurrenceEndDate), meeting!.timeZone);
+      const edY = edParts.year;
+      const edM = String(edParts.month + 1).padStart(2, '0');
+      const edD = String(edParts.day).padStart(2, '0');
+      defaultEndDateStr = `${edY}-${edM}-${edD}`;
+    }
+
+    const inputEndDate = await vscode.window.showInputBox({
+      prompt: t.endDatePrompt(),
+      value: defaultEndDateStr,
+      validateInput: (val) => {
+        if (!val || !val.trim()) {
+          return null; // Empty means no end date
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
+          return t.endDateInvalid();
+        }
+        return null;
+      }
+    });
+
+    if (inputEndDate === undefined) {
+      return undefined; // Canceled
+    }
+
+    if (!inputEndDate.trim()) {
+      return null; // No end date
+    }
+
+    const [yStr, mStr, dStr] = inputEndDate.trim().split('-');
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const day = parseInt(dStr, 10);
+    return createDateInTimeZone(year, month, day, 23, 59, 59, 999, meeting!.timeZone).toISOString();
+  };
+
+  if (newRecurrence === 'daily') {
+    // Prompt interval
+    const inputInterval = await vscode.window.showInputBox({
+      prompt: t.intervalPrompt(t.intervalUnitDays()),
+      value: String(meeting.recurrenceInterval || 1),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+      }
+    });
+    if (!inputInterval) { return; }
+    newInterval = parseInt(inputInterval.trim(), 10);
+
+    const endDateResult = await promptEndDate();
+    if (endDateResult === undefined) { return; }
+    newEndDate = endDateResult || undefined;
+
+  } else if (newRecurrence === 'weekly') {
+    // Prompt interval
+    const inputInterval = await vscode.window.showInputBox({
+      prompt: t.intervalPrompt(t.intervalUnitWeeks()),
+      value: String(meeting.recurrenceInterval || 1),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+      }
+    });
+    if (!inputInterval) { return; }
+    newInterval = parseInt(inputInterval.trim(), 10);
+
+    // Prompt days of week
+    const currentDays = meeting.daysOfWeek || [startParts.dayOfWeek];
+    const dayLabels = [
+      { day: 0, label: '日曜日 (Sun)' },
+      { day: 1, label: '月曜日 (Mon)' },
+      { day: 2, label: '火曜日 (Tue)' },
+      { day: 3, label: '水曜日 (Wed)' },
+      { day: 4, label: '木曜日 (Thu)' },
+      { day: 5, label: '金曜日 (Fri)' },
+      { day: 6, label: '土曜日 (Sat)' },
+    ];
+
+    type DayQuickPickItem = vscode.QuickPickItem & { day: number };
+    const dayItems: DayQuickPickItem[] = dayLabels.map(d => ({
+      label: d.label,
+      picked: currentDays.includes(d.day),
+      day: d.day
+    }));
+
+    const selectedDays = await vscode.window.showQuickPick(dayItems, {
+      canPickMany: true,
+      placeHolder: t.daysOfWeekPrompt(),
+    });
+
+    if (!selectedDays || selectedDays.length === 0) {
+      if (selectedDays) {
+        vscode.window.showWarningMessage(t.daysOfWeekRequired());
+      }
+      return;
+    }
+    newDaysOfWeek = selectedDays.map(d => d.day).sort((a, b) => a - b);
+
+    const endDateResult = await promptEndDate();
+    if (endDateResult === undefined) { return; }
+    newEndDate = endDateResult || undefined;
+
+  } else if (newRecurrence === 'weekdays') {
+    const endDateResult = await promptEndDate();
+    if (endDateResult === undefined) { return; }
+    newEndDate = endDateResult || undefined;
+
+  } else if (newRecurrence === 'monthly') {
+    // Prompt interval
+    const inputInterval = await vscode.window.showInputBox({
+      prompt: t.intervalPrompt(t.intervalUnitMonths()),
+      value: String(meeting.recurrenceInterval || 1),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+      }
+    });
+    if (!inputInterval) { return; }
+    newInterval = parseInt(inputInterval.trim(), 10);
+
+    // Prompt day of month
+    const inputDayOfMonth = await vscode.window.showInputBox({
+      prompt: t.dayOfMonthPrompt(),
+      value: String(meeting.dayOfMonth || startParts.day),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1 || num > 31) ? t.dayOfMonthInvalid() : null;
+      }
+    });
+    if (!inputDayOfMonth) { return; }
+    newDayOfMonth = parseInt(inputDayOfMonth.trim(), 10);
+
+    const endDateResult = await promptEndDate();
+    if (endDateResult === undefined) { return; }
+    newEndDate = endDateResult || undefined;
+
+  } else if (newRecurrence === 'yearly') {
+    // Prompt interval
+    const inputInterval = await vscode.window.showInputBox({
+      prompt: t.intervalPrompt(t.intervalUnitYears()),
+      value: String(meeting.recurrenceInterval || 1),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1) ? t.intervalInvalid() : null;
+      }
+    });
+    if (!inputInterval) { return; }
+    newInterval = parseInt(inputInterval.trim(), 10);
+
+    // Prompt month of year
+    const inputMonth = await vscode.window.showInputBox({
+      prompt: t.monthOfYearPrompt(),
+      value: String(meeting.monthOfYear || startParts.month + 1),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1 || num > 12) ? t.monthOfYearInvalid() : null;
+      }
+    });
+    if (!inputMonth) { return; }
+    newMonthOfYear = parseInt(inputMonth.trim(), 10);
+
+    // Prompt day of year
+    const inputDay = await vscode.window.showInputBox({
+      prompt: t.dayOfMonthPrompt(),
+      value: String(meeting.dayOfYear || meeting.dayOfMonth || startParts.day),
+      validateInput: (val) => {
+        const num = parseInt(val.trim(), 10);
+        return (!val || isNaN(num) || num < 1 || num > 31) ? t.dayOfMonthInvalid() : null;
+      }
+    });
+    if (!inputDay) { return; }
+    newDayOfYear = parseInt(inputDay.trim(), 10);
+
+    const endDateResult = await promptEndDate();
+    if (endDateResult === undefined) { return; }
+    newEndDate = endDateResult || undefined;
+  }
+
+  const updatedMeeting: Meeting = {
+    ...meeting,
+    recurrence: newRecurrence,
+    recurrenceInterval: newInterval,
+    daysOfWeek: newDaysOfWeek,
+    dayOfMonth: newDayOfMonth,
+    monthOfYear: newMonthOfYear,
+    dayOfYear: newDayOfYear,
+    recurrenceEndDate: newEndDate,
+    // Clear complex ICAL rules when explicitly updating via UI
+    recurrenceByDay: undefined,
+    recurrenceByMonthDay: undefined,
+    recurrenceByMonth: undefined,
+    recurrenceBySetPos: undefined,
+  };
+
+  await meetingManager.updateMeeting(updatedMeeting);
+  vscode.window.showInformationMessage(t.recurrenceUpdated(updatedMeeting.title));
+}
