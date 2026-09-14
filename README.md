@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.12.2-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.12.1-blue.svg)](package.json)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -15,7 +15,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 ### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新のリリース（`v1.12.2` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.12.2.vsix`）をクリックしてダウンロードします。
+2. 最新のリリース（`v1.12.1` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.12.1.vsix`）をクリックしてダウンロードします。
 
 ### 手順 2: VS Code へのインストール
 以下のいずれかの方法でインストールできます。
@@ -118,7 +118,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 | **会議を削除** | `meetdock-solo.deleteMeeting` | - | 登録済みの会議を削除する |
 | **更新** | `meetdock-solo.refreshView` | - | サイドバーの会議一覧表示を更新する |
 | **ミーティング一覧から選択** | `meetdock-solo.selectMeeting` | - | クイックピックで登録済み会議一覧を表示し、選択して参加する |
-| **ガイド表示の切替** | `meetdock-solo.toggleGuide` | - | サイドバー下部の使い方ガイド領域の表示/非表示を切り替える |
+| **ガイド表示の切替** | `meetdock-solo.toggleGuide` | - | サイドバー下部の使い方ガイドを表示・フォーカスする |
 
 ---
 
