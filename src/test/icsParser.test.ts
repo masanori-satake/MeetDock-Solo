@@ -1,8 +1,10 @@
 import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { pathToFileURL } from 'url';
 import { parseIcsContent, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
+import { decodeIcsBytes, MAX_ICS_CONTENT_SIZE, readIcsFile } from '../icsContentReader';
 import { MeetingManager } from '../meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from '../treeProvider';
 
@@ -553,10 +555,48 @@ END:VCALENDAR`;
     assert.ok(res[0].location!.length <= 200);
   });
 
+  test('27b. Truncates fields by Unicode code points without splitting an emoji at the boundary', () => {
+    const title = `${'T'.repeat(199)}😀overflow`;
+    const organizer = `${'O'.repeat(99)}😀overflow`;
+    const location = `${'L'.repeat(199)}😀overflow`;
+    const emojiBoundaryIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:emoji-boundary@example.invalid
+DTSTART:20261005T100000Z
+SUMMARY:${title}
+ORGANIZER;CN=${organizer}:mailto:emoji@example.com
+LOCATION:${location}
+URL:https://teams.microsoft.com/meet/99999
+END:VEVENT
+END:VCALENDAR`;
+
+    const [meeting] = parseIcsContent(emojiBoundaryIcs, new Date('2026-10-01T00:00:00Z'));
+    assert.strictEqual(meeting.title, `${'T'.repeat(199)}😀`);
+    assert.strictEqual(meeting.organizer, `${'O'.repeat(99)}😀`);
+    assert.strictEqual(meeting.location, `${'L'.repeat(199)}😀`);
+  });
+
   // 28. Rejects ICS content exceeding MAX_ICS_CONTENT_SIZE
   test('28. Rejects ICS content exceeding MAX_ICS_CONTENT_SIZE', () => {
     const hugeIcs = 'A'.repeat(1000001);
     const res = parseIcsContent(hugeIcs, new Date('2026-10-01T00:00:00Z'));
     assert.deepStrictEqual(res, []);
+  });
+
+  test('28b. Rejects oversized file bytes before decoding', async () => {
+    assert.throws(
+      () => decodeIcsBytes(Buffer.alloc(MAX_ICS_CONTENT_SIZE + 1)),
+      /exceeds the 1000000-byte limit/
+    );
+
+    const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'meetdock-ics-'));
+    const oversizedPath = path.join(tempDir, 'oversized.ics');
+    try {
+      await fs.promises.writeFile(oversizedPath, Buffer.alloc(MAX_ICS_CONTENT_SIZE + 1));
+      await assert.rejects(readIcsFile(oversizedPath), /exceeds the 1000000-byte limit/);
+    } finally {
+      await fs.promises.rm(tempDir, { recursive: true, force: true });
+    }
   });
 });

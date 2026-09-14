@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { getNextOccurrence, MeetingManager } from './meetingManager';
 import { Meeting, RecurrenceType } from './types';
 import { parseMeetingText } from './parser';
@@ -7,6 +6,7 @@ import { parseIcsContent } from './icsParser';
 import { getTeamsChatUrl, isValidTeamsUrl } from './urlValidator';
 import { t, MeetingStatusState } from './i18n';
 import { addZonedDays, createDateInTimeZone, getZonedDateParts } from './dateTime';
+import { decodeIcsBytes, IcsContentTooLargeError, readIcsFile } from './icsContentReader';
 
 function formatDuration(start: Date, end: Date): string {
   const durationMs = Math.max(0, end.getTime() - start.getTime());
@@ -111,13 +111,16 @@ export class MeetingDetailItem extends vscode.TreeItem {
 async function readDataTransferFile(file: vscode.DataTransferFile): Promise<string> {
   if (file.uri && file.uri.scheme === 'file') {
     try {
-      return await fs.promises.readFile(file.uri.fsPath, 'utf-8');
-    } catch {
+      return await readIcsFile(file.uri.fsPath);
+    } catch (error) {
+      if (error instanceof IcsContentTooLargeError) {
+        throw error;
+      }
       // fallback to file.data()
     }
   }
   const bytes = await file.data();
-  return Buffer.from(bytes).toString('utf-8');
+  return decodeIcsBytes(bytes);
 }
 
 export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.TreeDragAndDropController<vscode.TreeItem> {
@@ -323,7 +326,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
         }
         if (filePath.endsWith('.ics')) {
           try {
-            icsContent = await fs.promises.readFile(filePath, 'utf-8');
+            icsContent = await readIcsFile(filePath);
             break;
           } catch {
             // ignore failure, fallback to droppedText

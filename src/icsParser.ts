@@ -2,6 +2,7 @@ import { Meeting, ParsedMeetingInfo, RecurrenceType } from './types';
 import { getTeamsUrlFromSafeLink, isValidTeamsUrl } from './urlValidator';
 import { addZonedDays, createDateInTimeZone, getDaysInMonth, getZonedDateParts, normalizeTimeZone } from './dateTime';
 import { getNextOccurrence } from './meetingManager';
+import { MAX_ICS_CONTENT_SIZE } from './icsContentReader';
 
 export interface IcsProperty {
   name: string;
@@ -536,7 +537,9 @@ function cleanIcsField(val: string | undefined, maxLen: number): string | undefi
   if (!val) { return undefined; }
   const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!cleaned) { return undefined; }
-  return cleaned.length > maxLen ? cleaned.substring(0, maxLen).trim() : cleaned;
+  return cleaned.length > maxLen
+    ? Array.from(cleaned).slice(0, maxLen).join('').trim()
+    : cleaned;
 }
 
 /**
@@ -750,8 +753,6 @@ export function parseSingleVEvent(
     alarmMinutes,
   };
 }
-
-const MAX_ICS_CONTENT_SIZE = 1000000; // 1MB limit to prevent DoS via excessive payload size
 
 /**
  * Main parser for ICS file content according to RFC 5545 and Microsoft Outlook / Teams ICS exports.
