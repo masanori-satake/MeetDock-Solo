@@ -529,6 +529,17 @@ function buildTimeZoneAliasMap(vtimezoneComps: IcsComponent[]): Map<string, stri
 }
 
 /**
+ * Sanitizes and truncates ICS text fields by removing control characters,
+ * normalizing whitespace, and capping max length to prevent UI disruption or resource exhaustion.
+ */
+function cleanIcsField(val: string | undefined, maxLen: number): string | undefined {
+  if (!val) { return undefined; }
+  const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) { return undefined; }
+  return cleaned.length > maxLen ? cleaned.substring(0, maxLen).trim() : cleaned;
+}
+
+/**
  * Converts a parsed VEVENT component into ParsedMeetingInfo / Meeting structure.
  */
 export function parseSingleVEvent(
@@ -550,7 +561,8 @@ export function parseSingleVEvent(
 
   // 2. Summary (Title)
   const summaryProp = getProp('SUMMARY');
-  const title = summaryProp ? unescapeIcsText(summaryProp.value).trim() : 'Teams Meeting';
+  const rawTitle = summaryProp ? unescapeIcsText(summaryProp.value).trim() : 'Teams Meeting';
+  const title = cleanIcsField(rawTitle, 200) || 'Teams Meeting';
 
   // 3. Start Time & TimeZone
   const dtstartProp = getProp('DTSTART');
@@ -580,10 +592,11 @@ export function parseSingleVEvent(
   const url = extractTeamsUrlFromIcsProperties(vevent.properties) || '';
 
   // 6. Organizer & Attendees & Location & Description
-  const organizer = extractOrganizerFromIcs(getProp('ORGANIZER'));
+  const rawOrganizer = extractOrganizerFromIcs(getProp('ORGANIZER'));
+  const organizer = cleanIcsField(rawOrganizer, 100);
   const attendees = extractAttendeesFromIcs(vevent.properties);
   const locationProp = getProp('LOCATION');
-  const location = locationProp ? unescapeIcsText(locationProp.value).trim() : undefined;
+  const location = cleanIcsField(locationProp ? unescapeIcsText(locationProp.value) : undefined, 200);
 
   const descProp = getProp('DESCRIPTION');
   const description = descProp ? unescapeIcsText(descProp.value) : undefined;
@@ -698,12 +711,13 @@ export function parseSingleVEvent(
 
   // Meeting ID & Passcode checks
   const fullText = `${description || ''}\n${title}`;
-  const meetingId = Array.from(
+  const rawMeetingId = Array.from(
     fullText.matchAll(/(?:会議\s*ID|Meeting\s*ID):\s*([\d\s]{9,25})/gi),
     match => match[1].replace(/\s+/g, '')
   ).find(candidate => /^\d{9,17}$/.test(candidate));
+  const meetingId = cleanIcsField(rawMeetingId, 50);
   const passcodeMatch = fullText.match(/(?:パスコード|Passcode):\s*([A-Za-z0-9]+)/i);
-  const passcode = passcodeMatch ? passcodeMatch[1] : undefined;
+  const passcode = cleanIcsField(passcodeMatch ? passcodeMatch[1] : undefined, 50);
   const isEnterprise = Boolean(meetingId || passcode || /(?:会議\s*ID|Meeting\s*ID)/i.test(fullText));
 
   return {
@@ -737,11 +751,16 @@ export function parseSingleVEvent(
   };
 }
 
+const MAX_ICS_CONTENT_SIZE = 1000000; // 1MB limit to prevent DoS via excessive payload size
+
 /**
  * Main parser for ICS file content according to RFC 5545 and Microsoft Outlook / Teams ICS exports.
  * Returns array of ParsedMeetingInfo / Meeting objects resolved with EXDATE, RDATE, RECURRENCE-ID, and CANCELLED overrides.
  */
 export function parseIcsContent(icsContent: string, now: Date = new Date()): ParsedMeetingInfo[] {
+  if (!icsContent || icsContent.length > MAX_ICS_CONTENT_SIZE) {
+    return [];
+  }
   const root = parseIcsComponents(icsContent);
   const vcalendar = root.subComponents.find(c => c.name === 'VCALENDAR');
   if (!vcalendar) {

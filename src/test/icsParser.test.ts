@@ -527,4 +527,36 @@ END:VCALENDAR`;
     assert.strictEqual(res.length, 1);
     assert.ok(res[0].startTime! >= now);
   });
+
+  // 27. Sanitizes control characters and truncates long fields in ICS parsing
+  test('27. Sanitizes control characters and truncates long fields in ICS parsing', () => {
+    const longTitle = 'A'.repeat(250);
+    const controlCharIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:sanitizer@example.invalid
+DTSTART:20261005T100000Z
+SUMMARY:Title\x00With\x07Control\x1BChars ${longTitle}
+ORGANIZER;CN=Dirty\x00Name\x1BCN:mailto:dirty@example.com
+LOCATION:Room\x00101\x07Building\x1BA
+URL:https://teams.microsoft.com/meet/99999
+END:VEVENT
+END:VCALENDAR`;
+
+    const res = parseIcsContent(controlCharIcs, new Date('2026-10-01T00:00:00Z'));
+    assert.strictEqual(res.length, 1);
+    assert.ok(!/[\x00-\x1F\x7F]/.test(res[0].title));
+    assert.ok(res[0].title.length <= 200);
+    assert.ok(!/[\x00-\x1F\x7F]/.test(res[0].organizer!));
+    assert.ok(res[0].organizer!.length <= 100);
+    assert.ok(!/[\x00-\x1F\x7F]/.test(res[0].location!));
+    assert.ok(res[0].location!.length <= 200);
+  });
+
+  // 28. Rejects ICS content exceeding MAX_ICS_CONTENT_SIZE
+  test('28. Rejects ICS content exceeding MAX_ICS_CONTENT_SIZE', () => {
+    const hugeIcs = 'A'.repeat(1000001);
+    const res = parseIcsContent(hugeIcs, new Date('2026-10-01T00:00:00Z'));
+    assert.deepStrictEqual(res, []);
+  });
 });
