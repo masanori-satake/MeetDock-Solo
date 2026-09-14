@@ -105,7 +105,6 @@ export class MeetingDetailItem extends vscode.TreeItem {
   }
 }
 
-/** Reads a dropped file as UTF-8, falling back to its in-memory data when needed. */
 async function readDataTransferFile(file: vscode.DataTransferFile): Promise<string> {
   if (file.uri && file.uri.scheme === 'file') {
     try {
@@ -241,7 +240,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     const filesItem = dataTransfer.get('files');
     if (filesItem) {
       const file = filesItem.asFile();
-      if (file?.name.toLowerCase().endsWith('.ics')) {
+      if (file) {
         try {
           droppedText = await readDataTransferFile(file);
         } catch {
@@ -250,14 +249,14 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       }
     }
 
-    if (!droppedText.trim() && typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
+    if (!droppedText && typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
       try {
         for (const [, item] of dataTransfer) {
           const file = item?.asFile ? item.asFile() : undefined;
-          if (file?.name.toLowerCase().endsWith('.ics')) {
+          if (file) {
             try {
               droppedText = await readDataTransferFile(file);
-              if (droppedText.trim()) {
+              if (droppedText) {
                 break;
               }
             } catch {
@@ -270,7 +269,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       }
     }
 
-    if (!droppedText.trim()) {
+    if (!droppedText) {
       const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
       if (calItem) {
         droppedText = await calItem.asString();

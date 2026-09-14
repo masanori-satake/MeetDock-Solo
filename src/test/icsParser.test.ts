@@ -376,63 +376,26 @@ END:VCALENDAR`;
     assert.strictEqual(meetings2.length, 1);
     assert.strictEqual(meetings2[0].title, '単発定例会議');
 
-    // 22d. Ignore non-ICS files and continue to a later ICS file
-    let nonIcsFileRead = false;
-    const nonIcsFileItem = {
-      asFile: () => ({
-        name: 'notes.txt',
-        data: async () => {
-          nonIcsFileRead = true;
-          return Buffer.from('not a calendar');
-        }
-      })
-    };
-    const icsFileItem = {
-      asFile: () => ({
-        name: 'single_en.ics',
-        data: async () => Buffer.from(readFixture('single_en.ics'))
-      })
+    // 22d. application/ics-only fallback test (when 'files' is unavailable or unusable)
+    const appIcsItem = {
+      asString: async () => readFixture('single_jp.ics')
     };
     const dataTransfer5 = {
-      get: (mime: string) => mime === 'files' ? nonIcsFileItem : null,
-      [Symbol.iterator]: function* () {
-        yield ['files', nonIcsFileItem];
-        yield ['application/ics', icsFileItem];
-      }
+      get: (mime: string) => mime === 'application/ics' ? appIcsItem : null
     } as any;
-    const manager3 = new MeetingManager(mockContext);
+    let store3: Record<string, any> = {};
+    const mockContext3: any = {
+      globalState: {
+        get: (key: string, defaultVal: any) => store3[key] ?? defaultVal,
+        update: async (key: string, val: any) => { store3[key] = val; }
+      }
+    };
+    const manager3 = new MeetingManager(mockContext3);
     const provider3 = new MeetingTreeDataProvider(manager3, () => new Date('2026-10-01T00:00:00Z'));
     await provider3.handleDrop(undefined, dataTransfer5, {} as any);
     const meetings3 = manager3.getMeetings();
-    assert.strictEqual(nonIcsFileRead, false);
     assert.strictEqual(meetings3.length, 1);
-    assert.strictEqual(meetings3[0].title, 'One-time Sync Meeting');
-
-    // 22e. Skip whitespace-only ICS file content and continue to the next ICS file
-    const whitespaceIcsFileItem = {
-      asFile: () => ({
-        name: 'empty.ics',
-        data: async () => Buffer.from(' \n\t ')
-      })
-    };
-    const dataTransfer6 = {
-      get: (mime: string) => mime === 'files' ? whitespaceIcsFileItem : null,
-      [Symbol.iterator]: function* () {
-        yield ['files', whitespaceIcsFileItem];
-        yield ['application/ics', icsFileItem];
-      }
-    } as any;
-    const manager4 = new MeetingManager({
-      globalState: {
-        get: (_key: string, defaultVal: any) => defaultVal,
-        update: async () => undefined
-      }
-    } as any);
-    const provider4 = new MeetingTreeDataProvider(manager4, () => new Date('2026-10-01T00:00:00Z'));
-    await provider4.handleDrop(undefined, dataTransfer6, {} as any);
-    const meetings4 = manager4.getMeetings();
-    assert.strictEqual(meetings4.length, 1);
-    assert.strictEqual(meetings4[0].title, 'One-time Sync Meeting');
+    assert.strictEqual(meetings3[0].title, '単発定例会議');
   });
 
   test('25. Handles RDATE recurrence correctly', () => {
