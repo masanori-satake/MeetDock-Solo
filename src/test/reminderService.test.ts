@@ -534,7 +534,7 @@ suite('ReminderService - Reminder Flags', () => {
     }
   });
 
-  test('suppresses start-time notification when notified5m is already true', async () => {
+  test('shows start-time notification even when notified5m is already true', async () => {
     const originalShow = vscode.window.showInformationMessage;
     const calls: { msg: string; items: any[] }[] = [];
     (vscode.window as any).showInformationMessage = (msg: string, ...items: any[]) => {
@@ -544,8 +544,8 @@ suite('ReminderService - Reminder Flags', () => {
 
     try {
       const meetingAlreadyNotified5m: Meeting = {
-        id: 'suppress1',
-        title: '重複通知抑制テスト',
+        id: 'start1',
+        title: '開始時通知テスト',
         url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0',
         startTime: new Date(now().getTime() - 10 * 1000).toISOString(),
         recurrence: 'once',
@@ -556,12 +556,13 @@ suite('ReminderService - Reminder Flags', () => {
       mockManager.setMeetings([meetingAlreadyNotified5m]);
       await service.update();
 
-      // showInformationMessage should NOT be called
-      assert.strictEqual(calls.length, 0);
+      // showInformationMessage SHOULD be called for start notification
+      assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].msg, t.reminderStartMsg(meetingAlreadyNotified5m.title));
 
-      // But notifiedStart flag should still be updated to true
+      // And notifiedStart flag should still be updated to true
       const stored = mockManager.getMeetings();
-      assert.strictEqual(stored.find(m => m.id === 'suppress1')?.notifiedStart, true);
+      assert.strictEqual(stored.find(m => m.id === 'start1')?.notifiedStart, true);
     } finally {
       (vscode.window as any).showInformationMessage = originalShow;
     }
