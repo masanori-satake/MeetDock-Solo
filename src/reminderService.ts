@@ -190,27 +190,29 @@ export class ReminderService {
       });
     }
 
-    // Start-time modal notification (fires once per meeting via notifiedStart flag)
+    // Start-time notification (fires once per meeting via notifiedStart flag)
     if (diffMs <= 0 && (now.getTime() - startTime.getTime()) < 2 * 60 * 1000 && !meeting.notifiedStart) {
+      const wasNotified5m = !!meeting.notified5m;
       meeting.notifiedStart = true;
       await this.meetingManager.updateMeeting(meeting);
 
-      const joinBtnText = t.joinBtn();
-      const openChatBtnText = t.openChatBtn();
-      const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
-      const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
+      if (!wasNotified5m) {
+        const joinBtnText = t.joinBtn();
+        const openChatBtnText = t.openChatBtn();
+        const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
+        const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
 
-      vscode.window.showInformationMessage(
-        t.reminderStartMsg(meeting.title),
-        { modal: true },
-        ...buttons
-      ).then(selection => {
-        if (selection === joinBtnText) {
-          openTeamsMeetingUrl(meeting.url);
-        } else if (selection === openChatBtnText) {
-          openTeamsChatUrl(meeting.url);
-        }
-      });
+        vscode.window.showInformationMessage(
+          t.reminderStartMsg(meeting.title),
+          ...buttons
+        ).then(selection => {
+          if (selection === joinBtnText) {
+            openTeamsMeetingUrl(meeting.url);
+          } else if (selection === openChatBtnText) {
+            openTeamsChatUrl(meeting.url);
+          }
+        });
+      }
     }
   }
 }
