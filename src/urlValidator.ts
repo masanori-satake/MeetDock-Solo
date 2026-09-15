@@ -84,7 +84,12 @@ export function getTeamsChatUrl(url: string): string | undefined {
       return undefined;
     }
     const chatId = match[0];
-    return `https://teams.microsoft.com/l/chat/${chatId}/conversations`;
+    // Ensure chatId contains no path/query separators or control characters
+    if (/[\/\?\\#\s\x00-\x1F\x7F]/.test(chatId)) {
+      return undefined;
+    }
+    const chatUrl = `https://teams.microsoft.com/l/chat/${chatId}/conversations`;
+    return isValidTeamsUrl(chatUrl) ? chatUrl : undefined;
   } catch {
     return undefined;
   }

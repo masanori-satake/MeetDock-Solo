@@ -48,6 +48,8 @@ suite('URL Validator Test Suite', () => {
   test('returns undefined for invalid or unsafe URLs', () => {
     assert.strictEqual(getTeamsChatUrl('javascript:alert(1)'), undefined);
     assert.strictEqual(getTeamsChatUrl('https://example.com'), undefined);
+    // Malformed thread ID with path separators or control characters
+    assert.strictEqual(getTeamsChatUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC%2fDEF%40thread.v2/0'), undefined);
   });
 
   test('openTeamsChatUrl validates generated chat URL before opening external link', async () => {
