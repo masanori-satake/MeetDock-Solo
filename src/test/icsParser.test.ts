@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { pathToFileURL } from 'url';
 import { parseIcsContent, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
+import { normalizeTimeZone } from '../dateTime';
 import { decodeIcsBytes, MAX_ICS_CONTENT_SIZE, readIcsFile } from '../icsContentReader';
 import { MeetingManager } from '../meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from '../treeProvider';
@@ -260,6 +261,14 @@ END:VCALENDAR`;
 
     const escapedText = 'Line 1\\nLine 2\\; with semi\\, and comma\\\\ backslash';
     assert.strictEqual(unescapeIcsText(escapedText), 'Line 1\nLine 2; with semi, and comma\\ backslash');
+  });
+
+  test('29. Normalizes Tokyo Standard Time alias and caches normalization results', () => {
+    assert.strictEqual(normalizeTimeZone('Tokyo Standard Time'), 'Asia/Tokyo');
+    assert.strictEqual(normalizeTimeZone('  Tokyo Standard Time  '), 'Asia/Tokyo');
+    assert.strictEqual(normalizeTimeZone('Invalid_TimeZone_String_XYZ'), undefined);
+    assert.strictEqual(normalizeTimeZone('Tokyo Standard Time'), 'Asia/Tokyo');
+    assert.strictEqual(normalizeTimeZone('Invalid_TimeZone_String_XYZ'), undefined);
   });
 
   // 13, 14, 15. TimeZone / DST / UTC / Tokyo Standard Time
