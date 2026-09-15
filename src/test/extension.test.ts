@@ -297,4 +297,26 @@ suite('Extension & openChat Command Test Suite', () => {
     assert.strictEqual(guideView.visibility, 'collapsed', 'meetdock-guide-view visibility should be set to collapsed');
     assert.strictEqual(guideView.when, undefined, 'meetdock-guide-view should not have when condition hiding it');
   });
+
+  test('package.json activationEvents includes onView activation events for all contributed views', () => {
+    const rootDir = path.resolve(__dirname, '../../');
+    const pkgPath = path.join(rootDir, 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+    assert.ok(Array.isArray(pkg.activationEvents), 'activationEvents should be an array in package.json');
+
+    const viewsContainers = pkg.contributes?.views || {};
+    for (const containerId of Object.keys(viewsContainers)) {
+      const views = viewsContainers[containerId];
+      if (Array.isArray(views)) {
+        for (const view of views) {
+          const expectedActivationEvent = `onView:${view.id}`;
+          assert.ok(
+            pkg.activationEvents.includes(expectedActivationEvent),
+            `activationEvents should include '${expectedActivationEvent}' for contributed view '${view.id}'`
+          );
+        }
+      }
+    }
+  });
 });

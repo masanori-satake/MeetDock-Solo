@@ -2,6 +2,13 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.12.3] - 2026-09-15
+
+### 修正 (Fixed)
+- 拡張機能のバージョンアップ（VSIXのインストール・更新）時やビュー初期化時に "No view registered" 警告が表示される問題を修正
+  - `package.json` の `activationEvents` に使い方ガイドビューのアクティベーションイベント (`onView:meetdock-guide-view`) を追加し、ビュー初期化時に拡張機能が正しくアクティベートされるよう改善
+  - `package.json` のすべての提供ビュー（`contributes.views`）に対する `onView` イベント登録漏れを自動検証するテストを追加
+
 ## [1.12.2] - 2026-09-14
 
 ### 変更・改善 (Changed & Improved)
