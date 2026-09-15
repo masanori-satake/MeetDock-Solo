@@ -266,9 +266,33 @@ END:VCALENDAR`;
   test('29. Normalizes Tokyo Standard Time alias and caches normalization results', () => {
     assert.strictEqual(normalizeTimeZone('Tokyo Standard Time'), 'Asia/Tokyo');
     assert.strictEqual(normalizeTimeZone('  Tokyo Standard Time  '), 'Asia/Tokyo');
-    assert.strictEqual(normalizeTimeZone('Invalid_TimeZone_String_XYZ'), undefined);
     assert.strictEqual(normalizeTimeZone('Tokyo Standard Time'), 'Asia/Tokyo');
-    assert.strictEqual(normalizeTimeZone('Invalid_TimeZone_String_XYZ'), undefined);
+
+    const invalidTimeZone = 'Invalid_TimeZone_String_XYZ';
+    const originalDateTimeFormat = Intl.DateTimeFormat;
+    const originalDescriptor = Object.getOwnPropertyDescriptor(Intl, 'DateTimeFormat');
+    let validationCalls = 0;
+
+    Object.defineProperty(Intl, 'DateTimeFormat', {
+      ...originalDescriptor,
+      value: new Proxy(originalDateTimeFormat, {
+        construct(target, args, newTarget) {
+          if (args[1]?.timeZone === invalidTimeZone) {
+            validationCalls++;
+          }
+          return Reflect.construct(target, args, newTarget);
+        },
+      }),
+    });
+
+    try {
+      assert.strictEqual(normalizeTimeZone(invalidTimeZone), undefined);
+      assert.strictEqual(normalizeTimeZone(invalidTimeZone), undefined);
+    } finally {
+      Object.defineProperty(Intl, 'DateTimeFormat', originalDescriptor!);
+    }
+
+    assert.strictEqual(validationCalls, 1);
   });
 
   // 13, 14, 15. TimeZone / DST / UTC / Tokyo Standard Time

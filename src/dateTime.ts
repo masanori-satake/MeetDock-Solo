@@ -44,6 +44,17 @@ function normalizeOffset(value: string): string | undefined {
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 const validTimeZoneCache = new Set<string>();
 const normalizedTimeZoneCache = new Map<string, string | undefined>();
+const MAX_NORMALIZED_TIME_ZONE_CACHE_SIZE = 100;
+
+function cacheNormalizedTimeZone(value: string, normalizedValue: string | undefined): void {
+  if (normalizedTimeZoneCache.size >= MAX_NORMALIZED_TIME_ZONE_CACHE_SIZE) {
+    const oldestValue = normalizedTimeZoneCache.keys().next().value;
+    if (oldestValue !== undefined) {
+      normalizedTimeZoneCache.delete(oldestValue);
+    }
+  }
+  normalizedTimeZoneCache.set(value, normalizedValue);
+}
 
 /**
  * Caches and returns an Intl.DateTimeFormat instance for the given IANA timeZone
@@ -98,7 +109,7 @@ export function normalizeTimeZone(value: string | undefined): string | undefined
     }
   }
 
-  normalizedTimeZoneCache.set(clean, result);
+  cacheNormalizedTimeZone(clean, result);
   return result;
 }
 
