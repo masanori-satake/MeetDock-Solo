@@ -25,6 +25,9 @@ export function getTeamsUrlFromSafeLink(url: string): string | undefined {
     }
 
     const target = targetParam.trim();
+    if (/[\x00-\x1F\x7F]/.test(target)) {
+      return undefined;
+    }
     return isDirectTeamsUrl(new URL(target)) ? target : undefined;
   } catch {
     return undefined;
