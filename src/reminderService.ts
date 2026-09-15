@@ -161,22 +161,31 @@ export class ReminderService {
     }
   }
 
+  /**
+   * Helper to construct notification toast action buttons ("Teamsに参加" and "チャットを開く" if chat URL exists).
+   */
+  private getNotificationButtons(meetingUrl: string): { buttons: string[]; joinBtnText: string; openChatBtnText: string } {
+    const joinBtnText = t.joinBtn();
+    const openChatBtnText = t.openChatBtn();
+    const hasChat = getTeamsChatUrl(meetingUrl) !== undefined;
+    const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
+    return { buttons, joinBtnText, openChatBtnText };
+  }
+
   private async checkMeetingReminder(
     meeting: Meeting,
     diffMs: number,
     now: Date,
     startTime: Date
   ): Promise<void> {
+    const { buttons, joinBtnText, openChatBtnText } = this.getNotificationButtons(meeting.url);
+
     // 5-minute reminder (fires once per meeting via notified5m flag)
     if (diffMs <= 5 * 60 * 1000 && diffMs > 0 && !meeting.notified5m) {
       meeting.notified5m = true;
       await this.meetingManager.updateMeeting(meeting);
 
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      const joinBtnText = t.joinBtn();
-      const openChatBtnText = t.openChatBtn();
-      const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
-      const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
 
       vscode.window.showInformationMessage(
         t.reminder5mMsg(meeting.title, timeStr),
@@ -194,11 +203,6 @@ export class ReminderService {
     if (diffMs <= 0 && (now.getTime() - startTime.getTime()) < 2 * 60 * 1000 && !meeting.notifiedStart) {
       meeting.notifiedStart = true;
       await this.meetingManager.updateMeeting(meeting);
-
-      const joinBtnText = t.joinBtn();
-      const openChatBtnText = t.openChatBtn();
-      const hasChat = getTeamsChatUrl(meeting.url) !== undefined;
-      const buttons = hasChat ? [joinBtnText, openChatBtnText] : [joinBtnText];
 
       vscode.window.showInformationMessage(
         t.reminderStartMsg(meeting.title),
