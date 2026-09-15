@@ -11,7 +11,7 @@ export interface ZonedDateParts {
 
 const TIME_ZONE_ALIASES: Array<[RegExp, string]> = [
   [/^(?:JST|日本標準時)$/i, '+09:00'],
-  [/^Japan Standard Time$/i, 'Asia/Tokyo'],
+  [/^(?:Japan Standard Time|Tokyo Standard Time)$/i, 'Asia/Tokyo'],
   [/^EST$/i, '-05:00'],
   [/^EDT$/i, '-04:00'],
   [/^(?:Eastern Standard Time|Eastern Daylight Time)$/i, 'America/New_York'],
@@ -43,6 +43,18 @@ function normalizeOffset(value: string): string | undefined {
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 const validTimeZoneCache = new Set<string>();
+const normalizedTimeZoneCache = new Map<string, string | undefined>();
+const MAX_NORMALIZED_TIME_ZONE_CACHE_SIZE = 100;
+
+function cacheNormalizedTimeZone(value: string, normalizedValue: string | undefined): void {
+  if (normalizedTimeZoneCache.size >= MAX_NORMALIZED_TIME_ZONE_CACHE_SIZE) {
+    const oldestValue = normalizedTimeZoneCache.keys().next().value;
+    if (oldestValue !== undefined) {
+      normalizedTimeZoneCache.delete(oldestValue);
+    }
+  }
+  normalizedTimeZoneCache.set(value, normalizedValue);
+}
 
 /**
  * Caches and returns an Intl.DateTimeFormat instance for the given IANA timeZone
@@ -72,27 +84,33 @@ export function normalizeTimeZone(value: string | undefined): string | undefined
   }
 
   const clean = value.trim();
+  if (normalizedTimeZoneCache.has(clean)) {
+    return normalizedTimeZoneCache.get(clean);
+  }
+
+  let result: string | undefined;
   const offset = normalizeOffset(clean);
   if (offset) {
-    return offset;
+    result = offset;
+  } else {
+    const alias = TIME_ZONE_ALIASES.find(([pattern]) => pattern.test(clean));
+    if (alias) {
+      result = alias[1];
+    } else if (validTimeZoneCache.has(clean)) {
+      result = clean;
+    } else {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: clean }).format();
+        validTimeZoneCache.add(clean);
+        result = clean;
+      } catch {
+        result = undefined;
+      }
+    }
   }
 
-  const alias = TIME_ZONE_ALIASES.find(([pattern]) => pattern.test(clean));
-  if (alias) {
-    return alias[1];
-  }
-
-  if (validTimeZoneCache.has(clean)) {
-    return clean;
-  }
-
-  try {
-    new Intl.DateTimeFormat('en-US', { timeZone: clean }).format();
-    validTimeZoneCache.add(clean);
-    return clean;
-  } catch {
-    return undefined;
-  }
+  cacheNormalizedTimeZone(clean, result);
+  return result;
 }
 
 function offsetMinutes(timeZone: string): number | undefined {

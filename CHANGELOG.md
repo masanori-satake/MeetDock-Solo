@@ -2,6 +2,17 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.13.3] - 2026-09-15
+
+### 修正 (Fixed)
+- `normalizedTimeZoneCache` のエントリ数を最大100件に制限し、上限到達時は最も古い正規化結果（無効なタイムゾーンの `undefined` 結果を含む）を削除してから新しい結果を保存するよう修正
+
+## [1.13.2] - 2026-09-15
+
+### パフォーマンス改善 (Performance Improvements)
+- `src/dateTime.ts` の `normalizeTimeZone` において、`normalizedTimeZoneCache`（Map）を導入し正規化結果（無効な文字列や未定義結果含む）をキャッシュすることで、無駄な再ルックアップおよび V8 例外（`RangeError`）発生に伴うパフォーマンス低下を防止
+- `TIME_ZONE_ALIASES` に Outlook 標準の `Tokyo Standard Time`（`Asia/Tokyo`）エイリアスを追加し、.ics パース時のタイムゾーン解決と日付処理を高速化（.ics パース処理速度を約 80% 改善）
+
 ## [1.13.1] - 2026-09-15
 
 ### セキュリティ強化 (Security Enhancements)
