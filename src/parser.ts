@@ -204,6 +204,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     url = '';
   }
 
+  /** Sanitizes and bounds text extracted into a meeting field. */
   const cleanField = (val: string, maxLen: number) => {
     // Replace control characters with space, then normalize whitespace
     const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
