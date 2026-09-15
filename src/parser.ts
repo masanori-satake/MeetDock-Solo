@@ -192,7 +192,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
       if (fallbackMatch) {
         url = fallbackMatch[0].replace(/[.,;)]+$/, '');
       } else {
-        const linkAnchorMatch = normalizedText.match(/(?:会議のリンク|Meeting link):\s*[^\n]*?(https?:\/\/[^\s"<>'`]+)/i);
+        const linkAnchorMatch = normalizedText.match(/(?:会議のリンク|Meeting link):[ \t]*[^\r\n]*?(https?:\/\/[^\s"<>'`]+)/i);
         if (linkAnchorMatch) {
           url = linkAnchorMatch[1].replace(/[.,;)]+$/, '');
         }
