@@ -1,0 +1,43 @@
+# .codiumai.toml - CodiumAI Configuration for MeetDock-Solo
+
+[config]
+# Output language settings (Japanese)
+language = "ja"
+
+[pr_assistant]
+# PR Assistant configuration & language customization
+language = "ja-JP"
+
+# Custom instructions for PR review and generation
+custom_instructions = """
+- すべての対話、コメント、PRの説明文、テスト結果などの出力は「日本語」で行ってください。
+- パッケージマネージャーには必ず `pnpm` を使用してください（`npm` や `yarn` の使用は禁止です）。
+- コード変更時には、`AGENTS.md` に定義されたバージョン管理ルールを尊重してください。
+  - リリース対象の変更の際は `pnpm run update-version <version>` を使用して `package.json`, `package-lock.json`, `README.md`, `CHANGELOG.md` を連動更新します。
+  - `CHANGELOG.md` には変更概要を日本語で記載します。
+- モジュール・UIコンポーネントの修正を行う際は、二重言語対応（日本語/英語）が適切に行われているか、および TreeView やステータスバーの表示仕様を満たしているか確認してください。
+- ファイル変更の確認・検証には `pnpm test`, `pnpm check-types`, `pnpm lint` を使用します。
+"""
+
+[tests]
+# Test generation and completion configuration
+framework = "Mocha"
+testing_library = "@vscode/test-cli"
+language = "typescript"
+
+# Custom prompt for test generation
+custom_instructions = """
+- テストコードは TypeScript および Mocha / @vscode/test-cli / @vscode/test-electron の形式で記述してください。
+- 個人情報（氏名、メールアドレス、組織名など）をテストデータとして扱う場合は、必ずダミー値（例: Taro Yamada, example.com）に匿名化してください。
+- 非同期処理や VS Code API のモック化を適切に行い、安定したユニットテスト・インテグレーションテストを作成してください。
+"""
+
+# Ignore paths for indexing and review
+[ignore]
+paths = [
+  "dist/**",
+  "out/**",
+  "node_modules/**",
+  ".vscode-test/**",
+  "*.vsix"
+]
