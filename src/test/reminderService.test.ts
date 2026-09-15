@@ -457,14 +457,14 @@ suite('ReminderService - Reminder Flags', () => {
       assert.strictEqual(calls[0].items.length, 1);
       assert.strictEqual(calls[0].items[0], t.joinBtn());
 
-      // Personal Teams meeting starting now (0 mins away)
+      // Personal Teams meeting starting now (0 mins away), not notified at 5m
       const personalMeetingStart: Meeting = {
         id: 'personal2',
         title: '個人会議Start',
         url: 'https://teams.live.com/meet/93735498380940?p=6kSddKYY6KaGxK5CF2',
         startTime: new Date(now().getTime() - 10 * 1000).toISOString(),
         recurrence: 'once',
-        notified5m: true,
+        notified5m: false,
         notifiedStart: false,
       };
 
@@ -473,8 +473,7 @@ suite('ReminderService - Reminder Flags', () => {
       await service.update();
 
       assert.strictEqual(calls.length, 1);
-      // For modal info message: showInformationMessage(msg, { modal: true }, ...buttons)
-      // items are [{ modal: true }, joinBtnText]
+      assert.strictEqual(calls[0].msg, t.reminderStartMsg(personalMeetingStart.title));
       const buttonItems = calls[0].items.filter(item => typeof item === 'string');
       assert.strictEqual(buttonItems.length, 1);
       assert.strictEqual(buttonItems[0], t.joinBtn());
@@ -516,7 +515,7 @@ suite('ReminderService - Reminder Flags', () => {
         url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0',
         startTime: new Date(now().getTime() - 10 * 1000).toISOString(),
         recurrence: 'once',
-        notified5m: true,
+        notified5m: false,
         notifiedStart: false,
       };
 
@@ -525,10 +524,44 @@ suite('ReminderService - Reminder Flags', () => {
       await service.update();
 
       assert.strictEqual(calls.length, 1);
+      assert.strictEqual(calls[0].msg, t.reminderStartMsg(enterpriseMeetingStart.title));
       const buttonItems = calls[0].items.filter(item => typeof item === 'string');
       assert.strictEqual(buttonItems.length, 2);
       assert.strictEqual(buttonItems[0], t.joinBtn());
       assert.strictEqual(buttonItems[1], t.openChatBtn());
+    } finally {
+      (vscode.window as any).showInformationMessage = originalShow;
+    }
+  });
+
+  test('suppresses start-time notification when notified5m is already true', async () => {
+    const originalShow = vscode.window.showInformationMessage;
+    const calls: { msg: string; items: any[] }[] = [];
+    (vscode.window as any).showInformationMessage = (msg: string, ...items: any[]) => {
+      calls.push({ msg, items });
+      return Promise.resolve(undefined);
+    };
+
+    try {
+      const meetingAlreadyNotified5m: Meeting = {
+        id: 'suppress1',
+        title: '重複通知抑制テスト',
+        url: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ABC123%40thread.v2/0',
+        startTime: new Date(now().getTime() - 10 * 1000).toISOString(),
+        recurrence: 'once',
+        notified5m: true,
+        notifiedStart: false,
+      };
+
+      mockManager.setMeetings([meetingAlreadyNotified5m]);
+      await service.update();
+
+      // showInformationMessage should NOT be called
+      assert.strictEqual(calls.length, 0);
+
+      // But notifiedStart flag should still be updated to true
+      const stored = mockManager.getMeetings();
+      assert.strictEqual(stored.find(m => m.id === 'suppress1')?.notifiedStart, true);
     } finally {
       (vscode.window as any).showInformationMessage = originalShow;
     }
