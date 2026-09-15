@@ -25,6 +25,9 @@ export function getTeamsUrlFromSafeLink(url: string): string | undefined {
     }
 
     const target = targetParam.trim();
+    if (/[\x00-\x1F\x7F]/.test(target)) {
+      return undefined;
+    }
     return isDirectTeamsUrl(new URL(target)) ? target : undefined;
   } catch {
     return undefined;
@@ -36,7 +39,7 @@ export function getTeamsUrlFromSafeLink(url: string): string | undefined {
  * Protects against unsafe schemes (e.g. javascript:, command:, file:) and invalid domains.
  */
 export function isValidTeamsUrl(url: string): boolean {
-  if (!url || typeof url !== 'string') {
+  if (!url || typeof url !== 'string' || /[\x00-\x1F\x7F]/.test(url)) {
     return false;
   }
   const trimmed = url.trim();

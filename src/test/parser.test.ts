@@ -486,4 +486,12 @@ Passcode: abc123
     assert.ok(parsed.passcode.length <= 50);
     assert.strictEqual(parsed.passcode.includes('\x07'), false);
   });
+
+  test('safely truncates oversized input text exceeding MAX_PARSER_TEXT_LENGTH without throwing', () => {
+    const hugePrefix = '件名: 正常会議\nhttps://teams.microsoft.com/l/meetup-join/19%3ameeting_huge\n';
+    const padding = 'X'.repeat(50000);
+    const parsed = parseMeetingText(hugePrefix + padding);
+    assert.strictEqual(parsed.title, '正常会議');
+    assert.strictEqual(parsed.url, 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_huge');
+  });
 });

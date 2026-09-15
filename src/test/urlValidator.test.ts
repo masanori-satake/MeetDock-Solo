@@ -11,6 +11,13 @@ suite('URL Validator Test Suite', () => {
     assert.strictEqual(isValidTeamsUrl('  https://teams.microsoft.com/l/meetup-join/test  '), true);
   });
 
+  test('rejects URLs containing ASCII control characters', () => {
+    assert.strictEqual(isValidTeamsUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc\x07'), false);
+    assert.strictEqual(isValidTeamsUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc\x00'), false);
+    assert.strictEqual(isValidTeamsUrl('https://teams.microsoft.com/l/meetup-join/19%3ameeting_\n_abc'), false);
+    assert.strictEqual(isValidTeamsUrl('https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fteams.microsoft.com%2Fmeet%2F123%07'), false);
+  });
+
   test('rejects unsafe schemes and invalid domains', () => {
     assert.strictEqual(isValidTeamsUrl('javascript:alert(1)'), false);
     assert.strictEqual(isValidTeamsUrl('command:workbench.action.openSettings'), false);
