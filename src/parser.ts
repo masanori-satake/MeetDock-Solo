@@ -160,6 +160,14 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date, timeZone?
 export const MAX_PARSER_TEXT_LENGTH = 20000;
 
 /**
+ * Removes control characters, normalizes whitespace, and bounds a parsed meeting field.
+ */
+function cleanField(val: string, maxLen: number): string {
+  const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned.length > maxLen ? cleaned.substring(0, maxLen).trim() : cleaned;
+}
+
+/**
  * Extracts Teams URL, Title, Start Time, End Time, Organizer, Meeting ID, Passcode, and Recurrence from text.
  */
 export function parseMeetingText(text: string): ParsedMeetingInfo {
@@ -203,13 +211,6 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   if (url && !isValidTeamsUrl(url)) {
     url = '';
   }
-
-  /** Sanitizes and bounds text extracted into a meeting field. */
-  const cleanField = (val: string, maxLen: number) => {
-    // Replace control characters with space, then normalize whitespace
-    const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
-    return cleaned.length > maxLen ? cleaned.substring(0, maxLen).trim() : cleaned;
-  };
 
   // 2. Extract Organizer
   let organizer: string | undefined = undefined;
