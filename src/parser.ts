@@ -157,11 +157,17 @@ function parseRecurrenceInfo(normalizedText: string, startTime?: Date, timeZone?
   };
 }
 
+export const MAX_PARSER_TEXT_LENGTH = 20000;
+
 /**
  * Extracts Teams URL, Title, Start Time, End Time, Organizer, Meeting ID, Passcode, and Recurrence from text.
  */
 export function parseMeetingText(text: string): ParsedMeetingInfo {
-  const normalizedText = text.replace(/\r\n/g, '\n').trim();
+  if (!text || typeof text !== 'string') {
+    return { title: 'Teams Meeting', url: '' };
+  }
+  const truncatedText = text.length > MAX_PARSER_TEXT_LENGTH ? text.substring(0, MAX_PARSER_TEXT_LENGTH) : text;
+  const normalizedText = truncatedText.replace(/\r\n/g, '\n').trim();
   const lines = normalizedText.split('\n').map(l => l.trim());
 
   // 1. Extract Teams URL & Safe Links un-wrapping
@@ -186,7 +192,7 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
       if (fallbackMatch) {
         url = fallbackMatch[0].replace(/[.,;)]+$/, '');
       } else {
-        const linkAnchorMatch = normalizedText.match(/(?:会議のリンク|Meeting link):\s*.*?(https?:\/\/[^\s"<>'`]+)/i);
+        const linkAnchorMatch = normalizedText.match(/(?:会議のリンク|Meeting link):\s*[^\n]*?(https?:\/\/[^\s"<>'`]+)/i);
         if (linkAnchorMatch) {
           url = linkAnchorMatch[1].replace(/[.,;)]+$/, '');
         }
