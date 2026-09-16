@@ -171,8 +171,22 @@ suite('MeetingManager - getMeetings sanitization', () => {
       startTime: '2026-10-10T10:00:00.000Z',
       recurrence: 'invalidRecurrence',
     };
+    const impossibleIsoDateMeeting = {
+      id: 'bad5',
+      title: 'Impossible Date',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadIsoDate',
+      startTime: '2026-02-30T10:00:00.000Z',
+    };
 
-    const mockStorage = [validMeeting, nullItem, invalidUrlMeeting, invalidDateMeeting, missingTitleMeeting, invalidRecurrenceMeeting];
+    const mockStorage = [
+      validMeeting,
+      nullItem,
+      invalidUrlMeeting,
+      invalidDateMeeting,
+      missingTitleMeeting,
+      invalidRecurrenceMeeting,
+      impossibleIsoDateMeeting,
+    ];
     const manager = new MeetingManager(createMockContext(mockStorage as any));
 
     const meetings = manager.getMeetings();

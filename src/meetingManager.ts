@@ -8,6 +8,14 @@ const STORAGE_KEY = 'meetdock-solo.meetings';
 const MEETING_DURATION_MS = 30 * 60 * 1000;
 const VALID_RECURRENCE_TYPES = new Set(['once', 'daily', 'weekly', 'weekdays', 'monthly', 'yearly']);
 
+function isValidIsoDateString(val: unknown): val is string {
+  if (typeof val !== 'string') {
+    return false;
+  }
+  const date = new Date(val);
+  return !isNaN(date.getTime()) && date.toISOString() === val;
+}
+
 /**
  * Returns the effective end time of a meeting.
  * Uses meeting.endTime if present; otherwise falls back to startTime + 30 minutes.
@@ -265,8 +273,9 @@ export class MeetingManager {
         typeof m.id === 'string' &&
         typeof m.title === 'string' &&
         typeof m.url === 'string' &&
-        typeof m.startTime === 'string' &&
-        !isNaN(Date.parse(m.startTime)) &&
+        isValidIsoDateString(m.startTime) &&
+        (m.endTime === undefined || isValidIsoDateString(m.endTime)) &&
+        (m.recurrenceEndDate === undefined || isValidIsoDateString(m.recurrenceEndDate)) &&
         isValidTeamsUrl(m.url) &&
         (m.recurrence === undefined || VALID_RECURRENCE_TYPES.has(m.recurrence))
       )
