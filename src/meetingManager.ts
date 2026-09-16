@@ -7,6 +7,15 @@ const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
 
+function isValidIsoDate(value: unknown): value is string {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const parsed = new Date(value);
+  return !isNaN(parsed.getTime()) && parsed.toISOString() === value;
+}
+
 /**
  * Returns the effective end time of a meeting.
  * Uses meeting.endTime if present; otherwise falls back to startTime + 30 minutes.
@@ -264,8 +273,9 @@ export class MeetingManager {
         typeof m.id === 'string' &&
         typeof m.title === 'string' &&
         typeof m.url === 'string' &&
-        typeof m.startTime === 'string' &&
-        !isNaN(Date.parse(m.startTime)) &&
+        isValidIsoDate(m.startTime) &&
+        (m.endTime === undefined || isValidIsoDate(m.endTime)) &&
+        (m.recurrenceEndDate === undefined || isValidIsoDate(m.recurrenceEndDate)) &&
         isValidTeamsUrl(m.url)
       )
     );
