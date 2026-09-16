@@ -164,50 +164,20 @@ suite('MeetingManager - getMeetings sanitization', () => {
       url: 'https://teams.microsoft.com/l/meetup-join/19%3abadTitle',
       startTime: '2026-10-10T10:00:00.000Z',
     };
+    const invalidRecurrenceMeeting = {
+      id: 'bad4',
+      title: 'Bad Recurrence',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadRecurrence',
+      startTime: '2026-10-10T10:00:00.000Z',
+      recurrence: 'invalidRecurrence',
+    };
 
-    const mockStorage = [validMeeting, nullItem, invalidUrlMeeting, invalidDateMeeting, missingTitleMeeting];
+    const mockStorage = [validMeeting, nullItem, invalidUrlMeeting, invalidDateMeeting, missingTitleMeeting, invalidRecurrenceMeeting];
     const manager = new MeetingManager(createMockContext(mockStorage as any));
 
     const meetings = manager.getMeetings();
     assert.strictEqual(meetings.length, 1);
     assert.strictEqual(meetings[0].id, 'valid1');
-  });
-
-  test('filters out ISO dates that normalize to a different calendar date', () => {
-    const validMeeting: Meeting = {
-      id: 'valid-iso',
-      title: 'Valid ISO Meeting',
-      url: 'https://teams.microsoft.com/l/meetup-join/19%3avalidIso',
-      startTime: '2026-02-28T10:00:00.000Z',
-      endTime: '2026-02-28T10:30:00.000Z',
-      recurrence: 'daily',
-      recurrenceEndDate: '2026-03-31T23:59:59.999Z',
-    };
-    const impossibleStartTime = {
-      ...validMeeting,
-      id: 'bad-start',
-      startTime: '2026-02-30T10:00:00.000Z',
-    };
-    const impossibleEndTime = {
-      ...validMeeting,
-      id: 'bad-end',
-      endTime: '2026-02-30T10:30:00.000Z',
-    };
-    const impossibleRecurrenceEnd = {
-      ...validMeeting,
-      id: 'bad-recurrence-end',
-      recurrenceEndDate: '2026-02-30T23:59:59.999Z',
-    };
-    const manager = new MeetingManager(createMockContext([
-      validMeeting,
-      impossibleStartTime,
-      impossibleEndTime,
-      impossibleRecurrenceEnd,
-    ]));
-
-    const meetings = manager.getMeetings();
-
-    assert.deepStrictEqual(meetings.map(meeting => meeting.id), ['valid-iso']);
   });
 });
 

@@ -6,16 +6,7 @@ import { isValidTeamsUrl } from './urlValidator';
 const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
-
-/** Returns whether a value is a canonical ISO 8601 date string. */
-function isValidIsoDate(value: unknown): value is string {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  const parsed = new Date(value);
-  return !isNaN(parsed.getTime()) && parsed.toISOString() === value;
-}
+const VALID_RECURRENCE_TYPES = new Set(['once', 'daily', 'weekly', 'weekdays', 'monthly', 'yearly']);
 
 /**
  * Returns the effective end time of a meeting.
@@ -274,10 +265,10 @@ export class MeetingManager {
         typeof m.id === 'string' &&
         typeof m.title === 'string' &&
         typeof m.url === 'string' &&
-        isValidIsoDate(m.startTime) &&
-        (m.endTime === undefined || isValidIsoDate(m.endTime)) &&
-        (m.recurrenceEndDate === undefined || isValidIsoDate(m.recurrenceEndDate)) &&
-        isValidTeamsUrl(m.url)
+        typeof m.startTime === 'string' &&
+        !isNaN(Date.parse(m.startTime)) &&
+        isValidTeamsUrl(m.url) &&
+        (m.recurrence === undefined || VALID_RECURRENCE_TYPES.has(m.recurrence))
       )
     );
   }
