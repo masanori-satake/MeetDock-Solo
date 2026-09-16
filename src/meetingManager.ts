@@ -7,6 +7,7 @@ const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
 
+/** Returns whether a value is a canonical ISO 8601 date string. */
 function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== 'string') {
     return false;
