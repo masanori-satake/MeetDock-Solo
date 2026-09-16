@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Meeting, RecurrenceByDay } from './types';
 import { addZonedDays, getDaysInMonth, getZonedDateParts } from './dateTime';
+import { isValidTeamsUrl } from './urlValidator';
 
 const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
@@ -253,7 +254,21 @@ export class MeetingManager {
 
   public getMeetings(): Meeting[] {
     const rawData = this.context.globalState.get<Meeting[]>(STORAGE_KEY, []);
-    return rawData;
+    if (!Array.isArray(rawData)) {
+      return [];
+    }
+    return rawData.filter((m): m is Meeting =>
+      Boolean(
+        m &&
+        typeof m === 'object' &&
+        typeof m.id === 'string' &&
+        typeof m.title === 'string' &&
+        typeof m.url === 'string' &&
+        typeof m.startTime === 'string' &&
+        !isNaN(Date.parse(m.startTime)) &&
+        isValidTeamsUrl(m.url)
+      )
+    );
   }
 
   public async saveMeetings(meetings: Meeting[]): Promise<void> {

@@ -207,7 +207,10 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   const cleanField = (val: string, maxLen: number) => {
     // Replace control characters with space, then normalize whitespace
     const cleaned = val.replace(/[\x00-\x1F\x7F]+/g, ' ').replace(/\s+/g, ' ').trim();
-    return cleaned.length > maxLen ? cleaned.substring(0, maxLen).trim() : cleaned;
+    if (!cleaned) { return ''; }
+    return Array.from(cleaned).length > maxLen
+      ? Array.from(cleaned).slice(0, maxLen).join('').trim()
+      : cleaned;
   };
 
   // 2. Extract Organizer
