@@ -494,4 +494,17 @@ Passcode: abc123
     assert.strictEqual(parsed.title, '正常会議');
     assert.strictEqual(parsed.url, 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_huge');
   });
+
+  test('truncates fields by Unicode code points without splitting emojis at boundary', () => {
+    const emojiTitle = 'A'.repeat(199) + '🥑'.repeat(10);
+    const sample = `
+      件名: ${emojiTitle}
+      日時: 2026-04-10 14:00
+      Teams URL: https://teams.microsoft.com/l/meetup-join/19%3ameeting_emoji
+    `;
+    const parsed = parseMeetingText(sample);
+    assert.strictEqual(Array.from(parsed.title).length, 200);
+    assert.strictEqual(parsed.title, 'A'.repeat(199) + '🥑');
+    assert.strictEqual(parsed.title.charCodeAt(parsed.title.length - 1), 0xDD51);
+  });
 });

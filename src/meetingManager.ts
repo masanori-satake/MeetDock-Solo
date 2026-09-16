@@ -1,10 +1,20 @@
 import * as vscode from 'vscode';
 import { Meeting, RecurrenceByDay } from './types';
 import { addZonedDays, getDaysInMonth, getZonedDateParts } from './dateTime';
+import { isValidTeamsUrl } from './urlValidator';
 
 const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
+const VALID_RECURRENCE_TYPES = new Set(['once', 'daily', 'weekly', 'weekdays', 'monthly', 'yearly']);
+
+function isValidIsoDateString(val: unknown): val is string {
+  if (typeof val !== 'string') {
+    return false;
+  }
+  const date = new Date(val);
+  return !isNaN(date.getTime()) && date.toISOString() === val;
+}
 
 /**
  * Returns the effective end time of a meeting.
@@ -253,7 +263,23 @@ export class MeetingManager {
 
   public getMeetings(): Meeting[] {
     const rawData = this.context.globalState.get<Meeting[]>(STORAGE_KEY, []);
-    return rawData;
+    if (!Array.isArray(rawData)) {
+      return [];
+    }
+    return rawData.filter((m): m is Meeting =>
+      Boolean(
+        m &&
+        typeof m === 'object' &&
+        typeof m.id === 'string' &&
+        typeof m.title === 'string' &&
+        typeof m.url === 'string' &&
+        isValidIsoDateString(m.startTime) &&
+        (m.endTime === undefined || isValidIsoDateString(m.endTime)) &&
+        (m.recurrenceEndDate === undefined || isValidIsoDateString(m.recurrenceEndDate)) &&
+        isValidTeamsUrl(m.url) &&
+        (m.recurrence === undefined || VALID_RECURRENCE_TYPES.has(m.recurrence))
+      )
+    );
   }
 
   public async saveMeetings(meetings: Meeting[]): Promise<void> {

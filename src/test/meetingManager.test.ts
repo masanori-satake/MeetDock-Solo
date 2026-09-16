@@ -134,6 +134,68 @@ suite('MeetingManager - getRelevantMeetings', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Test suite: getMeetings sanitization
+// ---------------------------------------------------------------------------
+
+suite('MeetingManager - getMeetings sanitization', () => {
+  test('filters out null, missing field, invalid date, or non-Teams URL items from globalState', () => {
+    const validMeeting: Meeting = {
+      id: 'valid1',
+      title: 'Valid Meeting',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3avalid',
+      startTime: '2026-10-10T10:00:00.000Z',
+      recurrence: 'once',
+    };
+    const nullItem = null;
+    const invalidUrlMeeting = {
+      id: 'bad1',
+      title: 'Bad URL',
+      url: 'javascript:alert(1)',
+      startTime: '2026-10-10T10:00:00.000Z',
+    };
+    const invalidDateMeeting = {
+      id: 'bad2',
+      title: 'Bad Date',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadDate',
+      startTime: 'not-a-date',
+    };
+    const missingTitleMeeting = {
+      id: 'bad3',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadTitle',
+      startTime: '2026-10-10T10:00:00.000Z',
+    };
+    const invalidRecurrenceMeeting = {
+      id: 'bad4',
+      title: 'Bad Recurrence',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadRecurrence',
+      startTime: '2026-10-10T10:00:00.000Z',
+      recurrence: 'invalidRecurrence',
+    };
+    const impossibleIsoDateMeeting = {
+      id: 'bad5',
+      title: 'Impossible Date',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadIsoDate',
+      startTime: '2026-02-30T10:00:00.000Z',
+    };
+
+    const mockStorage = [
+      validMeeting,
+      nullItem,
+      invalidUrlMeeting,
+      invalidDateMeeting,
+      missingTitleMeeting,
+      invalidRecurrenceMeeting,
+      impossibleIsoDateMeeting,
+    ];
+    const manager = new MeetingManager(createMockContext(mockStorage as any));
+
+    const meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 1);
+    assert.strictEqual(meetings[0].id, 'valid1');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Test suite: getNextMeeting (regression guard)
 // ---------------------------------------------------------------------------
 
