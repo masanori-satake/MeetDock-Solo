@@ -423,6 +423,10 @@ export interface ParsedRrule {
   wkst?: string;
 }
 
+/**
+ * Parses an RFC 5545 RRULE into recurrence settings, defaulting invalid intervals
+ * and ignoring non-positive occurrence counts.
+ */
 export function parseRrule(rruleStr: string, timeZoneAliasMap?: Map<string, string>): ParsedRrule | undefined {
   if (!rruleStr) { return undefined; }
   const parts = rruleStr.split(';');
