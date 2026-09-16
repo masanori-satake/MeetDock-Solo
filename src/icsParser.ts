@@ -4,6 +4,8 @@ import { addZonedDays, createDateInTimeZone, getDaysInMonth, getZonedDateParts, 
 import { getNextOccurrence } from './meetingManager';
 import { MAX_ICS_CONTENT_SIZE } from './icsContentReader';
 
+export const MAX_RRULE_COUNT = 1000;
+
 export interface IcsProperty {
   name: string;
   params: Record<string, string>;
@@ -421,6 +423,10 @@ export interface ParsedRrule {
   wkst?: string;
 }
 
+/**
+ * Parses an RFC 5545 RRULE into recurrence settings, defaulting invalid intervals
+ * and ignoring non-positive occurrence counts.
+ */
 export function parseRrule(rruleStr: string, timeZoneAliasMap?: Map<string, string>): ParsedRrule | undefined {
   if (!rruleStr) { return undefined; }
   const parts = rruleStr.split(';');
@@ -443,9 +449,15 @@ export function parseRrule(rruleStr: string, timeZoneAliasMap?: Map<string, stri
     if (key === 'FREQ') {
       freq = val.toUpperCase();
     } else if (key === 'INTERVAL') {
-      interval = parseInt(val, 10) || 1;
+      const parsedInterval = parseInt(val, 10);
+      interval = Number.isInteger(parsedInterval) && parsedInterval > 0
+        ? Math.min(parsedInterval, 1000)
+        : 1;
     } else if (key === 'COUNT') {
-      count = parseInt(val, 10);
+      const parsedCount = parseInt(val, 10);
+      if (Number.isInteger(parsedCount) && parsedCount > 0) {
+        count = parsedCount;
+      }
     } else if (key === 'UNTIL') {
       const dtProp: IcsProperty = { name: 'UNTIL', params: {}, value: val };
       until = parseIcsDateTime(dtProp, timeZoneAliasMap).date;
@@ -700,7 +712,8 @@ export function parseSingleVEvent(
           recurrenceBySetPos,
         };
         let countEnd = startTime;
-        for (let occurrence = 1; occurrence < pr.count; occurrence++) {
+        const effectiveCount = Math.min(pr.count, MAX_RRULE_COUNT);
+        for (let occurrence = 1; occurrence < effectiveCount; occurrence++) {
           const next = getNextOccurrence(recurrenceTemplate, new Date(countEnd.getTime() + duration + 1));
           if (!next) {
             break;

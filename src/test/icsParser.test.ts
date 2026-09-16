@@ -648,4 +648,42 @@ END:VCALENDAR`;
       await fs.promises.rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  // 30. RRULE COUNT / INTERVAL size limit & CPU exhaustion prevention
+  test('30. Handles huge COUNT and invalid/excessive INTERVAL in RRULE safely without CPU exhaustion', () => {
+    const hugeCountIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:huge-count@example.invalid
+DTSTART:20261005T100000Z
+RRULE:FREQ=DAILY;COUNT=10000000
+SUMMARY:Huge Count Daily Meeting
+URL:https://teams.microsoft.com/meet/99999
+END:VEVENT
+END:VCALENDAR`;
+
+    const now = new Date('2026-10-01T00:00:00Z');
+    const startMs = Date.now();
+    const res = parseIcsContent(hugeCountIcs, now);
+    const elapsedMs = Date.now() - startMs;
+
+    assert.ok(elapsedMs < 500, 'Parsing huge COUNT should complete almost instantly without CPU lockup');
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].recurrence, 'daily');
+
+    const invalidIntervalIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:invalid-interval@example.invalid
+DTSTART:20261005T100000Z
+RRULE:FREQ=DAILY;INTERVAL=-5
+SUMMARY:Invalid Interval Meeting
+URL:https://teams.microsoft.com/meet/99999
+END:VEVENT
+END:VCALENDAR`;
+
+    const resInterval = parseIcsContent(invalidIntervalIcs, now);
+    assert.strictEqual(resInterval.length, 1);
+    assert.strictEqual(resInterval[0].recurrenceInterval, 1);
+  });
 });
