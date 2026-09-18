@@ -103,12 +103,9 @@ export class ReminderService {
 
       const now = this.now();
       const startTime = new Date(nextMeeting.startTime);
-      const diffMs = startTime.getTime() - now.getTime();
-      const diffMinutes = Math.floor(diffMs / (60 * 1000));
       const timeStr = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-      const remainingText = t.remainingTime(diffMinutes);
-      this.statusBarItem.text = t.nextMeetingStatus(timeStr, remainingText);
+      this.statusBarItem.text = t.nextMeetingStatus(startTime, now, timeStr);
       this.statusBarItem.color = undefined;
       this.statusBarItem.backgroundColor = undefined;
       this.statusBarItem.tooltip = t.nextMeetingTooltip(nextMeeting.title, timeStr);

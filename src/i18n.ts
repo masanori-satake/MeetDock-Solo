@@ -179,7 +179,29 @@ export const t = {
   noMeetingsStatusBar: () => isJapanese() ? '$(calendar) Teams: 予定なし' : '$(calendar) Teams: No upcoming meetings',
   noMeetingsTooltip: () => isJapanese() ? '登録された Teams ミーティングはありません。' : 'No registered Teams meetings.',
   nextMeetingTooltip: (title: string, timeStr: string) => isJapanese() ? `次回会議: ${title}\n開始時刻: ${timeStr}` : `Next meeting: ${title}\nStart time: ${timeStr}`,
-  nextMeetingStatus: (timeStr: string, remainingText: string) => isJapanese() ? `$(calendar) 次の Teams: ${timeStr} (${remainingText}後)` : `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`,
+  nextMeetingStatus: (startTime: Date, now: Date, timeStr: string) => {
+    const startLocal = new Date(startTime.getFullYear(), startTime.getMonth(), startTime.getDate());
+    const nowLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayDiff = Math.round((startLocal.getTime() - nowLocal.getTime()) / (24 * 60 * 60 * 1000));
+
+    if (dayDiff === 1) {
+      return isJapanese()
+        ? `$(calendar) 次の Teams: ${timeStr} (明日)`
+        : `$(calendar) Next Teams: ${timeStr} (Tomorrow)`;
+    }
+    if (dayDiff >= 2) {
+      return isJapanese()
+        ? `$(calendar) 次の Teams: ${timeStr} (${dayDiff}日後)`
+        : `$(calendar) Next Teams: ${timeStr} (in ${dayDiff} days)`;
+    }
+
+    const diffMs = startTime.getTime() - now.getTime();
+    const diffMinutes = Math.floor(diffMs / (60 * 1000));
+    const remainingText = t.remainingTime(diffMinutes);
+    return isJapanese()
+      ? `$(calendar) 次の Teams: ${timeStr} (${remainingText}後)`
+      : `$(calendar) Next Teams: ${timeStr} (in ${remainingText})`;
+  },
   remainingTime: (diffMinutes: number) => {
     const hours = Math.floor(diffMinutes / 60);
     const minutes = diffMinutes % 60;

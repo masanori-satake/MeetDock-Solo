@@ -145,6 +145,63 @@ suite('ReminderService - Status Bar (single meeting)', () => {
     assert.strictEqual((service as any).statusBarItem.color, undefined);
   });
 
+  test('shows "明日" / "Tomorrow" for a meeting on the next calendar day (>5 min away)', async () => {
+    // now = 2026-09-07 12:00:00
+    // tomorrow = 2026-09-08 10:00:00 (22 hours = 1320 minutes away)
+    const meeting = makeMeeting(now, 'tomorrow', 1320);
+    mockManager.setMeetings([meeting]);
+    await service.update();
+    const text = statusText(service);
+    assert.ok(text.includes('明日') || text.includes('Tomorrow'), `Expected "明日" or "Tomorrow" but got: "${text}"`);
+    assert.strictEqual(statusBg(service), undefined);
+  });
+
+  test('shows "N日後" / "in N days" for a meeting 2 or more days later', async () => {
+    // now = 2026-09-07 12:00:00
+    // 2 days later = 2026-09-09 12:00:00 (2880 minutes away)
+    const meeting2d = makeMeeting(now, '2days', 2880);
+    mockManager.setMeetings([meeting2d]);
+    await service.update();
+    const text2d = statusText(service);
+    assert.ok(text2d.includes('2日後') || text2d.includes('in 2 days'), `Expected "2日後" or "in 2 days" but got: "${text2d}"`);
+
+    // 5 days later = 2026-09-12 12:00:00 (7200 minutes away)
+    const meeting5d = makeMeeting(now, '5days', 7200);
+    mockManager.setMeetings([meeting5d]);
+    await service.update();
+    const text5d = statusText(service);
+    assert.ok(text5d.includes('5日後') || text5d.includes('in 5 days'), `Expected "5日後" or "in 5 days" but got: "${text5d}"`);
+  });
+
+  test('shows warning display when next-day meeting is within 5 minutes', async () => {
+    // Custom clock at 23:59:00 on 2026-09-07
+    const lateClock: Clock = () => new Date(2026, 8, 7, 23, 59, 0);
+    const lateManager = new MockMeetingManager(lateClock);
+    const lateService = new ReminderService(lateManager as unknown as MeetingManager, lateClock);
+
+    try {
+      // Meeting at 00:04:00 on 2026-09-08 (5 min away, next calendar day)
+      const nextDayMeeting: Meeting = {
+        id: 'midnight',
+        title: '深夜会議',
+        url: 'https://teams.microsoft.com/meet/midnight',
+        startTime: new Date(2026, 8, 8, 0, 4, 0).toISOString(),
+        recurrence: 'once',
+        notified5m: false,
+        notifiedStart: false,
+      };
+      lateManager.setMeetings([nextDayMeeting]);
+      await lateService.update();
+
+      const text = statusText(lateService);
+      // Within 5 min -> warning background and "5分後" / "in 5m"
+      assert.ok(text.includes('5分後') || text.includes('in 5m'), `Expected 5m warning text but got: "${text}"`);
+      assert.ok(statusBg(lateService) instanceof vscode.ThemeColor, 'Expected ThemeColor background for warning');
+    } finally {
+      lateService.dispose();
+    }
+  });
+
   test('shows countdown with no index suffix for a meeting more than 5 min away', async () => {
     mockManager.setMeetings([makeMeeting(now, 'a', 60)]);
     await service.update();
