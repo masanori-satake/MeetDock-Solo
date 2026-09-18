@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.14.4-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.15.0-blue.svg)](package.json)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -31,7 +31,8 @@
 2. **ステータスバー表示とリアルタイムカウントダウン**
    - 次の会議までの残り時間をステータスバーに常時表示します。
    - 残り時間に応じて表示スタイルが自動変化します：
-     - **通常時**: `$(calendar) Next Teams: 14:00 (in 35m)`
+     - **通常時（当日）**: `$(calendar) Next Teams: 14:00 (in 35m)`
+     - **通常時（翌日・翌日以降）**: 翌日の場合は `$(calendar) Next Teams: 14:00 (Tomorrow)` / `(明日)`、2日以降先の場合は `(in 2 days)` / `(2日後)` と分かりやすく表示されます。
      - **5分前〜1分前**: 黄色背景で警告表示 `$(calendar) 14:00 件名 (in 5m)`
      - **1分前未満**: 赤色背景で強調表示 `$(calendar) 14:00 件名 (まもなく開始)`
      - **開催中**: 背景色無しの緑色強調表示で `$(broadcast) 件名 (開催中)`
@@ -61,7 +62,7 @@ VSIX パッケージファイルを使用して本拡張機能を VS Code に新
 
 ### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新のリリース（`v1.14.4` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.14.4.vsix`）をクリックしてダウンロードします。
+2. 最新のリリース（`v1.15.0` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.15.0.vsix`）をクリックしてダウンロードします。
 
 ### 手順 2: VS Code へのインストール
 以下のいずれかの方法でインストールできます。
