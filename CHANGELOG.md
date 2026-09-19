@@ -2,6 +2,12 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.16.0] - 2026-09-19
+
+### 変更・改善 (Changed & Improved)
+- Visual Studio Marketplace での配布移行に伴い、GitHub Releases からの独自バージョン確認・更新通知機能 (`src/updateChecker.ts`) を削除
+- GitHub Actions ワークフロー (`.github/workflows/build-and-publish.yml`) を更新し、VS Code Marketplace への自動パブリッシュステップ (`vsce publish`) を追加
+
 ## [1.15.0] - 2026-09-18
 
 ### 変更・改善 (Changed & Improved)
