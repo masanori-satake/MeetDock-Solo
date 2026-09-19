@@ -28,6 +28,11 @@ jobs:
       - name: Package Extension (.vsix)
         run: npx @vscode/vsce package --no-git-tag-version
 
+      - name: Publish to Visual Studio Marketplace
+        run: npx @vscode/vsce publish --skip-duplicate
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
       - name: Get Version
         id: get_version
         run: |

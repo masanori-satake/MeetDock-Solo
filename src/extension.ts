@@ -3,7 +3,6 @@ import { MeetingManager } from './meetingManager';
 import { MeetingTreeDataProvider, MeetingTreeItem } from './treeProvider';
 import { ReminderService } from './reminderService';
 import { addFromClipboardCommand, addFromFileCommand, deleteMeetingCommand, editRecurrenceCommand } from './commands';
-import { checkForUpdates } from './updateChecker';
 import { getTeamsChatUrl, openTeamsChatUrl, openTeamsMeetingUrl } from './urlValidator';
 import { Meeting } from './types';
 import { t } from './i18n';
@@ -13,9 +12,6 @@ import { t } from './i18n';
  */
 export function activate(context: vscode.ExtensionContext) {
   console.log('MeetDock-Solo is now active!');
-
-  // Check for updates in background asynchronously without blocking activation
-  checkForUpdates(context).catch(() => {});
 
   const meetingManager = new MeetingManager(context);
 
