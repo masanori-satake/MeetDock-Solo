@@ -58,25 +58,33 @@
 
 ## 📦 インストール/アップデート方法
 
-VSIX パッケージファイルを使用して本拡張機能を VS Code に新規インストール、または最新バージョンへアップデートする手順は以下の通りです。（すでに旧バージョンがインストールされている場合でも、同じ手順で新しい VSIX ファイルを選択することで上書きアップデートが行われます）
+本拡張機能は **Visual Studio Marketplace** から直接インストールできます（推奨）。Marketplace からインストールした場合、VS Code によって拡張機能のバージョン確認および自動アップデートが自動的に行われます。
 
-### 手順 1: VSIX ファイルのダウンロード
-1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新のリリース（`v1.16.0` など）の **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.16.0.vsix`）をクリックしてダウンロードします。
+### 方法 1: Visual Studio Marketplace からのインストール（推奨）
 
-### 手順 2: VS Code へのインストール
-以下のいずれかの方法でインストールできます。
-
-#### 方法 A: 拡張機能ビューのメニューからインストール（おすすめ）
+#### A. VS Code UI からインストール
 1. VS Code を開き、左側のアクティビティバーにある **拡張機能アイコン**（`Ctrl+Shift+X` / `Cmd+Shift+X`）をクリックします。
-2. 拡張機能サイドバーの右上にある **「...」（その他の操作）アイコン** をクリックします。
-3. ドロップダウンメニューから **「VSIX からのインストール... (Install from VSIX...)」** を選択します。
-4. ダウンロードした `.vsix` ファイルを選択し、**「インストール」** をクリックします。
+2. 検索窓に `MeetDock-Solo` と入力します。
+3. 一覧に表示された **MeetDock-Solo** の **「インストール (Install)」** ボタンをクリックします。
 
-#### 方法 B: コマンドパレットからインストール
-1. `Ctrl+Shift+P` (macOS: `Cmd+Shift+P`) を押してコマンドパレットを開きます。
-2. `Extensions: Install from VSIX...`（拡張機能: VSIX からのインストール...）と入力して選択します。
-3. ダウンロードした `.vsix` ファイルを選択します。
+#### B. VS Code Marketplace Web ページからインストール
+1. [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo) の MeetDock-Solo ページにアクセスします。
+2. **「Install」** ボタンをクリックし、ブラウザの指示に従って VS Code で開いてインストールします。
+
+---
+
+### 方法 2: VSIX パッケージファイルからのインストール（オフライン環境等）
+
+ネットワーク制限のある環境やテスト目的で `.vsix` ファイルから直接インストール・更新を行う手順は以下の通りです。
+
+#### 手順 1: VSIX ファイルのダウンロード
+1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
+2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.16.0.vsix`）をダウンロードします。
+
+#### 手順 2: VS Code へのインストール
+1. VS Code の拡張機能ビュー（`Ctrl+Shift+X` / `Cmd+Shift+X`）を開きます。
+2. 右上の **「...」（その他の操作）アイコン** をクリックし、**「VSIX からのインストール... (Install from VSIX...)」** を選択します。
+3. ダウンロードした `.vsix` ファイルを選択してインストールします。
 
 インストール完了後、アクティビティバーにカレンダーアイコン (**MeetDock-Solo**) が表示されれば準備完了です。
 
