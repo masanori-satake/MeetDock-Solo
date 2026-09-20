@@ -166,9 +166,19 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
   if (!text || typeof text !== 'string') {
     return { title: 'Teams Meeting', url: '' };
   }
-  const truncatedText = text.length > MAX_PARSER_TEXT_LENGTH
-    ? Array.from(text).slice(0, MAX_PARSER_TEXT_LENGTH).join('')
-    : text;
+  let truncatedText = text;
+  if (text.length > MAX_PARSER_TEXT_LENGTH) {
+    const codePoints: string[] = [];
+    const iterator = text[Symbol.iterator]();
+    for (let index = 0; index < MAX_PARSER_TEXT_LENGTH; index++) {
+      const next = iterator.next();
+      if (next.done) {
+        break;
+      }
+      codePoints.push(next.value);
+    }
+    truncatedText = codePoints.join('');
+  }
   const normalizedText = truncatedText.replace(/\r\n/g, '\n').trim();
   const lines = normalizedText.split('\n').map(l => l.trim());
 

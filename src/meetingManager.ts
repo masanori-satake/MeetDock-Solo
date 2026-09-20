@@ -278,8 +278,8 @@ export class MeetingManager {
         (m.recurrenceEndDate === undefined || isValidIsoDateString(m.recurrenceEndDate)) &&
         isValidTeamsUrl(m.url) &&
         (m.recurrence === undefined || VALID_RECURRENCE_TYPES.has(m.recurrence)) &&
-        (m.monthOfYear === undefined || (typeof m.monthOfYear === 'number' && m.monthOfYear >= 1 && m.monthOfYear <= 12)) &&
-        (m.recurrenceByMonth === undefined || (Array.isArray(m.recurrenceByMonth) && m.recurrenceByMonth.every(n => typeof n === 'number' && n >= 1 && n <= 12)))
+        (m.monthOfYear === undefined || (typeof m.monthOfYear === 'number' && Number.isInteger(m.monthOfYear) && m.monthOfYear >= 1 && m.monthOfYear <= 12)) &&
+        (m.recurrenceByMonth === undefined || (Array.isArray(m.recurrenceByMonth) && m.recurrenceByMonth.every(n => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 12)))
       )
     );
   }
