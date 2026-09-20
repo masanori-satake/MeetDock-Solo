@@ -178,6 +178,35 @@ suite('MeetingManager - getMeetings sanitization', () => {
       startTime: '2026-02-30T10:00:00.000Z',
     };
 
+    const invalidMonthOfYearMeeting = {
+      id: 'badMonth1',
+      title: 'Bad Month Of Year',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadMonth1',
+      startTime: '2026-10-10T10:00:00.000Z',
+      monthOfYear: 13,
+    };
+    const invalidRecurrenceByMonthMeeting = {
+      id: 'badMonth2',
+      title: 'Bad Recurrence By Month',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadMonth2',
+      startTime: '2026-10-10T10:00:00.000Z',
+      recurrenceByMonth: [0, 13],
+    };
+    const fractionalMonthOfYearMeeting = {
+      id: 'badMonth3',
+      title: 'Fractional Month Of Year',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadMonth3',
+      startTime: '2026-10-10T10:00:00.000Z',
+      monthOfYear: 1.5,
+    };
+    const fractionalRecurrenceByMonthMeeting = {
+      id: 'badMonth4',
+      title: 'Fractional Recurrence By Month',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3abadMonth4',
+      startTime: '2026-10-10T10:00:00.000Z',
+      recurrenceByMonth: [1, 2.5],
+    };
+
     const mockStorage = [
       validMeeting,
       nullItem,
@@ -186,6 +215,10 @@ suite('MeetingManager - getMeetings sanitization', () => {
       missingTitleMeeting,
       invalidRecurrenceMeeting,
       impossibleIsoDateMeeting,
+      invalidMonthOfYearMeeting,
+      invalidRecurrenceByMonthMeeting,
+      fractionalMonthOfYearMeeting,
+      fractionalRecurrenceByMonthMeeting,
     ];
     const manager = new MeetingManager(createMockContext(mockStorage as any));
 
