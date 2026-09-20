@@ -686,4 +686,26 @@ END:VCALENDAR`;
     assert.strictEqual(resInterval.length, 1);
     assert.strictEqual(resInterval[0].recurrenceInterval, 1);
   });
+
+  test('31. Filters out-of-range BYMONTH, BYMONTHDAY, and BYSETPOS parameters in parseRrule to prevent CPU exhaustion', () => {
+    const invalidRruleIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:invalid-bymonth@example.invalid
+DTSTART:20261005T100000Z
+RRULE:FREQ=YEARLY;BYMONTH=13,0,-1,10;BYMONTHDAY=99,-99,15;BYSETPOS=999,-999,1
+SUMMARY:Invalid BYMONTH RRULE Meeting
+URL:https://teams.microsoft.com/meet/99999
+END:VEVENT
+END:VCALENDAR`;
+
+    const now = new Date('2026-10-01T00:00:00Z');
+    const startMs = Date.now();
+    const res = parseIcsContent(invalidRruleIcs, now);
+    const elapsedMs = Date.now() - startMs;
+
+    assert.ok(elapsedMs < 500, 'Parsing invalid BYMONTH should complete instantly without CPU lockup');
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].monthOfYear, 10);
+  });
 });

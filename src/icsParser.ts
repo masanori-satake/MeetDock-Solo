@@ -479,19 +479,19 @@ export function parseRrule(rruleStr: string, timeZoneAliasMap?: Map<string, stri
       const mdays = val.split(',');
       for (const md of mdays) {
         const num = parseInt(md, 10);
-        if (!isNaN(num)) { bymonthday.push(num); }
+        if (!isNaN(num) && num >= -31 && num <= 31 && num !== 0) { bymonthday.push(num); }
       }
     } else if (key === 'BYMONTH') {
       const mos = val.split(',');
       for (const mo of mos) {
         const num = parseInt(mo, 10);
-        if (!isNaN(num)) { bymonth.push(num); }
+        if (!isNaN(num) && num >= 1 && num <= 12) { bymonth.push(num); }
       }
     } else if (key === 'BYSETPOS') {
       const sps = val.split(',');
       for (const sp of sps) {
         const num = parseInt(sp, 10);
-        if (!isNaN(num)) { bysetpos.push(num); }
+        if (!isNaN(num) && num >= -366 && num <= 366 && num !== 0) { bysetpos.push(num); }
       }
     }
   }

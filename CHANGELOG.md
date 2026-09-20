@@ -2,6 +2,12 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.16.1] - 2026-09-20
+
+### セキュリティ強化 (Security Enhancements)
+- `.ics` カレンダーファイルの `RRULE` 解析処理 (`src/icsParser.ts`) において、`BYMONTH` (1..12), `BYMONTHDAY` (-31..31), `BYSETPOS` (-366..366) の数値範囲チェックを追加し、不正・範囲外のパラメータに起因する 400年分検索ループでの CPU 枯渇・プロセス応答停止 (DoS) を防止
+- 永続ストレージ (`globalState`) からのデータ取得時 (`src/meetingManager.ts`) において `monthOfYear` および `recurrenceByMonth` の値範囲検証を追加し、不正な永続化データによる無限ループ・パフォーマンス不具合を防止
+
 ## [1.16.0] - 2026-09-19
 
 ### 変更・改善 (Changed & Improved)
