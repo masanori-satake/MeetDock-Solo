@@ -160,7 +160,8 @@
 
 ## 🛠️ 開発者向けドキュメント
 
-システムの詳細な動作フローやコンポーネント構造については、[docs/architecture.md](docs/architecture.md) を参照してください。
+- システムの詳細な動作フローやコンポーネント構造: [docs/architecture.md](docs/architecture.md)
+- Open VSX Registry への初回パブリッシュ設定手順: [docs/open-vsx-setup.md](docs/open-vsx-setup.md)
 
 ---
 
