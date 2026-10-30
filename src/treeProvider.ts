@@ -165,8 +165,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   }
 
   public checkStatusChange(): void {
-    const meetings = this.meetingManager.getSortedMeetings();
     const now = this.now();
+    const meetings = this.meetingManager.getSortedMeetings(now);
     let hasStateChange = false;
     const currentMap = new Map<string, MeetingStatusState>();
 
@@ -192,8 +192,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   }
 
   refresh(): void {
-    const meetings = this.meetingManager.getSortedMeetings();
     const now = this.now();
+    const meetings = this.meetingManager.getSortedMeetings(now);
     this.lastStatusStates = new Map(meetings.map(m => [m.id, getMeetingStatusState(m, now)]));
     this._onDidChangeTreeData.fire();
   }
@@ -204,7 +204,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
   getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
     if (!element) {
-      const meetings = this.meetingManager.getSortedMeetings();
+      const currentDate = this.now();
+      const meetings = this.meetingManager.getSortedMeetings(currentDate);
       if (meetings.length === 0) {
         const dropHintItem = new vscode.TreeItem(
           t.dropZoneHint(),
@@ -215,7 +216,6 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
         dropHintItem.contextValue = 'emptyDropHintItem';
         return [dropHintItem];
       }
-      const currentDate = this.now();
       return meetings.map(m => new MeetingTreeItem(m, currentDate));
     }
 
