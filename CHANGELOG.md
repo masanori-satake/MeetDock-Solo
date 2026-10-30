@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.16.4] - 2026-10-30
+
+### 追加 (Added)
+- Open VSX Registry への初回パブリッシュ手順およびネームスペース作成ガイド (`docs/open-vsx-setup.md`) を追加し、`README.md` に参照リンクを追加
+
 ## [1.16.3] - 2026-10-30
 
 ### 変更・改善 (Changed & Improved)
