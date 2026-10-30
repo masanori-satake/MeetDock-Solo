@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync, execSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
 
@@ -115,6 +115,7 @@ function isVsixRelevant(filepath) {
     'tsconfig.json',
     'eslint.config.mjs',
     'vsc-extension-quickstart.md',
+    'CHANGELOG.md',
   ]);
 
   if (ignoredFiles.has(normalized)) return false;
@@ -128,14 +129,24 @@ function isVsixRelevant(filepath) {
 if (checkBump) {
   console.log('Checking if version bump is required...');
   try {
+    const versionBaseRef = process.env.VERSION_BASE_REF;
+    if (/^0{40}$/.test(versionBaseRef || '')) {
+      throw new Error('VERSION_BASE_REF is an all-zero SHA; a valid comparison commit is required.');
+    }
+
     let baseRef = null;
     let baseRefName = '';
 
-    const candidates = ['origin/main', 'main', 'origin/master', 'master'];
+    const candidates = versionBaseRef
+      ? [versionBaseRef]
+      : ['origin/main', 'main', 'origin/master', 'master'];
+
     for (const cand of candidates) {
       try {
-        execSync(`git rev-parse --verify ${cand}`, { stdio: 'ignore' });
-        baseRef = cand;
+        baseRef = execFileSync('git', ['rev-parse', '--verify', '--end-of-options', `${cand}^{commit}`], {
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim();
         baseRefName = cand;
         break;
       } catch (e) {
@@ -157,8 +168,9 @@ if (checkBump) {
         const basePkg = JSON.parse(basePkgContent);
         const baseVersion = basePkg.version;
 
-        // Get diff files compared to baseRef
-        const diffOutput = execSync(`git diff --name-only ${baseRef}`, { encoding: 'utf8' }).trim();
+        // Get diff files compared to merge-base of HEAD and baseRef
+        const mergeBase = execSync(`git merge-base HEAD ${baseRef}`, { encoding: 'utf8' }).trim();
+        const diffOutput = execSync(`git diff --name-only ${mergeBase}`, { encoding: 'utf8' }).trim();
         const untrackedOutput = execSync('git ls-files -o --exclude-standard', { encoding: 'utf8' }).trim();
 
         const diffFiles = diffOutput ? diffOutput.split('\n') : [];
@@ -173,7 +185,7 @@ if (checkBump) {
               `VSIX-relevant files have been modified compared to ${baseRefName} (base: v${baseVersion}, current: v${version}), but package.json version was not bumped.\n` +
               `    Modified VSIX files:\n` +
               vsixChangedFiles.map(f => `      - ${f}`).join('\n') + '\n' +
-              `    Please run "npm run update-version <new_version>" to increment version (minor for feature additions, patch for bug fixes/updates).`
+              `    Please update package.json version to increment version.`
             );
           }
         }

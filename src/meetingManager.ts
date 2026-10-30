@@ -326,9 +326,8 @@ export class MeetingManager {
    * Process expired meetings and update recurring meetings to their next date.
    * Returns true if any meeting state was changed.
    */
-  public async processExpirations(): Promise<boolean> {
+  public async processExpirations(now: Date = new Date()): Promise<boolean> {
     const meetings = this.getMeetings();
-    const now = new Date();
     let updated = false;
     const result: Meeting[] = [];
 
@@ -363,8 +362,7 @@ export class MeetingManager {
   /**
    * Returns sorted active meetings (closest start time first), processing expirations first.
    */
-  public getSortedMeetings(): Meeting[] {
-    const now = new Date();
+  public getSortedMeetings(now: Date = new Date()): Meeting[] {
     const rawMeetings = this.getMeetings();
     let hasChanges = false;
     const mapped: Array<{ meeting: Meeting; timestamp: number }> = [];
@@ -405,9 +403,8 @@ export class MeetingManager {
   /**
    * Returns the next upcoming meeting or currently ongoing meeting.
    */
-  public getNextMeeting(): Meeting | undefined {
-    const sorted = this.getSortedMeetings();
-    const now = new Date();
+  public getNextMeeting(now: Date = new Date()): Meeting | undefined {
+    const sorted = this.getSortedMeetings(now);
     for (const m of sorted) {
       const end = getMeetingEndTime(m);
       if (now <= end) {
@@ -421,9 +418,8 @@ export class MeetingManager {
    * Returns all meetings that are currently ongoing or starting within withinMs milliseconds,
    * sorted by start time (earliest first).
    */
-  public getRelevantMeetings(withinMs: number): Meeting[] {
-    const sorted = this.getSortedMeetings();
-    const now = new Date();
+  public getRelevantMeetings(withinMs: number, now: Date = new Date()): Meeting[] {
+    const sorted = this.getSortedMeetings(now);
     return sorted.filter(m => {
       const start = new Date(m.startTime);
       const end = getMeetingEndTime(m);

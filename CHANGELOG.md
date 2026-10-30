@@ -2,6 +2,13 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.16.3] - 2026-10-30
+
+### 変更・改善 (Changed & Improved)
+- GitHub Actions ワークフロー (`.github/workflows/build-and-publish.yml`) に Open VSX Registry (`ovsx`) へのデプロイ機能を追加し、`build` ジョブと `release` ジョブを分離して堅牢化。なお、`release` ジョブによる公開処理は push 時の自動デプロイではなく、`workflow_dispatch` による手動実行（main ブランチ時のみ）となります。
+- バージョンチェック判定スクリプト (`scripts/check-version.js`) に `VERSION_BASE_REF` および `git merge-base` の安全な差分比較処理を取り込み、StructMap-Solo とスクリプトを共通化
+- ツリービューおよびミーティング管理マネージャー (`src/meetingManager.ts`, `src/treeProvider.ts`) において基準日時の受渡しを最適化し、テスト実行時のモック日時との整合性を改善
+
 ## [1.16.2] - 2026-09-20
 
 ### 修正 (Fixed)
