@@ -260,33 +260,55 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
   }
 
   async handleDrop(target: vscode.TreeItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
-    let droppedText = '';
+    // 1. Collect all dropped files (from 'files' mime and dataTransfer iteration)
+    type FileCandidate = {
+      key: string;
+      name: string;
+      isIcs: boolean;
+      getContent: () => Promise<string>;
+    };
+
+    const candidates: FileCandidate[] = [];
+    const seenCandidateKeys = new Set<string>();
+
+    const getCandidateKey = (uri?: vscode.Uri, name?: string): string => {
+      if (uri) {
+        return uri.scheme === 'file' ? uri.fsPath : uri.toString();
+      }
+      return name ? `name:${name}` : `anon:${Math.random()}`;
+    };
+
+    const addDataTransferFile = (file: vscode.DataTransferFile) => {
+      const key = getCandidateKey(file.uri, file.name);
+      if (seenCandidateKeys.has(key)) {
+        return;
+      }
+      seenCandidateKeys.add(key);
+
+      const fileName = (file.name || file.uri?.fsPath || '').toLowerCase();
+      const isIcs = fileName.endsWith('.ics') || fileName.endsWith('.ical');
+      candidates.push({
+        key,
+        name: file.name || file.uri?.fsPath || 'unknown',
+        isIcs,
+        getContent: async () => readDataTransferFile(file)
+      });
+    };
 
     const filesItem = dataTransfer.get('files');
     if (filesItem) {
       const file = filesItem.asFile();
       if (file) {
-        try {
-          droppedText = await readDataTransferFile(file);
-        } catch {
-          // ignore error and try fallback
-        }
+        addDataTransferFile(file);
       }
     }
 
-    if (!droppedText && typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
+    if (typeof (dataTransfer as any)[Symbol.iterator] === 'function') {
       try {
         for (const [, item] of dataTransfer) {
           const file = item?.asFile ? item.asFile() : undefined;
           if (file) {
-            try {
-              droppedText = await readDataTransferFile(file);
-              if (droppedText) {
-                break;
-              }
-            } catch {
-              // ignore error
-            }
+            addDataTransferFile(file);
           }
         }
       } catch {
@@ -294,24 +316,228 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       }
     }
 
-    if (!droppedText) {
-      const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
-      if (calItem) {
-        droppedText = await calItem.asString();
-      } else {
-        const htmlItem = dataTransfer.get('text/html');
-        if (htmlItem) {
-          droppedText = await htmlItem.asString();
-        } else {
-          const textItem = dataTransfer.get('text/plain');
-          if (textItem) {
-            droppedText = await textItem.asString();
-          } else {
-            const uriItem = dataTransfer.get('text/uri-list');
-            if (uriItem) {
-              droppedText = await uriItem.asString();
-            }
+    // 2. Check uri-list or text for file URIs
+    let uriListText = '';
+    const uriItem = dataTransfer.get('text/uri-list');
+    if (uriItem) {
+      try {
+        uriListText = await uriItem.asString();
+      } catch {
+        // ignore
+      }
+    }
+
+    // Collect file paths / URIs from text/uri-list if present
+    const uriLines = uriListText
+      ? uriListText.split(/\r?\n/).map(l => l.trim().replace(/^["']|["']$/g, '')).filter(l => Boolean(l) && !l.startsWith('#'))
+      : [];
+
+    for (const line of uriLines) {
+      let filePath = line;
+      let uriKey = line;
+      const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(line);
+
+      if (line.startsWith('file://')) {
+        try {
+          const parsedUri = vscode.Uri.parse(line);
+          filePath = parsedUri.fsPath;
+          uriKey = filePath;
+        } catch {
+          filePath = line.replace(/^file:\/\//i, '');
+          uriKey = filePath;
+        }
+      } else if (hasScheme) {
+        // Skip non-file schemes (e.g. http://, https://) so they fall back to text registration
+        continue;
+      }
+
+      if (!seenCandidateKeys.has(uriKey)) {
+        seenCandidateKeys.add(uriKey);
+        const lowerPath = filePath.toLowerCase();
+        const isIcs = lowerPath.endsWith('.ics') || lowerPath.endsWith('.ical');
+        candidates.push({
+          key: uriKey,
+          name: filePath,
+          isIcs,
+          getContent: async () => readIcsFile(filePath)
+        });
+      }
+    }
+
+    const isFileDrop = candidates.length > 0;
+
+    if (isFileDrop) {
+      const totalFileCount = candidates.length;
+      const icsCandidates = candidates.filter(c => c.isIcs);
+
+      if (totalFileCount > 0 && icsCandidates.length === 0) {
+        vscode.window.showWarningMessage(t.icsNoIcsFilesFound(totalFileCount));
+        return;
+      }
+
+      const now = this.now();
+      const existingMeetings = this.meetingManager.getMeetings();
+      const knownUidStarts = new Set(
+        existingMeetings.filter(m => m.uid).map(m => `${m.uid}__${m.startTime}`)
+      );
+      const knownTitleStartUrls = new Set(
+        existingMeetings.map(m => `${m.title}__${m.startTime}__${m.url}`)
+      );
+
+      const meetingsToAdd: Meeting[] = [];
+      let missingUrlCount = 0;
+      let parseFailedCount = 0;
+      let noEventsCount = 0;
+
+      for (const icsCandidate of icsCandidates) {
+        let content = '';
+        try {
+          content = await icsCandidate.getContent();
+        } catch {
+          parseFailedCount++;
+          continue;
+        }
+
+        if (!content || !content.trim()) {
+          noEventsCount++;
+          continue;
+        }
+
+        try {
+          const parsedMeetings = parseIcsContent(content, now);
+          if (parsedMeetings.length === 0) {
+            noEventsCount++;
+            continue;
           }
+
+          let fileAddedAny = false;
+          let fileMissingUrl = 0;
+
+          for (const info of parsedMeetings) {
+            if (!info.url || !isValidTeamsUrl(info.url)) {
+              fileMissingUrl++;
+              continue;
+            }
+
+            const duration = info.startTime && info.endTime
+              ? info.endTime.getTime() - info.startTime.getTime()
+              : 30 * 60 * 1000;
+            const startTime = (info.startTime || now).toISOString();
+            const title = info.title || 'Teams Meeting';
+
+            // Duplicate checks:
+            // 1. With UID: matches uid and startTime
+            if (info.uid) {
+              if (knownUidStarts.has(`${info.uid}__${startTime}`)) {
+                continue;
+              }
+            } else {
+              // 2. Without UID: fallback matches title, startTime, and url
+              if (knownTitleStartUrls.has(`${title}__${startTime}__${info.url}`)) {
+                continue;
+              }
+            }
+
+            const newMeeting: Meeting = {
+              id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
+              title,
+              url: info.url,
+              startTime,
+              endTime: info.endTime ? info.endTime.toISOString() : new Date((info.startTime || now).getTime() + duration).toISOString(),
+              timeZone: info.timeZone,
+              recurrence: info.recurrence || 'once',
+              recurrenceInterval: info.recurrenceInterval,
+              daysOfWeek: info.daysOfWeek,
+              dayOfMonth: info.dayOfMonth,
+              monthOfYear: info.monthOfYear,
+              dayOfYear: info.dayOfYear,
+              recurrenceByDay: info.recurrenceByDay,
+              recurrenceByMonthDay: info.recurrenceByMonthDay,
+              recurrenceByMonth: info.recurrenceByMonth,
+              recurrenceBySetPos: info.recurrenceBySetPos,
+              recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
+              organizer: info.organizer,
+              meetingId: info.meetingId,
+              passcode: info.passcode,
+              isEnterprise: info.isEnterprise,
+              uid: info.uid,
+              sequence: info.sequence,
+              status: info.status,
+              location: info.location,
+              description: info.description,
+              attendees: info.attendees,
+              alarmMinutes: info.alarmMinutes,
+            };
+
+            meetingsToAdd.push(newMeeting);
+            if (newMeeting.uid) {
+              knownUidStarts.add(`${newMeeting.uid}__${startTime}`);
+            }
+            knownTitleStartUrls.add(`${title}__${startTime}__${info.url}`);
+            fileAddedAny = true;
+          }
+
+          if (!fileAddedAny && fileMissingUrl > 0) {
+            missingUrlCount++;
+          }
+        } catch {
+          parseFailedCount++;
+        }
+      }
+
+      // Add all gathered meetings to MeetingManager individually
+      let totalAddedCount = 0;
+      let saveFailedCount = 0;
+
+      for (const meeting of meetingsToAdd) {
+        try {
+          await this.meetingManager.addMeeting(meeting);
+          totalAddedCount++;
+        } catch {
+          saveFailedCount++;
+        }
+      }
+
+      // Notifications
+      if (totalAddedCount > 0) {
+        vscode.window.showInformationMessage(
+          t.icsMultiFileSuccess(totalFileCount, icsCandidates.length, totalAddedCount)
+        );
+        if (parseFailedCount > 0) {
+          vscode.window.showWarningMessage(t.icsPartialFailureWarning(parseFailedCount));
+        }
+        if (saveFailedCount > 0) {
+          vscode.window.showWarningMessage(t.icsSaveFailureWarning(saveFailedCount));
+        }
+      } else if (parseFailedCount > 0) {
+        vscode.window.showErrorMessage(t.icsErrorParseFailed());
+      } else if (saveFailedCount > 0) {
+        vscode.window.showErrorMessage(t.icsSaveFailureWarning(saveFailedCount));
+      } else if (missingUrlCount > 0) {
+        vscode.window.showWarningMessage(t.icsWarningNoUrl());
+      } else if (noEventsCount > 0) {
+        vscode.window.showWarningMessage(t.icsWarningNoEvents());
+      } else {
+        vscode.window.showInformationMessage(t.icsAlreadyRegistered());
+      }
+      return;
+    }
+
+    // 3. Fallback for raw text / single calendar text drop
+    let droppedText = '';
+    const calItem = dataTransfer.get('text/calendar') || dataTransfer.get('application/ics');
+    if (calItem) {
+      droppedText = await calItem.asString();
+    } else {
+      const htmlItem = dataTransfer.get('text/html');
+      if (htmlItem) {
+        droppedText = await htmlItem.asString();
+      } else {
+        const textItem = dataTransfer.get('text/plain');
+        if (textItem) {
+          droppedText = await textItem.asString();
+        } else if (uriItem) {
+          droppedText = await uriItem.asString();
         }
       }
     }
@@ -320,12 +546,12 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       return;
     }
 
-    // If droppedText contains file URI(s) or file path, read file content from disk
+    // If droppedText contains raw BEGIN:VCALENDAR or BEGIN:VEVENT
     let icsContent = droppedText;
     const cleanText = droppedText.trim().replace(/^["']|["']$/g, '');
     if (/^file:\/\//i.test(cleanText) || cleanText.endsWith('.ics')) {
-      const uriLines = droppedText.split(/\r?\n/).map(l => l.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
-      for (const line of uriLines) {
+      const lines = droppedText.split(/\r?\n/).map(l => l.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+      for (const line of lines) {
         let filePath = line;
         if (line.startsWith('file://')) {
           try {
@@ -339,13 +565,12 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             icsContent = await readIcsFile(filePath);
             break;
           } catch {
-            // ignore failure, fallback to droppedText
+            // ignore
           }
         }
       }
     }
 
-    // Check if dropped content is an ICS file format or contains BEGIN:VCALENDAR
     const isIcs = /BEGIN:VCALENDAR/i.test(icsContent) || /BEGIN:VEVENT/i.test(icsContent);
     if (isIcs) {
       try {
@@ -359,9 +584,14 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
         let addedCount = 0;
         let missingUrlCount = 0;
-        const knownOccurrences = this.meetingManager.getMeetings()
-          .filter(meeting => meeting.uid)
-          .map(meeting => ({ uid: meeting.uid, startTime: meeting.startTime }));
+        let saveFailedCount = 0;
+        const existingMeetings = this.meetingManager.getMeetings();
+        const knownUidStarts = new Set(
+          existingMeetings.filter(m => m.uid).map(m => `${m.uid}__${m.startTime}`)
+        );
+        const knownTitleStartUrls = new Set(
+          existingMeetings.map(m => `${m.title}__${m.startTime}__${m.url}`)
+        );
 
         for (const info of parsedMeetings) {
           if (!info.url || !isValidTeamsUrl(info.url)) {
@@ -373,16 +603,21 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             ? info.endTime.getTime() - info.startTime.getTime()
             : 30 * 60 * 1000;
           const startTime = (info.startTime || now).toISOString();
-          const existingOccurrence = info.uid
-            ? knownOccurrences.some(meeting => meeting.uid === info.uid && meeting.startTime === startTime)
-            : undefined;
-          if (existingOccurrence) {
-            continue;
+          const title = info.title || 'Teams Meeting';
+
+          if (info.uid) {
+            if (knownUidStarts.has(`${info.uid}__${startTime}`)) {
+              continue;
+            }
+          } else {
+            if (knownTitleStartUrls.has(`${title}__${startTime}__${info.url}`)) {
+              continue;
+            }
           }
 
           const newMeeting: Meeting = {
             id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
-            title: info.title || 'Teams Meeting',
+            title,
             url: info.url,
             startTime,
             endTime: info.endTime ? info.endTime.toISOString() : new Date((info.startTime || now).getTime() + duration).toISOString(),
@@ -411,17 +646,29 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             alarmMinutes: info.alarmMinutes,
           };
 
-          await this.meetingManager.addMeeting(newMeeting);
-          if (newMeeting.uid) {
-            knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
+          try {
+            await this.meetingManager.addMeeting(newMeeting);
+            if (newMeeting.uid) {
+              knownUidStarts.add(`${newMeeting.uid}__${startTime}`);
+            }
+            knownTitleStartUrls.add(`${title}__${startTime}__${info.url}`);
+            addedCount++;
+          } catch {
+            saveFailedCount++;
           }
-          addedCount++;
         }
 
         if (addedCount > 0) {
-          vscode.window.showInformationMessage(t.icsSuccess(addedCount));
+          vscode.window.showInformationMessage(t.icsMultiFileSuccess(1, 1, addedCount));
+          if (saveFailedCount > 0) {
+            vscode.window.showWarningMessage(t.icsSaveFailureWarning(saveFailedCount));
+          }
+        } else if (saveFailedCount > 0) {
+          vscode.window.showErrorMessage(t.icsSaveFailureWarning(saveFailedCount));
         } else if (missingUrlCount > 0) {
           vscode.window.showWarningMessage(t.icsWarningNoUrl());
+        } else {
+          vscode.window.showInformationMessage(t.icsAlreadyRegistered());
         }
       } catch (err) {
         vscode.window.showErrorMessage(t.icsErrorParseFailed());

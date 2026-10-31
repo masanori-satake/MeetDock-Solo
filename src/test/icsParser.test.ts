@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as vscode from 'vscode';
 import { pathToFileURL } from 'url';
 import { parseIcsContent, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
 import { normalizeTimeZone } from '../dateTime';
@@ -503,6 +504,265 @@ END:VCALENDAR`;
     const meetings3 = manager3.getMeetings();
     assert.strictEqual(meetings3.length, 1);
     assert.strictEqual(meetings3[0].title, '単発定例会議');
+  });
+
+  // 32. Multi-file ICS drag-and-drop
+  test('32. Handles multiple .ics files drag-and-drop with deduplication, non-ICS skipping, and partial failure', async () => {
+    let store: Record<string, any> = {};
+    const mockContext: any = {
+      globalState: {
+        get: (key: string, defaultVal: any) => store[key] ?? defaultVal,
+        update: async (key: string, val: any) => { store[key] = val; }
+      }
+    };
+    const manager = new MeetingManager(mockContext);
+    const provider = new MeetingTreeDataProvider(manager, () => new Date('2026-10-01T00:00:00Z'));
+
+    const fixturePathJp = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_jp.ics');
+    const fixturePathEn = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_en.ics');
+
+    const fileItem1 = {
+      asFile: () => ({
+        name: 'single_jp.ics',
+        uri: { scheme: 'file', fsPath: fixturePathJp },
+        data: async () => Buffer.from(readFixture('single_jp.ics'))
+      })
+    };
+    const fileItem2 = {
+      asFile: () => ({
+        name: 'single_en.ics',
+        uri: { scheme: 'file', fsPath: fixturePathEn },
+        data: async () => Buffer.from(readFixture('single_en.ics'))
+      })
+    };
+    // Non-ics file item (should be skipped)
+    const fileItemTxt = {
+      asFile: () => ({
+        name: 'notes.txt',
+        uri: { scheme: 'file', fsPath: '/path/notes.txt' },
+        data: async () => Buffer.from('just a text file')
+      })
+    };
+
+    const multiFileDataTransfer = {
+      get: (mime: string) => mime === 'files' ? fileItem1 : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', fileItem1];
+        yield ['files', fileItem2];
+        yield ['files', fileItemTxt];
+      }
+    } as any;
+
+    await provider.handleDrop(undefined, multiFileDataTransfer, {} as any);
+
+    let meetings = manager.getMeetings();
+    // 2 ICS files loaded, notes.txt skipped
+    assert.strictEqual(meetings.length, 2);
+    assert.strictEqual(meetings[0].title, '単発定例会議');
+    assert.strictEqual(meetings[1].title, 'One-time Sync Meeting');
+
+    // Test duplicate drop: dropping the exact same files again should not duplicate meetings
+    await provider.handleDrop(undefined, multiFileDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 2);
+
+    // Test multiple file drop via text/uri-list
+    const multiUriDataTransfer = {
+      get: (mime: string) => mime === 'text/uri-list' ? {
+        asString: async () => `${pathToFileURL(fixturePathJp).href}\r\n${pathToFileURL(fixturePathEn).href}\r\nfile:///fake/path/document.pdf\r\n#comment line`
+      } : null
+    } as any;
+    await provider.handleDrop(undefined, multiUriDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 2);
+
+    // Test that when UID is present and different, meetings with same title, start time, and URL are NOT excluded
+    const diffUidSameDetailsIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:diff-uid-12345@example.invalid
+DTSTART:20261005T100000Z
+SUMMARY:単発定例会議
+URL:https://teams.microsoft.com/meet/12345678901234?p=AbCd1234
+END:VEVENT
+END:VCALENDAR`;
+    const diffUidFileItem = {
+      asFile: () => ({
+        name: 'diff_uid.ics',
+        uri: undefined,
+        data: async () => Buffer.from(diffUidSameDetailsIcs)
+      })
+    };
+    const diffUidDataTransfer = {
+      get: (mime: string) => mime === 'files' ? diffUidFileItem : null
+    } as any;
+    await provider.handleDrop(undefined, diffUidDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 3);
+    assert.strictEqual(meetings[2].uid, 'diff-uid-12345@example.invalid');
+
+    // Reset manager store to 2 meetings for subsequent tests
+    await manager.removeMeeting(meetings[2].id);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 2);
+
+    // Test partial failure: 1 valid ICS + 1 corrupted/unparseable file throwing read error
+    const brokenFileItem = {
+      asFile: () => ({
+        name: 'corrupted.ics',
+        uri: { scheme: 'file', fsPath: '/nonexistent/corrupted.ics' },
+        data: async () => { throw new Error('Cannot read file'); }
+      })
+    };
+    // New meeting ICS content
+    const thirdIcsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:third@example.invalid
+DTSTART:20261010T100000Z
+SUMMARY:Third Meeting
+URL:https://teams.microsoft.com/meet/3333333333
+END:VEVENT
+END:VCALENDAR`;
+    const fileItem3 = {
+      asFile: () => ({
+        name: 'third.ics',
+        uri: undefined,
+        data: async () => Buffer.from(thirdIcsContent)
+      })
+    };
+    const partialFailureDataTransfer = {
+      get: (mime: string) => mime === 'files' ? fileItem3 : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', fileItem3];
+        yield ['files', brokenFileItem];
+      }
+    } as any;
+
+    await provider.handleDrop(undefined, partialFailureDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 3);
+    assert.strictEqual(meetings[2].title, 'Third Meeting');
+
+    // Test deduplication without UID (only title + startTime + url)
+    const noUidIcs1 = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:20261015T100000Z
+SUMMARY:No UID Meeting
+URL:https://teams.microsoft.com/meet/nouid123
+END:VEVENT
+END:VCALENDAR`;
+    const noUidFileItem1 = {
+      asFile: () => ({
+        name: 'nouid1.ics',
+        uri: undefined,
+        data: async () => Buffer.from(noUidIcs1)
+      })
+    };
+    const noUidFileItem2 = {
+      asFile: () => ({
+        name: 'nouid2.ics',
+        uri: undefined,
+        data: async () => Buffer.from(noUidIcs1) // Identical meeting
+      })
+    };
+    const noUidDataTransfer = {
+      get: (mime: string) => mime === 'files' ? noUidFileItem1 : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', noUidFileItem1];
+        yield ['files', noUidFileItem2];
+      }
+    } as any;
+
+    await provider.handleDrop(undefined, noUidDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 4);
+    assert.strictEqual(meetings[3].title, 'No UID Meeting');
+
+    // Test text/uri-list with http(s) URL falls back without being treated as file candidates
+    const httpUriDataTransfer = {
+      get: (mime: string) => {
+        if (mime === 'text/uri-list') {
+          return { asString: async () => 'https://teams.microsoft.com/l/meetup-join/12345' };
+        }
+        if (mime === 'text/plain') {
+          return { asString: async () => 'https://teams.microsoft.com/l/meetup-join/12345' };
+        }
+        return null;
+      }
+    } as any;
+    // With non-file URIs, it should not fail candidate check or add bogus file candidates.
+    // In our handleDrop, isFileDrop will be false, falling through to plain text parsing.
+
+    // Test partial save failure (1st addMeeting rejects, 2nd addMeeting succeeds)
+    const originalAddMeeting = manager.addMeeting.bind(manager);
+    const originalShowInfo = vscode.window.showInformationMessage;
+    const originalShowWarning = vscode.window.showWarningMessage;
+
+    let infoMessageShown: string | undefined;
+    let warningMessageShown: string | undefined;
+
+    (vscode.window as any).showInformationMessage = async (msg: string) => {
+      infoMessageShown = msg;
+      return undefined;
+    };
+    (vscode.window as any).showWarningMessage = async (msg: string) => {
+      warningMessageShown = msg;
+      return undefined;
+    };
+
+    let addMeetingCallCount = 0;
+    manager.addMeeting = async (meeting: any) => {
+      addMeetingCallCount++;
+      if (addMeetingCallCount === 1) {
+        throw new Error('Disk full or storage failure');
+      }
+      return originalAddMeeting(meeting);
+    };
+
+    const twoEventsIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fail-first@example.invalid
+DTSTART:20261020T100000Z
+SUMMARY:Fail First Meeting
+URL:https://teams.microsoft.com/meet/fail1
+END:VEVENT
+BEGIN:VEVENT
+UID:succeed-second@example.invalid
+DTSTART:20261021T100000Z
+SUMMARY:Succeed Second Meeting
+URL:https://teams.microsoft.com/meet/succeed2
+END:VEVENT
+END:VCALENDAR`;
+
+    const twoEventsFileItem = {
+      asFile: () => ({
+        name: 'two_events.ics',
+        uri: undefined,
+        data: async () => Buffer.from(twoEventsIcs)
+      })
+    };
+    const twoEventsDataTransfer = {
+      get: (mime: string) => mime === 'files' ? twoEventsFileItem : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', twoEventsFileItem];
+      }
+    } as any;
+
+    try {
+      await provider.handleDrop(undefined, twoEventsDataTransfer, {} as any);
+      const afterMeetings = manager.getMeetings();
+      assert.strictEqual(afterMeetings.some(m => m.uid === 'succeed-second@example.invalid'), true);
+      assert.strictEqual(afterMeetings.some(m => m.uid === 'fail-first@example.invalid'), false);
+      assert.ok(infoMessageShown?.includes('1'));
+      assert.ok(warningMessageShown?.includes('1'));
+    } finally {
+      manager.addMeeting = originalAddMeeting;
+      vscode.window.showInformationMessage = originalShowInfo;
+      vscode.window.showWarningMessage = originalShowWarning;
+    }
   });
 
   test('25. Handles RDATE recurrence correctly', () => {

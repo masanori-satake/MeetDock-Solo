@@ -285,10 +285,13 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
       let addedCount = 0;
       let missingUrlCount = 0;
       const existingMeetings = meetingManager.getMeetings();
+      const knownUidStarts = new Set(
+        existingMeetings.filter(m => m.uid).map(m => `${m.uid}__${m.startTime}`)
+      );
+      const knownTitleStartUrls = new Set(
+        existingMeetings.map(m => `${m.title}__${m.startTime}__${m.url}`)
+      );
       const newMeetings: Meeting[] = [];
-      const knownOccurrences = existingMeetings
-        .filter(m => m.uid)
-        .map(m => ({ uid: m.uid, startTime: m.startTime }));
 
       for (const info of parsedMeetings) {
         if (!info.url || !isValidTeamsUrl(info.url)) {
@@ -300,16 +303,21 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
           ? info.endTime.getTime() - info.startTime.getTime()
           : 30 * 60 * 1000;
         const startTime = (info.startTime || now).toISOString();
-        const existingOccurrence = info.uid
-          ? knownOccurrences.some(m => m.uid === info.uid && m.startTime === startTime)
-          : undefined;
-        if (existingOccurrence) {
-          continue;
+        const title = info.title || 'Teams Meeting';
+
+        if (info.uid) {
+          if (knownUidStarts.has(`${info.uid}__${startTime}`)) {
+            continue;
+          }
+        } else {
+          if (knownTitleStartUrls.has(`${title}__${startTime}__${info.url}`)) {
+            continue;
+          }
         }
 
         const newMeeting: Meeting = {
           id: String(Date.now()) + Math.random().toString(36).substring(2, 7),
-          title: info.title || 'Teams Meeting',
+          title,
           url: info.url,
           startTime,
           endTime: info.endTime ? info.endTime.toISOString() : new Date((info.startTime || now).getTime() + duration).toISOString(),
@@ -340,8 +348,9 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
 
         newMeetings.push(newMeeting);
         if (newMeeting.uid) {
-          knownOccurrences.push({ uid: newMeeting.uid, startTime: newMeeting.startTime });
+          knownUidStarts.add(`${newMeeting.uid}__${startTime}`);
         }
+        knownTitleStartUrls.add(`${title}__${startTime}__${info.url}`);
         addedCount++;
       }
 
