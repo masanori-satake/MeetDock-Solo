@@ -1,7 +1,7 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.17.0-blue.svg)](package.json)
-[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/masanori-satake.meetdock-solo?label=Marketplace)](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo)
+[![Version](https://img.shields.io/badge/version-v1.17.1-blue.svg)](package.json)
+[![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version/masanori-satake.meetdock-solo.svg?label=Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo)
 [![Open VSX](https://img.shields.io/open-vsx/v/masanori-satake/meetdock-solo?label=Open%20VSX)](https://open-vsx.org/extension/masanori-satake/meetdock-solo)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
@@ -99,7 +99,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 #### Method 3: Install from VSIX Package File (Offline / Manual)
 
 1. Go to the [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) page.
-2. Download the `.vsix` file (e.g., `meetdock-solo-1.17.0.vsix`) under Assets.
+2. Download the `.vsix` file (e.g., `meetdock-solo-1.17.1.vsix`) under Assets.
 3. In VS Code Extensions view (`Ctrl+Shift+X`), click the **"..." (Views and More Actions)** icon at the top right, select **Install from VSIX...**, and choose the downloaded file.
 
 ---
@@ -267,7 +267,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ##### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.17.0.vsix`）をダウンロードします。
+2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.17.1.vsix`）をダウンロードします。
 
 ##### 手順 2: VS Code へのインストール
 1. VS Code の拡張機能ビュー（`Ctrl+Shift+X` / `Cmd+Shift+X`）を開きます。

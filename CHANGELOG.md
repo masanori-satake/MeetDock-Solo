@@ -2,6 +2,11 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.17.1] - 2026-10-31
+
+### 修正 (Fixed)
+- Shields.io における Visual Studio Marketplace バッジ提供終了（retired badge表示）に伴い、`README.md` の Marketplace バッジの参照先を `vsmarketplacebadges.dev` に変更
+
 ## [1.17.0] - 2026-10-31
 
 ### 変更・改善 (Changed & Improved)
