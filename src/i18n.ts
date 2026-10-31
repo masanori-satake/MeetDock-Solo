@@ -224,10 +224,22 @@ export const t = {
   // ICS Drop Notifications & UI States
   icsParsing: () => isJapanese() ? 'MeetDock: .ics ファイルを解析中...' : 'MeetDock: Parsing .ics file...',
   icsSuccess: (count: number) => isJapanese() ? `MeetDock: ${count} 件の会議を .ics ファイルから登録しました。` : `MeetDock: Registered ${count} meeting(s) from .ics file.`,
+  icsMultiFileSuccess: (fileCount: number, icsCount: number, meetingCount: number) =>
+    isJapanese()
+      ? `MeetDock: ${fileCount} 個中 ${icsCount} 個の .ics ファイルから ${meetingCount} 件の会議を登録しました。`
+      : `MeetDock: Registered ${meetingCount} meeting(s) from ${icsCount} of ${fileCount} .ics file(s).`,
+  icsNoIcsFilesFound: (fileCount: number) =>
+    isJapanese()
+      ? `MeetDock: ドロップされた ${fileCount} 個のファイルの中に有効な .ics ファイルは見つかりませんでした。`
+      : `MeetDock: No valid .ics files found among the ${fileCount} dropped file(s).`,
   icsWarningNoUrl: () => isJapanese() ? 'MeetDock: .ics ファイルから有効な Teams 参加 URL が見つかりませんでした。' : 'MeetDock: No valid Teams join URL was found in the .ics file.',
   icsAlreadyRegistered: () => isJapanese() ? 'MeetDock: .ics ファイル内の会議はすべて登録済みです。' : 'MeetDock: All meetings in the .ics file are already registered.',
   icsWarningNoEvents: () => isJapanese() ? 'MeetDock: .ics ファイルに有効な会議イベントが存在しません。' : 'MeetDock: No valid meeting events found in the .ics file.',
   icsErrorParseFailed: () => isJapanese() ? 'MeetDock: .ics ファイルの解析に失敗しました。ファイル形式を確認してください。' : 'MeetDock: Failed to parse .ics file. Please check file format.',
+  icsPartialFailureWarning: (failedCount: number) =>
+    isJapanese()
+      ? `MeetDock: ${failedCount} 個の .ics ファイルの解析または登録に失敗しました。`
+      : `MeetDock: Failed to parse or register ${failedCount} .ics file(s).`,
 
   // Edit Recurrence
   editRecurrenceTitle: (title: string) => isJapanese() ? `繰り返し設定の変更: ${title}` : `Edit Recurrence: ${title}`,
