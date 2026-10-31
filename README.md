@@ -140,7 +140,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 | **Join Teams Meeting** | `meetdock-solo.openMeeting` | - | Open selected meeting URL in browser or Teams app |
 | **Open Chat** | `meetdock-solo.openChat` | - | Open Teams meeting chat thread in browser or Teams app |
 | **Delete Meeting** | `meetdock-solo.deleteMeeting` | - | Remove registered meeting |
-| **Edit Recurrence** | `meetdock-solo.editRecurrence` | - | Change recurrence pattern and settings of a meeting |
+| **Edit Recurrence (繰り返し設定の変更)** | `meetdock-solo.editRecurrence` | - | Change recurrence pattern and settings of a meeting |
 | **Refresh View** | `meetdock-solo.refreshView` | - | Refresh sidebar meeting list |
 | **Select Meeting from List** | `meetdock-solo.selectMeeting` | - | Open Quick Pick to select and join a meeting |
 | **Toggle Guide View** | `meetdock-solo.toggleGuide` | - | Toggle visibility of the inline usage guide |
@@ -185,14 +185,14 @@ All meeting information is stored locally via `ExtensionContext.globalState`. No
 
 ### 📑 目次
 
-- [💡 主な機能](#-主な機能-1)
-- [📦 インストール/アップデート方法](#-インストールアップデート方法-1)
-- [🚀 使い方](#-使い方-1)
-- [⌨️ コマンド & キーバインド](#️-コマンド--キーバインド-1)
-- [📋 動作要件 (Requirements)](#-動作要件-requirements-1)
-- [🔒 データの保存について](#-データの保存について-1)
-- [🛠️ 開発者向けドキュメント](#️-開発者向けドキュメント-1)
-- [📄 ライセンス](#-ライセンス-1)
+- [💡 主な機能](#-主な機能)
+- [📦 インストール/アップデート方法](#-インストールアップデート方法)
+- [🚀 使い方](#-使い方)
+- [⌨️ コマンド & キーバインド](#️-コマンド--キーバインド)
+- [📋 動作要件 (Requirements)](#-動作要件-requirements)
+- [🔒 データの保存について](#-データの保存について)
+- [🛠️ 開発者向けドキュメント](#️-開発者向けドキュメント)
+- [📄 ライセンス](#-ライセンス)
 
 ---
 
