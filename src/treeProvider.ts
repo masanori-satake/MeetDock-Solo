@@ -335,6 +335,8 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     for (const line of uriLines) {
       let filePath = line;
       let uriKey = line;
+      const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(line);
+
       if (line.startsWith('file://')) {
         try {
           const parsedUri = vscode.Uri.parse(line);
@@ -344,6 +346,9 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
           filePath = line.replace(/^file:\/\//i, '');
           uriKey = filePath;
         }
+      } else if (hasScheme) {
+        // Skip non-file schemes (e.g. http://, https://) so they fall back to text registration
+        continue;
       }
 
       if (!seenCandidateKeys.has(uriKey)) {
@@ -579,6 +584,7 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
 
         let addedCount = 0;
         let missingUrlCount = 0;
+        let saveFailedCount = 0;
         const existingMeetings = this.meetingManager.getMeetings();
         const knownUidStarts = new Set(
           existingMeetings.filter(m => m.uid).map(m => `${m.uid}__${m.startTime}`)
@@ -648,12 +654,17 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             knownTitleStartUrls.add(`${title}__${startTime}__${info.url}`);
             addedCount++;
           } catch {
-            // ignore save error
+            saveFailedCount++;
           }
         }
 
         if (addedCount > 0) {
           vscode.window.showInformationMessage(t.icsMultiFileSuccess(1, 1, addedCount));
+          if (saveFailedCount > 0) {
+            vscode.window.showWarningMessage(t.icsSaveFailureWarning(saveFailedCount));
+          }
+        } else if (saveFailedCount > 0) {
+          vscode.window.showErrorMessage(t.icsSaveFailureWarning(saveFailedCount));
         } else if (missingUrlCount > 0) {
           vscode.window.showWarningMessage(t.icsWarningNoUrl());
         } else {

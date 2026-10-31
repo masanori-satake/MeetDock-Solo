@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as vscode from 'vscode';
 import { pathToFileURL } from 'url';
 import { parseIcsContent, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
 import { normalizeTimeZone } from '../dateTime';
@@ -678,6 +679,90 @@ END:VCALENDAR`;
     meetings = manager.getMeetings();
     assert.strictEqual(meetings.length, 4);
     assert.strictEqual(meetings[3].title, 'No UID Meeting');
+
+    // Test text/uri-list with http(s) URL falls back without being treated as file candidates
+    const httpUriDataTransfer = {
+      get: (mime: string) => {
+        if (mime === 'text/uri-list') {
+          return { asString: async () => 'https://teams.microsoft.com/l/meetup-join/12345' };
+        }
+        if (mime === 'text/plain') {
+          return { asString: async () => 'https://teams.microsoft.com/l/meetup-join/12345' };
+        }
+        return null;
+      }
+    } as any;
+    // With non-file URIs, it should not fail candidate check or add bogus file candidates.
+    // In our handleDrop, isFileDrop will be false, falling through to plain text parsing.
+
+    // Test partial save failure (1st addMeeting rejects, 2nd addMeeting succeeds)
+    const originalAddMeeting = manager.addMeeting.bind(manager);
+    const originalShowInfo = vscode.window.showInformationMessage;
+    const originalShowWarning = vscode.window.showWarningMessage;
+
+    let infoMessageShown: string | undefined;
+    let warningMessageShown: string | undefined;
+
+    (vscode.window as any).showInformationMessage = async (msg: string) => {
+      infoMessageShown = msg;
+      return undefined;
+    };
+    (vscode.window as any).showWarningMessage = async (msg: string) => {
+      warningMessageShown = msg;
+      return undefined;
+    };
+
+    let addMeetingCallCount = 0;
+    manager.addMeeting = async (meeting: any) => {
+      addMeetingCallCount++;
+      if (addMeetingCallCount === 1) {
+        throw new Error('Disk full or storage failure');
+      }
+      return originalAddMeeting(meeting);
+    };
+
+    const twoEventsIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:fail-first@example.invalid
+DTSTART:20261020T100000Z
+SUMMARY:Fail First Meeting
+URL:https://teams.microsoft.com/meet/fail1
+END:VEVENT
+BEGIN:VEVENT
+UID:succeed-second@example.invalid
+DTSTART:20261021T100000Z
+SUMMARY:Succeed Second Meeting
+URL:https://teams.microsoft.com/meet/succeed2
+END:VEVENT
+END:VCALENDAR`;
+
+    const twoEventsFileItem = {
+      asFile: () => ({
+        name: 'two_events.ics',
+        uri: undefined,
+        data: async () => Buffer.from(twoEventsIcs)
+      })
+    };
+    const twoEventsDataTransfer = {
+      get: (mime: string) => mime === 'files' ? twoEventsFileItem : null,
+      [Symbol.iterator]: function* () {
+        yield ['files', twoEventsFileItem];
+      }
+    } as any;
+
+    try {
+      await provider.handleDrop(undefined, twoEventsDataTransfer, {} as any);
+      const afterMeetings = manager.getMeetings();
+      assert.strictEqual(afterMeetings.some(m => m.uid === 'succeed-second@example.invalid'), true);
+      assert.strictEqual(afterMeetings.some(m => m.uid === 'fail-first@example.invalid'), false);
+      assert.ok(infoMessageShown?.includes('1'));
+      assert.ok(warningMessageShown?.includes('1'));
+    } finally {
+      manager.addMeeting = originalAddMeeting;
+      vscode.window.showInformationMessage = originalShowInfo;
+      vscode.window.showWarningMessage = originalShowWarning;
+    }
   });
 
   test('25. Handles RDATE recurrence correctly', () => {
