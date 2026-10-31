@@ -238,8 +238,12 @@ export const t = {
   icsErrorParseFailed: () => isJapanese() ? 'MeetDock: .ics ファイルの解析に失敗しました。ファイル形式を確認してください。' : 'MeetDock: Failed to parse .ics file. Please check file format.',
   icsPartialFailureWarning: (failedCount: number) =>
     isJapanese()
-      ? `MeetDock: ${failedCount} 個の .ics ファイルの解析または登録に失敗しました。`
-      : `MeetDock: Failed to parse or register ${failedCount} .ics file(s).`,
+      ? `MeetDock: ${failedCount} 個の .ics ファイルの解析に失敗しました。`
+      : `MeetDock: Failed to parse ${failedCount} .ics file(s).`,
+  icsSaveFailureWarning: (failedCount: number) =>
+    isJapanese()
+      ? `MeetDock: ${failedCount} 件の会議の保存に失敗しました。`
+      : `MeetDock: Failed to save ${failedCount} meeting(s).`,
 
   // Edit Recurrence
   editRecurrenceTitle: (title: string) => isJapanese() ? `繰り返し設定の変更: ${title}` : `Edit Recurrence: ${title}`,

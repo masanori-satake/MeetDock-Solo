@@ -568,10 +568,40 @@ END:VCALENDAR`;
     // Test multiple file drop via text/uri-list
     const multiUriDataTransfer = {
       get: (mime: string) => mime === 'text/uri-list' ? {
-        asString: async () => `${pathToFileURL(fixturePathJp).href}\r\n${pathToFileURL(fixturePathEn).href}\r\nfile:///fake/path/document.pdf`
+        asString: async () => `${pathToFileURL(fixturePathJp).href}\r\n${pathToFileURL(fixturePathEn).href}\r\nfile:///fake/path/document.pdf\r\n#comment line`
       } : null
     } as any;
     await provider.handleDrop(undefined, multiUriDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 2);
+
+    // Test that when UID is present and different, meetings with same title, start time, and URL are NOT excluded
+    const diffUidSameDetailsIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:diff-uid-12345@example.invalid
+DTSTART:20261005T100000Z
+SUMMARY:単発定例会議
+URL:https://teams.microsoft.com/meet/12345678901234?p=AbCd1234
+END:VEVENT
+END:VCALENDAR`;
+    const diffUidFileItem = {
+      asFile: () => ({
+        name: 'diff_uid.ics',
+        uri: undefined,
+        data: async () => Buffer.from(diffUidSameDetailsIcs)
+      })
+    };
+    const diffUidDataTransfer = {
+      get: (mime: string) => mime === 'files' ? diffUidFileItem : null
+    } as any;
+    await provider.handleDrop(undefined, diffUidDataTransfer, {} as any);
+    meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 3);
+    assert.strictEqual(meetings[2].uid, 'diff-uid-12345@example.invalid');
+
+    // Reset manager store to 2 meetings for subsequent tests
+    await manager.removeMeeting(meetings[2].id);
     meetings = manager.getMeetings();
     assert.strictEqual(meetings.length, 2);
 

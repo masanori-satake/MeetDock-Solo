@@ -305,11 +305,14 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
         const startTime = (info.startTime || now).toISOString();
         const title = info.title || 'Teams Meeting';
 
-        if (info.uid && knownUidStarts.has(`${info.uid}__${startTime}`)) {
-          continue;
-        }
-        if (knownTitleStartUrls.has(`${title}__${startTime}__${info.url}`)) {
-          continue;
+        if (info.uid) {
+          if (knownUidStarts.has(`${info.uid}__${startTime}`)) {
+            continue;
+          }
+        } else {
+          if (knownTitleStartUrls.has(`${title}__${startTime}__${info.url}`)) {
+            continue;
+          }
         }
 
         const newMeeting: Meeting = {
