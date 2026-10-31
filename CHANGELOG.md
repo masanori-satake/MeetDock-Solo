@@ -2,6 +2,14 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.17.0] - 2026-10-31
+
+### 変更・改善 (Changed & Improved)
+- 英語圏ユーザーへの訴求および多言語対応強化のため、`package.json` 内の全コマンドタイトル（`title`）および拡張機能説明文（`description`）を NLS（`package.nls.json` / `package.nls.ja.json`）キー参照に変更
+- コマンドパレットでの検索性および統一感向上のため、提供コマンドに共通カテゴリ（`category: "%meetdock.category%"` = "MeetDock"）を設定
+- `README.md` 英語セクション内のコマンド一覧表において、`**Edit Recurrence (繰り返し設定の変更)**` の日本語括弧書きを削除し表記を適正化
+- `package.json` のコマンドタイトル・説明文・カテゴリの NLS 定義が日英両ファイルに漏れなく存在することを自動検証するテストを `src/test/extension.test.ts` に追加
+
 ## [1.16.5] - 2026-10-31
 
 ### 変更・改善 (Changed & Improved)
