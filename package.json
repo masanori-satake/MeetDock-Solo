@@ -2,7 +2,7 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.17.0",
+  "version": "1.17.1",
   "description": "%meetdock.description%",
   "author": {
     "name": "Masanori Satake"
