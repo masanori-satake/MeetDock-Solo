@@ -319,4 +319,43 @@ suite('Extension & openChat Command Test Suite', () => {
       }
     }
   });
+
+  test('package.json commands and contributes use NLS keys and exist in both package.nls.json and package.nls.ja.json', () => {
+    const rootDir = path.resolve(__dirname, '../../');
+    const pkgPath = path.join(rootDir, 'package.json');
+    const enNlsPath = path.join(rootDir, 'package.nls.json');
+    const jaNlsPath = path.join(rootDir, 'package.nls.ja.json');
+
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    const enNls = JSON.parse(fs.readFileSync(enNlsPath, 'utf8'));
+    const jaNls = JSON.parse(fs.readFileSync(jaNlsPath, 'utf8'));
+
+    const commands = pkg.contributes?.commands || [];
+    assert.ok(commands.length > 0, 'package.json should define commands');
+
+    for (const cmd of commands) {
+      assert.ok(cmd.title, `command '${cmd.command}' should have a title`);
+      assert.ok(
+        cmd.title.startsWith('%') && cmd.title.endsWith('%'),
+        `command '${cmd.command}' title '${cmd.title}' must be an NLS key reference (%key%)`
+      );
+      const titleKey = cmd.title.slice(1, -1);
+      assert.ok(enNls[titleKey], `en NLS key '${titleKey}' for command '${cmd.command}' should exist in package.nls.json`);
+      assert.ok(jaNls[titleKey], `ja NLS key '${titleKey}' for command '${cmd.command}' should exist in package.nls.ja.json`);
+
+      if (cmd.category) {
+        if (cmd.category.startsWith('%') && cmd.category.endsWith('%')) {
+          const catKey = cmd.category.slice(1, -1);
+          assert.ok(enNls[catKey], `en NLS key '${catKey}' for category should exist in package.nls.json`);
+          assert.ok(jaNls[catKey], `ja NLS key '${catKey}' for category should exist in package.nls.ja.json`);
+        }
+      }
+    }
+
+    if (pkg.description && pkg.description.startsWith('%') && pkg.description.endsWith('%')) {
+      const descKey = pkg.description.slice(1, -1);
+      assert.ok(enNls[descKey], `description key '${descKey}' should exist in package.nls.json`);
+      assert.ok(jaNls[descKey], `description key '${descKey}' should exist in package.nls.ja.json`);
+    }
+  });
 });

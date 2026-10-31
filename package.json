@@ -2,8 +2,8 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.16.5",
-  "description": "Prevent missing Teams meetings while coding. A lightweight, 100% local VSCode extension.",
+  "version": "1.17.0",
+  "description": "%meetdock.description%",
   "author": {
     "name": "Masanori Satake"
   },
@@ -68,46 +68,55 @@
     "commands": [
       {
         "command": "meetdock-solo.addFromClipboard",
-        "title": "MeetDock: クリップボードから会議を追加",
+        "title": "%meetdock.command.addFromClipboard.title%",
+        "category": "%meetdock.category%",
         "icon": "$(add)"
       },
       {
         "command": "meetdock-solo.addFromFile",
-        "title": "MeetDock: .ics ファイルから会議を追加",
+        "title": "%meetdock.command.addFromFile.title%",
+        "category": "%meetdock.category%",
         "icon": "$(file-add)"
       },
       {
         "command": "meetdock-solo.openMeeting",
-        "title": "Teamsに参加",
+        "title": "%meetdock.command.openMeeting.title%",
+        "category": "%meetdock.category%",
         "icon": "$(link-external)"
       },
       {
         "command": "meetdock-solo.openChat",
-        "title": "チャットを開く",
+        "title": "%meetdock.command.openChat.title%",
+        "category": "%meetdock.category%",
         "icon": "$(comment-discussion)"
       },
       {
         "command": "meetdock-solo.deleteMeeting",
-        "title": "会議を削除",
+        "title": "%meetdock.command.deleteMeeting.title%",
+        "category": "%meetdock.category%",
         "icon": "$(trash)"
       },
       {
         "command": "meetdock-solo.editRecurrence",
-        "title": "繰り返し設定の変更",
+        "title": "%meetdock.command.editRecurrence.title%",
+        "category": "%meetdock.category%",
         "icon": "$(edit)"
       },
       {
         "command": "meetdock-solo.refreshView",
-        "title": "更新",
+        "title": "%meetdock.command.refreshView.title%",
+        "category": "%meetdock.category%",
         "icon": "$(refresh)"
       },
       {
         "command": "meetdock-solo.selectMeeting",
-        "title": "MeetDock: ミーティング一覧から選択"
+        "title": "%meetdock.command.selectMeeting.title%",
+        "category": "%meetdock.category%"
       },
       {
         "command": "meetdock-solo.toggleGuide",
         "title": "%meetdock.command.toggleGuide.title%",
+        "category": "%meetdock.category%",
         "icon": "$(question)"
       }
     ],

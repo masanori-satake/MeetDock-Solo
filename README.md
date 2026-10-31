@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.16.5-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.17.0-blue.svg)](package.json)
 [![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/masanori-satake.meetdock-solo?label=Marketplace)](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo)
 [![Open VSX](https://img.shields.io/open-vsx/v/masanori-satake/meetdock-solo?label=Open%20VSX)](https://open-vsx.org/extension/masanori-satake/meetdock-solo)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
@@ -99,7 +99,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 #### Method 3: Install from VSIX Package File (Offline / Manual)
 
 1. Go to the [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) page.
-2. Download the `.vsix` file (e.g., `meetdock-solo-1.16.5.vsix`) under Assets.
+2. Download the `.vsix` file (e.g., `meetdock-solo-1.17.0.vsix`) under Assets.
 3. In VS Code Extensions view (`Ctrl+Shift+X`), click the **"..." (Views and More Actions)** icon at the top right, select **Install from VSIX...**, and choose the downloaded file.
 
 ---
@@ -140,7 +140,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 | **Join Teams Meeting** | `meetdock-solo.openMeeting` | - | Open selected meeting URL in browser or Teams app |
 | **Open Chat** | `meetdock-solo.openChat` | - | Open Teams meeting chat thread in browser or Teams app |
 | **Delete Meeting** | `meetdock-solo.deleteMeeting` | - | Remove registered meeting |
-| **Edit Recurrence (繰り返し設定の変更)** | `meetdock-solo.editRecurrence` | - | Change recurrence pattern and settings of a meeting |
+| **Edit Recurrence** | `meetdock-solo.editRecurrence` | - | Change recurrence pattern and settings of a meeting |
 | **Refresh View** | `meetdock-solo.refreshView` | - | Refresh sidebar meeting list |
 | **Select Meeting from List** | `meetdock-solo.selectMeeting` | - | Open Quick Pick to select and join a meeting |
 | **Toggle Guide View** | `meetdock-solo.toggleGuide` | - | Toggle visibility of the inline usage guide |
@@ -267,7 +267,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ##### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.16.5.vsix`）をダウンロードします。
+2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.17.0.vsix`）をダウンロードします。
 
 ##### 手順 2: VS Code へのインストール
 1. VS Code の拡張機能ビュー（`Ctrl+Shift+X` / `Cmd+Shift+X`）を開きます。
