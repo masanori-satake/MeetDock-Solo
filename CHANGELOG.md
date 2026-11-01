@@ -2,6 +2,13 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.18.3] - 2026-11-01
+
+### 変更 (Changed)
+- **テスト・パッケージ作成時の重複した Lint 実行を削減**:
+  - `pretest` を `compile-tests` と `compile` のみに変更し、`compile` 内で実行済みの版チェック・Lint を重ねて実行しないよう修正
+  - `vscode:prepublish` を本番ビルド（`node esbuild.js --production`）のみに変更。Lint・型チェック・版チェックは `npm test` の `pretest` で 1 回だけ実行し、リリース時の Lint 実行回数を 3 回から 1 回に削減
+
 ## [1.18.2] - 2026-11-01
 
 ### 変更 (Changed)
