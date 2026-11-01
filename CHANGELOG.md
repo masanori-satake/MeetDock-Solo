@@ -2,6 +2,16 @@
 
 "MeetDock-Solo" 拡張機能のすべての注目すべき変更はこのファイルに記録されます。
 
+## [1.18.1] - 2026-11-01
+
+### 修正 (Fixed)
+- **VSIX パッケージから不要なファイルを除外**:
+  - `.vscodeignore` を見直し、別エージェントの作業ディレクトリ（`.kilo/`）、CI 設定（`.github/`）、ドキュメント（`docs/`）、開発用スクリプト（`scripts/`）、AI エージェント・ツール関連ファイル（`AGENTS.md`、`.jules/`、`.agents/`、`.codiumai.toml`）、pre-commit 設定、`pnpm-lock.yaml` を同梱しないよう変更
+- **開発用依存関係の脆弱性を修正**:
+  - `npm audit fix` により `shell-quote`（critical）、`brace-expansion`（high）、`serialize-javascript`（low）を修正版へ更新
+  - あわせて `eslint`（10.10 → 10.14）、`typescript-eslint`（8.70 → 8.72）をマイナー更新
+  - 拡張機能本体の動作に影響する依存関係の変更はなし
+
 ## [1.18.0] - 2026-10-31
 
 ### 追加 (Added)
