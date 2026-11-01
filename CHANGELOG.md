@@ -9,6 +9,10 @@
   - 日本語側の見出し「動作要件 (Requirements)」を「動作要件」に変更し、日本語のみの見出しに統一
 - **言語切り替えリンクのアンカーを修正**:
   - `<a name="...">` を `<a id="...">` に変更し、アンカー名を ASCII（`english` / `japanese`）に変更
+  - 目次の各見出しにも ASCII の ID（`en-*` / `ja-*`）を付与し、目次のリンク先を変更
+- **README のアンカーチェックスクリプトを追加**:
+  - `scripts/check-readme-anchors.js` を追加し、`##` / `###` 見出しへの ID 付け忘れ、目次リンク先の不一致、ID の重複を検出
+  - `npm run lint`（CI）および pre-commit フック（`scripts/run-pre-commit-check.sh`）から実行
 
 ## [1.18.1] - 2026-11-01
 
