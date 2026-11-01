@@ -45,7 +45,12 @@ if (fs.existsSync(readmePath)) {
   let readme = fs.readFileSync(readmePath, 'utf8');
   readme = readme.replace(new RegExp(`version-v${oldVersion.replace(/\./g, '\\.')}-blue\\.svg`, 'g'), `version-v${cleanVersion}-blue.svg`);
   readme = readme.replace(new RegExp(`v${oldVersion.replace(/\./g, '\\.')}(?!\\d)`, 'g'), `v${cleanVersion}`);
+
+  // ★ プロジェクトごとに編集する箇所 (Edit per project) ★
+  // <package-name> を実際の VSIX ファイル名プレフィックス（package.json の "name" フィールド等）に
+  // 置き換えてください。例: <package-name> -> meetdock-solo / structmap-solo
   readme = readme.replace(new RegExp(`meetdock-solo-${oldVersion.replace(/\./g, '\\.')}\\.vsix`, 'g'), `meetdock-solo-${cleanVersion}.vsix`);
+
   fs.writeFileSync(readmePath, readme, 'utf8');
   console.log(`Updated README.md references to v${cleanVersion}`);
 }
