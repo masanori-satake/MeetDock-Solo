@@ -1,17 +1,17 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.18.1-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.18.2-blue.svg)](package.json)
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version/masanori-satake.meetdock-solo.svg?label=Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo)
 [![Open VSX](https://img.shields.io/open-vsx/v/masanori-satake/meetdock-solo?label=Open%20VSX)](https://open-vsx.org/extension/masanori-satake/meetdock-solo)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 <p align="center">
-  <strong>Language / 言語:</strong> <a href="#english">English</a> | <a href="#japanese-日本語">日本語</a>
+  <strong>Language / 言語:</strong> <a href="#english">English</a> | <a href="#japanese">日本語</a>
 </p>
 
 ---
 
-<a name="english"></a>
+<a id="english"></a>
 ## English
 
 **MeetDock-Solo** is a lightweight, 100% local VS Code extension designed to prevent missing or being late for Microsoft Teams meetings while coding.
@@ -99,7 +99,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 #### Method 3: Install from VSIX Package File (Offline / Manual)
 
 1. Go to the [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) page.
-2. Download the `.vsix` file (e.g., `meetdock-solo-1.18.1.vsix`) under Assets.
+2. Download the `.vsix` file (e.g., `meetdock-solo-1.18.2.vsix`) under Assets.
 3. In VS Code Extensions view (`Ctrl+Shift+X`), click the **"..." (Views and More Actions)** icon at the top right, select **Install from VSIX...**, and choose the downloaded file.
 
 ---
@@ -174,7 +174,7 @@ All meeting information is stored locally via `ExtensionContext.globalState`. No
 
 ---
 
-<a name="japanese-日本語"></a>
+<a id="japanese"></a>
 ## Japanese (日本語)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -189,7 +189,7 @@ All meeting information is stored locally via `ExtensionContext.globalState`. No
 - [📦 インストール/アップデート方法](#-インストールアップデート方法)
 - [🚀 使い方](#-使い方)
 - [⌨️ コマンド & キーバインド](#️-コマンド--キーバインド)
-- [📋 動作要件 (Requirements)](#-動作要件-requirements)
+- [📋 動作要件](#-動作要件)
 - [🔒 データの保存について](#-データの保存について)
 - [🛠️ 開発者向けドキュメント](#️-開発者向けドキュメント)
 - [📄 ライセンス](#-ライセンス)
@@ -267,7 +267,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ##### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.18.1.vsix`）をダウンロードします。
+2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.18.2.vsix`）をダウンロードします。
 
 ##### 手順 2: VS Code へのインストール
 1. VS Code の拡張機能ビュー（`Ctrl+Shift+X` / `Cmd+Shift+X`）を開きます。
@@ -340,7 +340,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ---
 
-### 📋 動作要件 (Requirements)
+### 📋 動作要件
 
 - **VS Code**: `v1.109.0` 以降
 - **対応 OS**: Windows, macOS, Linux
