@@ -2,7 +2,7 @@
   "name": "meetdock-solo",
   "displayName": "MeetDock-Solo",
   "publisher": "masanori-satake",
-  "version": "1.18.1",
+  "version": "1.18.2",
   "description": "%meetdock.description%",
   "author": {
     "name": "Masanori Satake"
@@ -188,7 +188,8 @@
     "check-version-bump": "node scripts/check-version.js --check-bump",
     "update-version": "node scripts/update-version.js",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint src && npm run check-readme-anchors",
+    "check-readme-anchors": "node scripts/check-readme-anchors.js",
     "test": "vscode-test"
   },
   "devDependencies": {

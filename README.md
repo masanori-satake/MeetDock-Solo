@@ -1,17 +1,17 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.18.1-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.18.2-blue.svg)](package.json)
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version/masanori-satake.meetdock-solo.svg?label=Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo)
 [![Open VSX](https://img.shields.io/open-vsx/v/masanori-satake/meetdock-solo?label=Open%20VSX)](https://open-vsx.org/extension/masanori-satake/meetdock-solo)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
 
 <p align="center">
-  <strong>Language / 言語:</strong> <a href="#english">English</a> | <a href="#japanese-日本語">日本語</a>
+  <strong>Language / 言語:</strong> <a href="#english">English</a> | <a href="#japanese">日本語</a>
 </p>
 
 ---
 
-<a name="english"></a>
+<a id="english"></a>
 ## English
 
 **MeetDock-Solo** is a lightweight, 100% local VS Code extension designed to prevent missing or being late for Microsoft Teams meetings while coding.
@@ -20,19 +20,21 @@ It allows you to quickly register Teams meetings via drag-and-drop to the sideba
 
 ---
 
+<a id="en-toc"></a>
 ### 📑 Table of Contents
 
-- [💡 Key Features](#-key-features)
-- [📦 Installation & Updates](#-installation--updates)
-- [🚀 How to Use](#-how-to-use)
-- [⌨️ Commands & Keybindings](#️-commands--keybindings)
-- [📋 Requirements](#-requirements)
-- [🔒 Data Storage & Privacy](#-data-storage--privacy)
-- [🛠️ Developer Documentation](#️-developer-documentation)
-- [📄 License](#-license)
+- [💡 Key Features](#en-key-features)
+- [📦 Installation & Updates](#en-installation)
+- [🚀 How to Use](#en-how-to-use)
+- [⌨️ Commands & Keybindings](#en-commands)
+- [📋 Requirements](#en-requirements)
+- [🔒 Data Storage & Privacy](#en-privacy)
+- [🛠️ Developer Documentation](#en-developer-docs)
+- [📄 License](#en-license)
 
 ---
 
+<a id="en-key-features"></a>
 ### 💡 Key Features
 
 1. **Intuitive Meeting Registration**
@@ -73,6 +75,7 @@ It allows you to quickly register Teams meetings via drag-and-drop to the sideba
 
 ---
 
+<a id="en-installation"></a>
 ### 📦 Installation & Updates
 
 #### Method 1: Install from Visual Studio Marketplace (Recommended)
@@ -99,11 +102,12 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 #### Method 3: Install from VSIX Package File (Offline / Manual)
 
 1. Go to the [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) page.
-2. Download the `.vsix` file (e.g., `meetdock-solo-1.18.1.vsix`) under Assets.
+2. Download the `.vsix` file (e.g., `meetdock-solo-1.18.2.vsix`) under Assets.
 3. In VS Code Extensions view (`Ctrl+Shift+X`), click the **"..." (Views and More Actions)** icon at the top right, select **Install from VSIX...**, and choose the downloaded file.
 
 ---
 
+<a id="en-how-to-use"></a>
 ### 🚀 How to Use
 
 #### 1. Registering Meetings
@@ -131,6 +135,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 
 ---
 
+<a id="en-commands"></a>
 ### ⌨️ Commands & Keybindings
 
 | Command Name | Command ID | Keybinding | Description |
@@ -147,6 +152,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 
 ---
 
+<a id="en-requirements"></a>
 ### 📋 Requirements
 
 - **VS Code**: `v1.109.0` or later
@@ -155,12 +161,14 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 
 ---
 
+<a id="en-privacy"></a>
 ### 🔒 Data Storage & Privacy
 
 All meeting information is stored locally via `ExtensionContext.globalState`. No telemetry or meeting data is transmitted to external servers. External links are only triggered when clicking to open a meeting URL in your default browser or Teams app.
 
 ---
 
+<a id="en-developer-docs"></a>
 ### 🛠️ Developer Documentation
 
 - System Architecture & Flow: [docs/architecture.md](docs/architecture.md)
@@ -168,13 +176,14 @@ All meeting information is stored locally via `ExtensionContext.globalState`. No
 
 ---
 
+<a id="en-license"></a>
 ### 📄 License
 
 [MIT License](LICENSE)
 
 ---
 
-<a name="japanese-日本語"></a>
+<a id="japanese"></a>
 ## Japanese (日本語)
 
 **MeetDock-Solo** は、VS Code でのプログラミング作業中に Microsoft Teams 会議の参加漏れや遅刻を防ぐためのリマインダー＆会議一覧管理拡張機能です。
@@ -183,19 +192,21 @@ All meeting information is stored locally via `ExtensionContext.globalState`. No
 
 ---
 
+<a id="ja-toc"></a>
 ### 📑 目次
 
-- [💡 主な機能](#-主な機能)
-- [📦 インストール/アップデート方法](#-インストールアップデート方法)
-- [🚀 使い方](#-使い方)
-- [⌨️ コマンド & キーバインド](#️-コマンド--キーバインド)
-- [📋 動作要件 (Requirements)](#-動作要件-requirements)
-- [🔒 データの保存について](#-データの保存について)
-- [🛠️ 開発者向けドキュメント](#️-開発者向けドキュメント)
-- [📄 ライセンス](#-ライセンス)
+- [💡 主な機能](#ja-key-features)
+- [📦 インストール/アップデート方法](#ja-installation)
+- [🚀 使い方](#ja-how-to-use)
+- [⌨️ コマンド & キーバインド](#ja-commands)
+- [📋 動作要件](#ja-requirements)
+- [🔒 データの保存について](#ja-privacy)
+- [🛠️ 開発者向けドキュメント](#ja-developer-docs)
+- [📄 ライセンス](#ja-license)
 
 ---
 
+<a id="ja-key-features"></a>
 ### 💡 主な機能
 
 1. **直感的な会議登録**
@@ -236,6 +247,7 @@ All meeting information is stored locally via `ExtensionContext.globalState`. No
 
 ---
 
+<a id="ja-installation"></a>
 ### 📦 インストール/アップデート方法
 
 本拡張機能は **Visual Studio Marketplace** または **Open VSX Registry** から直接インストールできます（推奨）。Marketplace からインストールした場合、VS Code によって拡張機能のバージョン確認および自動アップデートが自動的に行われます。
@@ -267,7 +279,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ##### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.18.1.vsix`）をダウンロードします。
+2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.18.2.vsix`）をダウンロードします。
 
 ##### 手順 2: VS Code へのインストール
 1. VS Code の拡張機能ビュー（`Ctrl+Shift+X` / `Cmd+Shift+X`）を開きます。
@@ -278,6 +290,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ---
 
+<a id="ja-how-to-use"></a>
 ### 🚀 使い方
 
 #### 1. 会議を登録する
@@ -324,6 +337,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ---
 
+<a id="ja-commands"></a>
 ### ⌨️ コマンド & キーバインド
 
 | コマンド名 | コマンド ID | ショートカットキー | 説明 |
@@ -340,7 +354,8 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ---
 
-### 📋 動作要件 (Requirements)
+<a id="ja-requirements"></a>
+### 📋 動作要件
 
 - **VS Code**: `v1.109.0` 以降
 - **対応 OS**: Windows, macOS, Linux
@@ -348,12 +363,14 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ---
 
+<a id="ja-privacy"></a>
 ### 🔒 データの保存について
 
 本拡張機能で登録した会議情報を、拡張機能自身が独自の外部サーバーへ送信することはありません。すべてのデータは VS Code の `ExtensionContext.globalState` を通じてローカル環境に保存されます。会議への参加やチャットのオープンを選択した場合のみ、`src/extension.ts` および `src/reminderService.ts` の `openExternal` 処理により、選択した会議 URL またはチャットディープリンクが既定のブラウザまたは Teams アプリへ渡されます。
 
 ---
 
+<a id="ja-developer-docs"></a>
 ### 🛠️ 開発者向けドキュメント
 
 - システムの詳細な動作フローやコンポーネント構造: [docs/architecture.md](docs/architecture.md)
@@ -361,6 +378,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ---
 
+<a id="ja-license"></a>
 ### 📄 ライセンス
 
 [MIT License](LICENSE)
