@@ -42,7 +42,10 @@ lines.forEach((line, index) => {
     return;
   }
 
-  for (const match of line.matchAll(/<a\s[^>]*\bid="([^"]+)"/g)) {
+  // インラインコード（`...`）内の記述は説明文として扱い、検証対象外とする
+  const text = line.replace(/`[^`]*`/g, '');
+
+  for (const match of text.matchAll(/<a\s[^>]*\bid="([^"]+)"/g)) {
     const id = match[1];
     if (!VALID_ID.test(id)) {
       errors.push(`L${lineNo}: ID "${id}" は ASCII の英小文字・数字・ハイフンのみで記述してください`);
@@ -54,7 +57,7 @@ lines.forEach((line, index) => {
     }
   }
 
-  for (const match of line.matchAll(/\]\(#([^)\s]+)\)|href="#([^"]+)"/g)) {
+  for (const match of text.matchAll(/\]\(#([^)\s]+)\)|href="#([^"]+)"/g)) {
     links.push({ id: match[1] || match[2], line: lineNo });
   }
 
