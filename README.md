@@ -1,6 +1,6 @@
 # MeetDock-Solo
 
-[![Version](https://img.shields.io/badge/version-v1.18.3-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-v1.18.4-blue.svg)](package.json)
 [![Visual Studio Marketplace](https://vsmarketplacebadges.dev/version/masanori-satake.meetdock-solo.svg?label=Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=masanori-satake.meetdock-solo)
 [![Open VSX](https://img.shields.io/open-vsx/v/masanori-satake/meetdock-solo?label=Open%20VSX)](https://open-vsx.org/extension/masanori-satake/meetdock-solo)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/masanori-satake/MeetDock-Solo)](https://github.com/masanori-satake/MeetDock-Solo/releases)
@@ -46,10 +46,22 @@ It allows you to quickly register Teams meetings via drag-and-drop to the sideba
    - Continuously displays the remaining time until the next meeting in the status bar.
    - Display styles change automatically based on remaining time:
      - **Normal (Today)**: `$(calendar) Next Teams: 14:00 (in 35m)`
+       <br>
+       <img src="docs/images/meetdock-1-next-meeting.png" alt="Status bar showing the next meeting later today" width="720">
      - **Normal (Tomorrow / Future)**: `$(calendar) Next Teams: 14:00 (Tomorrow)`, or `(in 2 days)` for dates further ahead.
+       <br>
+       <img src="docs/images/meetdock-6-next-tomorrow.png" alt="Status bar showing the next meeting scheduled for tomorrow" width="720">
+       <br>
+       <img src="docs/images/meetdock-7-next-in-2-days.png" alt="Status bar showing the next meeting scheduled in 2 days" width="720">
      - **5 to 1 min before**: Highlighted in yellow warning `$(calendar) 14:00 Subject (in 5m)`
+       <br>
+       <img src="docs/images/meetdock-2-five-min-reminder.png" alt="Status bar showing yellow warning highlight 5 minutes before the meeting" width="720">
      - **Less than 1 min before**: Highlighted in red `$(calendar) 14:00 Subject (Starting soon)`
+       <br>
+       <img src="docs/images/meetdock-5-starting-soon.png" alt="Status bar showing red warning highlight less than 1 minute before the meeting" width="720">
      - **In progress**: Highlighted in green `$(broadcast) Subject (In progress)`
+       <br>
+       <img src="docs/images/meetdock-4-meeting-started.png" alt="Status bar showing green highlight when the meeting is in progress" width="720">
    - Clicking the status bar opens a Quick Pick list of registered meetings for immediate joining or jumping to chat.
 
 3. **Reliable Two-Stage Reminder Notifications**
@@ -102,7 +114,7 @@ For VSCodium, Gitpod, Eclipse Theia, or environments configured with Open VSX:
 #### Method 3: Install from VSIX Package File (Offline / Manual)
 
 1. Go to the [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) page.
-2. Download the `.vsix` file (e.g., `meetdock-solo-1.18.3.vsix`) under Assets.
+2. Download the `.vsix` file (e.g., `meetdock-solo-1.18.4.vsix`) under Assets.
 3. In VS Code Extensions view (`Ctrl+Shift+X`), click the **"..." (Views and More Actions)** icon at the top right, select **Install from VSIX...**, and choose the downloaded file.
 
 ---
@@ -279,7 +291,7 @@ VSCodium や Gitpod、Eclipse Theia など Open VSX を利用する環境の場�
 
 ##### 手順 1: VSIX ファイルのダウンロード
 1. 本リポジトリの [GitHub Releases](https://github.com/masanori-satake/MeetDock-Solo/releases) ページにアクセスします。
-2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.18.3.vsix`）をダウンロードします。
+2. 最新リリースの **Assets** セクションから、`.vsix` ファイル（例: `meetdock-solo-1.18.4.vsix`）をダウンロードします。
 
 ##### 手順 2: VS Code へのインストール
 1. VS Code の拡張機能ビュー（`Ctrl+Shift+X` / `Cmd+Shift+X`）を開きます。
