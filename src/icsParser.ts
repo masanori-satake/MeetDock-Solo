@@ -284,6 +284,13 @@ export function parseIcsDuration(durationStr: string): number {
   const minutes = parseInt(match[5] || '0', 10);
   const seconds = parseInt(match[6] || '0', 10);
 
+  // Reject absurd component values (e.g. P100000000W): their millisecond
+  // total can exceed the representable Date range and turn a computed end
+  // time into an Invalid Date.
+  if ([weeks, days, hours, minutes, seconds].some(value => !Number.isFinite(value) || value >= 10000)) {
+    return 0;
+  }
+
   const totalMs = (((weeks * 7 + days) * 24 + hours) * 60 + minutes) * 60 * 1000 + seconds * 1000;
   return sign * totalMs;
 }
@@ -603,6 +610,21 @@ export function parseSingleVEvent(
     endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
   }
 
+  // Validate the parsed date/time values so that a single malformed event
+  // cannot abort the whole file import. An Invalid Date is truthy, so it
+  // would slip past the startTime check in parseIcsContent and later throw
+  // a RangeError on toISOString(). An invalid start is treated as "no
+  // start" (the event is skipped individually); an end that is invalid or
+  // not after the start falls back to the default 30-minute duration.
+  if (startTime && isNaN(startTime.getTime())) {
+    startTime = undefined;
+  }
+  if (!startTime) {
+    endTime = undefined;
+  } else if (endTime && (isNaN(endTime.getTime()) || endTime.getTime() <= startTime.getTime())) {
+    endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+  }
+
   // 5. Teams Join URL
   const url = extractTeamsUrlFromIcsProperties(vevent.properties) || '';
 
@@ -650,7 +672,9 @@ export function parseSingleVEvent(
       recurrenceByMonth = pr.bymonth && pr.bymonth.length > 0 ? pr.bymonth : undefined;
       recurrenceBySetPos = pr.bysetpos && pr.bysetpos.length > 0 ? pr.bysetpos : undefined;
       if (pr.until && !(pr.count && pr.count > 0)) {
-        recurrenceEndDate = pr.until;
+        // An unparseable UNTIL yields an Invalid Date; drop it instead of
+        // letting it reach toISOString() later and abort the import.
+        recurrenceEndDate = isNaN(pr.until.getTime()) ? undefined : pr.until;
       }
 
       if (pr.freq === 'DAILY') {

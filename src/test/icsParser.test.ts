@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { pathToFileURL } from 'url';
-import { parseIcsContent, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
+import { parseIcsContent, parseIcsDuration, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
 import { normalizeTimeZone } from '../dateTime';
 import { decodeIcsBytes, MAX_ICS_CONTENT_SIZE, readIcsFile } from '../icsContentReader';
 import { MeetingManager } from '../meetingManager';
@@ -967,5 +967,92 @@ END:VCALENDAR`;
     assert.ok(elapsedMs < 500, 'Parsing invalid BYMONTH should complete instantly without CPU lockup');
     assert.strictEqual(res.length, 1);
     assert.strictEqual(res[0].monthOfYear, 10);
+  });
+
+  test('32. Imports an ICS with an unreachable RRULE (February 31) without hanging', () => {
+    const unreachableIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:unreachable-rrule@example.invalid
+DTSTART:20260215T100000Z
+DTEND:20260215T103000Z
+RRULE:FREQ=MONTHLY;BYMONTH=2;BYMONTHDAY=31
+SUMMARY:Unreachable RRULE Meeting
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+END:VCALENDAR`;
+
+    const startMs = Date.now();
+    const res = parseIcsContent(unreachableIcs, new Date('2026-11-20T00:00:00Z'));
+    const elapsedMs = Date.now() - startMs;
+
+    assert.ok(elapsedMs < 1000, `Unreachable RRULE import should finish promptly, took ${elapsedMs}ms`);
+    assert.deepStrictEqual(res, []);
+  });
+
+  test('33. Skips only the event with an invalid DTSTART and imports the rest of the file', () => {
+    const mixedIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:bad-start@example.invalid
+DTSTART:NOT_A_DATE
+SUMMARY:Broken Start Meeting
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+BEGIN:VEVENT
+UID:good@example.invalid
+DTSTART:20261005T100000Z
+DTEND:20261005T110000Z
+SUMMARY:Good Meeting
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+END:VCALENDAR`;
+
+    const res = parseIcsContent(mixedIcs, new Date('2026-10-01T00:00:00Z'));
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].uid, 'good@example.invalid');
+    assert.strictEqual(res[0].startTime?.toISOString(), '2026-10-05T10:00:00.000Z');
+  });
+
+  test('34. Falls back to the default duration for a huge DURATION or a DTEND before DTSTART', () => {
+    const hugeDurationIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:huge-duration@example.invalid
+DTSTART:20261005T100000Z
+DURATION:P100000000W
+SUMMARY:Huge Duration Meeting
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+END:VCALENDAR`;
+
+    const resHuge = parseIcsContent(hugeDurationIcs, new Date('2026-10-01T00:00:00Z'));
+    assert.strictEqual(resHuge.length, 1);
+    assert.strictEqual(resHuge[0].startTime?.toISOString(), '2026-10-05T10:00:00.000Z');
+    assert.strictEqual(resHuge[0].endTime?.toISOString(), '2026-10-05T10:30:00.000Z');
+
+    const backwardsIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:backwards-end@example.invalid
+DTSTART:20261005T110000Z
+DTEND:20261005T100000Z
+SUMMARY:Backwards End Meeting
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+END:VCALENDAR`;
+
+    const resBackwards = parseIcsContent(backwardsIcs, new Date('2026-10-01T00:00:00Z'));
+    assert.strictEqual(resBackwards.length, 1);
+    assert.strictEqual(resBackwards[0].startTime?.toISOString(), '2026-10-05T11:00:00.000Z');
+    assert.strictEqual(resBackwards[0].endTime?.toISOString(), '2026-10-05T11:30:00.000Z');
+  });
+
+  test('35. parseIcsDuration rejects absurd component values but keeps normal ones', () => {
+    assert.strictEqual(parseIcsDuration('P100000000W'), 0);
+    assert.strictEqual(parseIcsDuration('P10000D'), 0);
+    assert.strictEqual(parseIcsDuration('PT1H30M'), 90 * 60 * 1000);
+    assert.strictEqual(parseIcsDuration('P1DT2H'), (24 + 2) * 60 * 60 * 1000);
+    assert.strictEqual(parseIcsDuration('-PT15M'), -15 * 60 * 1000);
   });
 });

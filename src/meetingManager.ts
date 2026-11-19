@@ -6,6 +6,12 @@ import { isValidTeamsUrl } from './urlValidator';
 const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
+// Upper bound for the forward scan in getNextOccurrence: about 10 years of
+// candidate days. A rule that cannot produce an occurrence within this span
+// (e.g. an unreachable BYMONTH/BYMONTHDAY combination such as February 31)
+// is treated as having no next occurrence, instead of scanning the full
+// 400-year Gregorian cycle and blocking the extension host.
+const MAX_OCCURRENCE_SCAN_DAYS = 366 * 10;
 const VALID_RECURRENCE_TYPES = new Set(['once', 'daily', 'weekly', 'weekdays', 'monthly', 'yearly']);
 
 function isValidIsoDateString(val: unknown): val is string {
@@ -235,9 +241,9 @@ export function getNextOccurrence(meeting: Meeting, now: Date): Date | null {
   const startDay = getCalendarDayNumber(startParts.year, startParts.month, startParts.day);
   let candidate = addZonedDays(startTime, Math.max(0, thresholdDay - startDay - 1), timeZone);
 
-  // A Gregorian calendar repeats every 400 years. If no candidate is found in that span,
-  // the parsed rule cannot produce an occurrence supported by this recurrence model.
-  for (let dayOffset = 0; dayOffset <= 366 * 400; dayOffset++) {
+  // Scan at most MAX_OCCURRENCE_SCAN_DAYS ahead. If no candidate matches in
+  // that span, the rule is treated as having no next occurrence.
+  for (let dayOffset = 0; dayOffset <= MAX_OCCURRENCE_SCAN_DAYS; dayOffset++) {
     if (seriesEnd && candidate.getTime() > seriesEnd.getTime()) {
       return null;
     }

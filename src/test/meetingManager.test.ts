@@ -386,6 +386,26 @@ suite('MeetingManager - processExpirations & Recurrence Schedule', () => {
     assert.strictEqual(next.getUTCDate(), 13);
   });
 
+  test('getNextOccurrence returns null promptly for an unreachable monthly rule (February 31)', () => {
+    const meeting: Meeting = {
+      id: 'unreachableMonthly',
+      title: 'Unreachable Monthly Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: new Date('2026-02-15T10:00:00.000Z').toISOString(),
+      endTime: new Date('2026-02-15T10:30:00.000Z').toISOString(),
+      recurrence: 'monthly',
+      recurrenceByMonth: [2],
+      recurrenceByMonthDay: [31],
+    };
+
+    const startedAt = Date.now();
+    const next = getNextOccurrence(meeting, new Date('2026-11-20T00:00:00.000Z'));
+    const elapsedMs = Date.now() - startedAt;
+
+    assert.strictEqual(next, null);
+    assert.ok(elapsedMs < 1000, `Unreachable rule scan should finish promptly, took ${elapsedMs}ms`);
+  });
+
   test('getNextOccurrence keeps the local meeting time across a DST transition', () => {
     const meeting: Meeting = {
       id: 'weeklyDst',
