@@ -386,6 +386,65 @@ suite('MeetingManager - processExpirations & Recurrence Schedule', () => {
     assert.strictEqual(next.getUTCDate(), 13);
   });
 
+  test('getNextOccurrence handles yearly recurrence with interval 11 beyond the day-scan span', () => {
+    const start = new Date('2026-09-13T16:00:00.000Z');
+    const meeting: Meeting = {
+      id: 'yearly11',
+      title: 'Yearly Meeting (interval 11)',
+      url: 'https://teams.live.com/meet/123',
+      startTime: start.toISOString(),
+      endTime: new Date('2026-09-13T16:30:00.000Z').toISOString(),
+      recurrence: 'yearly',
+      recurrenceInterval: 11,
+      monthOfYear: 9,
+      dayOfYear: 13,
+    };
+
+    const next = getNextOccurrence(meeting, new Date('2026-09-13T16:31:00.000Z'));
+    assert.ok(next);
+    assert.strictEqual(next.toISOString(), '2037-09-13T16:00:00.000Z');
+  });
+
+  test('processExpirations advances a yearly meeting with interval 11 instead of removing it', async () => {
+    const meeting: Meeting = {
+      id: 'yearly11expiry',
+      title: 'Yearly Meeting (interval 11)',
+      url: 'https://teams.live.com/meet/123',
+      startTime: new Date('2026-09-13T16:00:00.000Z').toISOString(),
+      endTime: new Date('2026-09-13T16:30:00.000Z').toISOString(),
+      recurrence: 'yearly',
+      recurrenceInterval: 11,
+      monthOfYear: 9,
+      dayOfYear: 13,
+    };
+    const manager = new MeetingManager(createMockContext([meeting]));
+
+    await manager.processExpirations(new Date('2026-09-13T16:31:00.000Z'));
+
+    const meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 1, 'Long-interval meeting should be kept, not removed');
+    assert.strictEqual(meetings[0].startTime, '2037-09-13T16:00:00.000Z');
+    assert.strictEqual(meetings[0].endTime, '2037-09-13T16:30:00.000Z');
+  });
+
+  test('processExpirations removes an unreachable monthly meeting (February 31) once expired', async () => {
+    const meeting: Meeting = {
+      id: 'unreachableMonthlyExpiry',
+      title: 'Unreachable Monthly Meeting',
+      url: 'https://teams.live.com/meet/123',
+      startTime: new Date('2026-02-15T10:00:00.000Z').toISOString(),
+      endTime: new Date('2026-02-15T10:30:00.000Z').toISOString(),
+      recurrence: 'monthly',
+      recurrenceByMonth: [2],
+      recurrenceByMonthDay: [31],
+    };
+    const manager = new MeetingManager(createMockContext([meeting]));
+
+    await manager.processExpirations(new Date('2026-11-20T00:00:00.000Z'));
+
+    assert.strictEqual(manager.getMeetings().length, 0, 'Unreachable meeting should be removed once expired');
+  });
+
   test('getNextOccurrence returns null promptly for an unreachable monthly rule (February 31)', () => {
     const meeting: Meeting = {
       id: 'unreachableMonthly',

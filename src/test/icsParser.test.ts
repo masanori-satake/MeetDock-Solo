@@ -1055,4 +1055,24 @@ END:VCALENDAR`;
     assert.strictEqual(parseIcsDuration('P1DT2H'), (24 + 2) * 60 * 60 * 1000);
     assert.strictEqual(parseIcsDuration('-PT15M'), -15 * 60 * 1000);
   });
+
+  test('36. Expands COUNT for a long-interval yearly RRULE (interval 11) to the true last occurrence', () => {
+    const longIntervalIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:long-interval-count@example.invalid
+DTSTART:20260913T160000Z
+DTEND:20260913T163000Z
+RRULE:FREQ=YEARLY;INTERVAL=11;COUNT=2
+SUMMARY:Long Interval Yearly Meeting
+URL:https://teams.microsoft.com/meet/12345
+END:VEVENT
+END:VCALENDAR`;
+
+    const res = parseIcsContent(longIntervalIcs, new Date('2026-09-01T00:00:00Z'));
+    assert.strictEqual(res.length, 1);
+    assert.strictEqual(res[0].recurrence, 'yearly');
+    assert.strictEqual(res[0].recurrenceInterval, 11);
+    assert.strictEqual(res[0].recurrenceEndDate?.toISOString(), '2037-09-13T16:00:00.000Z');
+  });
 });

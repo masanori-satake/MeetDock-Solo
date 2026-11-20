@@ -1,17 +1,26 @@
 import * as vscode from 'vscode';
 import { Meeting, RecurrenceByDay } from './types';
-import { addZonedDays, getDaysInMonth, getZonedDateParts } from './dateTime';
+import { addZonedDays, createDateInTimeZone, getDaysInMonth, getZonedDateParts, ZonedDateParts } from './dateTime';
 import { isValidTeamsUrl } from './urlValidator';
 
 const STORAGE_KEY = 'meetdock-solo.meetings';
 // Fallback duration when a meeting has no explicit endTime
 const MEETING_DURATION_MS = 30 * 60 * 1000;
-// Upper bound for the forward scan in getNextOccurrence: about 10 years of
-// candidate days. A rule that cannot produce an occurrence within this span
-// (e.g. an unreachable BYMONTH/BYMONTHDAY combination such as February 31)
-// is treated as having no next occurrence, instead of scanning the full
-// 400-year Gregorian cycle and blocking the extension host.
+// Upper bound for the forward day-by-day scan in getNextOccurrence (used
+// for daily, weekly and weekdays rules): about 10 years of candidate days.
+// A rule that cannot produce an occurrence within this span is treated as
+// having no next occurrence, instead of scanning the full 400-year
+// Gregorian cycle day by day and blocking the extension host.
 const MAX_OCCURRENCE_SCAN_DAYS = 366 * 10;
+// Upper bound for the period-by-period search used for monthly and yearly
+// rules: one full 400-year Gregorian cycle. The calendar pattern repeats
+// every 400 years, so a rule with no occurrence within a full cycle (e.g.
+// an unreachable BYMONTH/BYMONTHDAY combination such as February 31) can
+// never produce one. Enumerating each period's candidate days directly
+// keeps the work proportional to the number of periods while still
+// reaching long-interval occurrences (e.g. a yearly rule with interval 11)
+// that fall outside the day-by-day scan span above.
+const MAX_OCCURRENCE_SCAN_YEARS = 400;
 const VALID_RECURRENCE_TYPES = new Set(['once', 'daily', 'weekly', 'weekdays', 'monthly', 'yearly']);
 
 function isValidIsoDateString(val: unknown): val is string {
@@ -239,10 +248,23 @@ export function getNextOccurrence(meeting: Meeting, now: Date): Date | null {
   const thresholdParts = getZonedDateParts(new Date(now.getTime() - duration), timeZone);
   const thresholdDay = getCalendarDayNumber(thresholdParts.year, thresholdParts.month, thresholdParts.day);
   const startDay = getCalendarDayNumber(startParts.year, startParts.month, startParts.day);
-  let candidate = addZonedDays(startTime, Math.max(0, thresholdDay - startDay - 1), timeZone);
+  const firstCandidate = addZonedDays(startTime, Math.max(0, thresholdDay - startDay - 1), timeZone);
+
+  if (meeting.recurrence === 'monthly' || meeting.recurrence === 'yearly') {
+    return getNextMonthlyOrYearlyOccurrence(meeting, {
+      startTime,
+      duration,
+      seriesEnd,
+      timeZone,
+      startParts,
+      firstCandidate,
+      now,
+    });
+  }
 
   // Scan at most MAX_OCCURRENCE_SCAN_DAYS ahead. If no candidate matches in
   // that span, the rule is treated as having no next occurrence.
+  let candidate = firstCandidate;
   for (let dayOffset = 0; dayOffset <= MAX_OCCURRENCE_SCAN_DAYS; dayOffset++) {
     if (seriesEnd && candidate.getTime() > seriesEnd.getTime()) {
       return null;
@@ -254,6 +276,113 @@ export function getNextOccurrence(meeting: Meeting, now: Date): Date | null {
     candidate = addZonedDays(candidate, 1, timeZone);
   }
 
+  return null;
+}
+
+interface MonthlyOrYearlySearch {
+  startTime: Date;
+  duration: number;
+  seriesEnd: Date | undefined;
+  timeZone: string | undefined;
+  startParts: ZonedDateParts;
+  firstCandidate: Date;
+  now: Date;
+}
+
+/**
+ * Finds the next occurrence of a monthly or yearly rule by enumerating the
+ * candidate days of each period (month or year) directly, instead of
+ * scanning day by day. The search covers one full 400-year Gregorian
+ * cycle, so long-interval rules still resolve, while a rule that can never
+ * match (e.g. February 31) is rejected after a bounded number of periods.
+ * Candidate days come from the same helpers matchesRecurrenceDate uses,
+ * and every candidate is verified through matchesRecurrenceDate itself.
+ */
+function getNextMonthlyOrYearlyOccurrence(meeting: Meeting, search: MonthlyOrYearlySearch): Date | null {
+  const { startTime, duration, seriesEnd, timeZone, startParts, firstCandidate, now } = search;
+  const interval = meeting.recurrenceInterval && meeting.recurrenceInterval > 0 ? meeting.recurrenceInterval : 1;
+  const firstParts = getZonedDateParts(firstCandidate, timeZone);
+  const firstDayNumber = getCalendarDayNumber(firstParts.year, firstParts.month, firstParts.day);
+
+  const isMatch = (candidate: Date): boolean =>
+    candidate.getTime() + duration >= now.getTime()
+    && matchesRecurrenceDate(meeting, candidate, startTime);
+  const atStartTimeOfDay = (year: number, month: number, day: number): Date =>
+    createDateInTimeZone(
+      year, month, day,
+      startParts.hour, startParts.minute, startParts.second, startParts.millisecond,
+      timeZone
+    );
+
+  // The first candidate is always eligible on its own: it may be the
+  // series start, which counts as an occurrence even when the rule's day
+  // pattern would not reproduce that exact date.
+  if (seriesEnd && firstCandidate.getTime() > seriesEnd.getTime()) {
+    return null;
+  }
+  if (isMatch(firstCandidate)) {
+    return firstCandidate;
+  }
+
+  if (meeting.recurrence === 'monthly') {
+    const startMonthIndex = startParts.year * 12 + startParts.month;
+    const firstMonthIndex = firstParts.year * 12 + firstParts.month;
+    const lastMonthIndex = firstMonthIndex + MAX_OCCURRENCE_SCAN_YEARS * 12;
+    for (let monthIndex = firstMonthIndex; monthIndex <= lastMonthIndex; monthIndex++) {
+      if ((monthIndex - startMonthIndex) % interval !== 0) {
+        continue;
+      }
+      const year = Math.floor(monthIndex / 12);
+      const month = monthIndex - year * 12;
+      if (meeting.recurrenceByMonth && meeting.recurrenceByMonth.length > 0
+          && !meeting.recurrenceByMonth.includes(month + 1)) {
+        continue;
+      }
+      const days = getMonthCandidateDays(meeting, year, month, meeting.dayOfMonth || startParts.day, true);
+      for (const day of days) {
+        if (getCalendarDayNumber(year, month, day) <= firstDayNumber) {
+          continue;
+        }
+        const candidate = atStartTimeOfDay(year, month, day);
+        if (seriesEnd && candidate.getTime() > seriesEnd.getTime()) {
+          return null;
+        }
+        if (isMatch(candidate)) {
+          return candidate;
+        }
+      }
+    }
+    return null;
+  }
+
+  const months = meeting.recurrenceByMonth && meeting.recurrenceByMonth.length > 0
+    ? meeting.recurrenceByMonth.map(month => month - 1)
+    : [meeting.monthOfYear ? meeting.monthOfYear - 1 : startParts.month];
+  const defaultDay = meeting.dayOfYear || meeting.dayOfMonth || startParts.day;
+  const lastYear = firstParts.year + MAX_OCCURRENCE_SCAN_YEARS;
+  for (let year = firstParts.year; year <= lastYear; year++) {
+    if ((year - startParts.year) % interval !== 0) {
+      continue;
+    }
+    const yearCandidates = months.flatMap(month =>
+      getMonthCandidateDays(meeting, year, month, defaultDay, false)
+        .map(day => ({ month, day })));
+    const selected = applySetPositions(yearCandidates, meeting.recurrenceBySetPos);
+    const ordered = [...selected].sort((a, b) =>
+      getCalendarDayNumber(year, a.month, a.day) - getCalendarDayNumber(year, b.month, b.day));
+    for (const { month, day } of ordered) {
+      if (getCalendarDayNumber(year, month, day) <= firstDayNumber) {
+        continue;
+      }
+      const candidate = atStartTimeOfDay(year, month, day);
+      if (seriesEnd && candidate.getTime() > seriesEnd.getTime()) {
+        return null;
+      }
+      if (isMatch(candidate)) {
+        return candidate;
+      }
+    }
+  }
   return null;
 }
 
