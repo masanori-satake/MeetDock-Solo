@@ -677,6 +677,14 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       return;
     }
 
+    // A dropped text that consists solely of a scheme-less local path is
+    // not meeting text: never open the registration prompts based on it.
+    const trimmedDrop = droppedText.trim().replace(/^["']|["']$/g, '');
+    if (!/[\r\n]/.test(trimmedDrop)
+      && (/^\//.test(trimmedDrop) || /^[A-Za-z]:[\\/]/.test(trimmedDrop) || /^\\\\/.test(trimmedDrop))) {
+      return;
+    }
+
     const parsed = parseMeetingText(droppedText);
 
     let finalUrl = parsed.url;
