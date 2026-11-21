@@ -126,18 +126,22 @@ function dayOfWeek(year: number, month: number, day: number): number {
   return new Date(Date.UTC(year, month, day)).getUTCDay();
 }
 
+function getLocalDateParts(date: Date): ZonedDateParts {
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth(),
+    day: date.getDate(),
+    hour: date.getHours(),
+    minute: date.getMinutes(),
+    second: date.getSeconds(),
+    millisecond: date.getMilliseconds(),
+    dayOfWeek: date.getDay(),
+  };
+}
+
 export function getZonedDateParts(date: Date, timeZone?: string): ZonedDateParts {
   if (!timeZone) {
-    return {
-      year: date.getFullYear(),
-      month: date.getMonth(),
-      day: date.getDate(),
-      hour: date.getHours(),
-      minute: date.getMinutes(),
-      second: date.getSeconds(),
-      millisecond: date.getMilliseconds(),
-      dayOfWeek: date.getDay(),
-    };
+    return getLocalDateParts(date);
   }
 
   const offset = offsetMinutes(timeZone);
@@ -155,7 +159,16 @@ export function getZonedDateParts(date: Date, timeZone?: string): ZonedDateParts
     };
   }
 
-  const parts = getDateTimeFormatter(timeZone).formatToParts(date);
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = getDateTimeFormatter(timeZone).formatToParts(date);
+  } catch {
+    // An invalid time zone string (e.g. from corrupted stored data) makes
+    // Intl.DateTimeFormat throw a RangeError. Fall back to local time
+    // instead of letting the exception escape into the periodic timer
+    // paths that call this on every tick.
+    return getLocalDateParts(date);
+  }
   let year = 0;
   let month = 0;
   let day = 0;

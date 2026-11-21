@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Meeting, RecurrenceByDay } from './types';
-import { addZonedDays, createDateInTimeZone, getDaysInMonth, getZonedDateParts, ZonedDateParts } from './dateTime';
+import { addZonedDays, createDateInTimeZone, getDaysInMonth, getZonedDateParts, normalizeTimeZone, ZonedDateParts } from './dateTime';
 import { isValidTeamsUrl } from './urlValidator';
 
 const STORAGE_KEY = 'meetdock-solo.meetings';
@@ -22,6 +22,14 @@ const MAX_OCCURRENCE_SCAN_DAYS = 366 * 10;
 // that fall outside the day-by-day scan span above.
 const MAX_OCCURRENCE_SCAN_YEARS = 400;
 const VALID_RECURRENCE_TYPES = new Set(['once', 'daily', 'weekly', 'weekdays', 'monthly', 'yearly']);
+// Bounds applied when reading meetings back from storage. Stored data can
+// be corrupted or hand-edited, and the periodic timer re-reads it on every
+// tick, so values outside the ranges the parsers and UI can produce are
+// treated as corrupt and the item is dropped instead of being allowed to
+// throw (e.g. an invalid timeZone makes Intl.DateTimeFormat raise a
+// RangeError) or to drive unbounded recurrence work.
+const MAX_STORED_TITLE_LENGTH = 1000;
+const MAX_STORED_RECURRENCE_INTERVAL = 1000;
 
 function isValidIsoDateString(val: unknown): val is string {
   if (typeof val !== 'string') {
@@ -29,6 +37,35 @@ function isValidIsoDateString(val: unknown): val is string {
   }
   const date = new Date(val);
   return !isNaN(date.getTime()) && date.toISOString() === val;
+}
+
+function isIntInRange(val: unknown, min: number, max: number): val is number {
+  return typeof val === 'number' && Number.isInteger(val) && val >= min && val <= max;
+}
+
+function isValidStoredTimeZone(val: unknown): boolean {
+  return val === undefined || (typeof val === 'string' && normalizeTimeZone(val) !== undefined);
+}
+
+function isValidIntArray(val: unknown, min: number, max: number, maxLength: number, excludeZero = false): boolean {
+  return val === undefined || (
+    Array.isArray(val) &&
+    val.length <= maxLength &&
+    val.every(n => isIntInRange(n, min, max) && (!excludeZero || n !== 0))
+  );
+}
+
+function isValidRecurrenceByDay(val: unknown): boolean {
+  return val === undefined || (
+    Array.isArray(val) &&
+    val.length <= 14 &&
+    val.every(entry =>
+      Boolean(entry) &&
+      typeof entry === 'object' &&
+      isIntInRange((entry as RecurrenceByDay).day, 0, 6) &&
+      ((entry as RecurrenceByDay).setpos === undefined || isIntInRange((entry as RecurrenceByDay).setpos, -366, 366))
+    )
+  );
 }
 
 /**
@@ -407,14 +444,21 @@ export class MeetingManager {
         typeof m === 'object' &&
         typeof m.id === 'string' &&
         typeof m.title === 'string' &&
+        m.title.length <= MAX_STORED_TITLE_LENGTH &&
         typeof m.url === 'string' &&
         isValidIsoDateString(m.startTime) &&
         (m.endTime === undefined || isValidIsoDateString(m.endTime)) &&
         (m.recurrenceEndDate === undefined || isValidIsoDateString(m.recurrenceEndDate)) &&
         isValidTeamsUrl(m.url) &&
         (m.recurrence === undefined || VALID_RECURRENCE_TYPES.has(m.recurrence)) &&
+        isValidStoredTimeZone(m.timeZone) &&
+        (m.recurrenceInterval === undefined || isIntInRange(m.recurrenceInterval, 1, MAX_STORED_RECURRENCE_INTERVAL)) &&
+        isValidIntArray(m.daysOfWeek, 0, 6, 14) &&
+        isValidRecurrenceByDay(m.recurrenceByDay) &&
+        isValidIntArray(m.recurrenceByMonthDay, -31, 31, 62, true) &&
+        isValidIntArray(m.recurrenceBySetPos, -366, 366, 62, true) &&
         (m.monthOfYear === undefined || (typeof m.monthOfYear === 'number' && Number.isInteger(m.monthOfYear) && m.monthOfYear >= 1 && m.monthOfYear <= 12)) &&
-        (m.recurrenceByMonth === undefined || (Array.isArray(m.recurrenceByMonth) && m.recurrenceByMonth.every(n => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 12)))
+        (m.recurrenceByMonth === undefined || (Array.isArray(m.recurrenceByMonth) && m.recurrenceByMonth.length <= 12 && m.recurrenceByMonth.every(n => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 12)))
       )
     );
   }

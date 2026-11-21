@@ -229,7 +229,6 @@ export async function addFromClipboardCommand(meetingManager: MeetingManager): P
     recurrence,
     organizer: parsed.organizer,
     meetingId: parsed.meetingId,
-    passcode: parsed.passcode,
     isEnterprise: parsed.isEnterprise,
     ...recurrenceFields,
   };
@@ -335,14 +334,11 @@ export async function addFromFileCommand(meetingManager: MeetingManager): Promis
           recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
           organizer: info.organizer,
           meetingId: info.meetingId,
-          passcode: info.passcode,
           isEnterprise: info.isEnterprise,
           uid: info.uid,
           sequence: info.sequence,
           status: info.status,
           location: info.location,
-          description: info.description,
-          attendees: info.attendees,
           alarmMinutes: info.alarmMinutes,
         };
 

@@ -25,7 +25,6 @@ export interface Meeting {
   recurrenceEndDate?: string;  // ISO 8601 string (end date of recurrence series)
   organizer?: string;
   meetingId?: string;
-  passcode?: string;
   isEnterprise?: boolean;
   notified5m?: boolean;
   notifiedStart?: boolean;
@@ -33,8 +32,6 @@ export interface Meeting {
   sequence?: number;
   status?: string;
   location?: string;
-  description?: string;
-  attendees?: string[];
   alarmMinutes?: number;
 }
 
@@ -46,7 +43,6 @@ export interface ParsedMeetingInfo {
   timeZone?: string;
   organizer?: string;
   meetingId?: string;
-  passcode?: string;
   isEnterprise?: boolean;
   recurrence?: RecurrenceType;
   recurrenceInterval?: number;
@@ -63,7 +59,5 @@ export interface ParsedMeetingInfo {
   sequence?: number;
   status?: string;
   location?: string;
-  description?: string;
-  attendees?: string[];
   alarmMinutes?: number;
 }

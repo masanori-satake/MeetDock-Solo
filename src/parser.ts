@@ -429,7 +429,6 @@ export function parseMeetingText(text: string): ParsedMeetingInfo {
     timeZone,
     organizer,
     meetingId,
-    passcode,
     isEnterprise,
     ...recurrenceInfo
   };
