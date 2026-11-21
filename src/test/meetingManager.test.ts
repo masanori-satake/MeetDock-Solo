@@ -1,6 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { MeetingManager, getNextOccurrence } from '../meetingManager';
+import { getZonedDateParts } from '../dateTime';
 import { Meeting } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -225,6 +226,47 @@ suite('MeetingManager - getMeetings sanitization', () => {
     const meetings = manager.getMeetings();
     assert.strictEqual(meetings.length, 1);
     assert.strictEqual(meetings[0].id, 'valid1');
+  });
+
+  test('filters out corrupt timeZone, overlong title, out-of-range interval, and malformed recurrence arrays', () => {
+    const base = {
+      title: 'Stored Meeting',
+      url: 'https://teams.microsoft.com/l/meetup-join/19%3astored',
+      startTime: '2026-10-10T10:00:00.000Z',
+      recurrence: 'weekly',
+    };
+    const validMeeting = {
+      ...base,
+      id: 'ok1',
+      timeZone: 'Asia/Tokyo',
+      recurrenceInterval: 2,
+      daysOfWeek: [1, 3],
+      recurrenceByDay: [{ day: 1 }, { day: 3, setpos: 2 }],
+      recurrenceByMonthDay: [10, -1],
+      recurrenceByMonth: [10],
+      recurrenceBySetPos: [1],
+    };
+    const corruptItems = [
+      { ...base, id: 'badTz', timeZone: 'Not/AZone' },
+      { ...base, id: 'badTzType', timeZone: 123 },
+      { ...base, id: 'badTitle', title: 'x'.repeat(1001) },
+      { ...base, id: 'badIntervalZero', recurrenceInterval: 0 },
+      { ...base, id: 'badIntervalHuge', recurrenceInterval: 1001 },
+      { ...base, id: 'badIntervalFraction', recurrenceInterval: 1.5 },
+      { ...base, id: 'badDaysType', daysOfWeek: 'Mon' },
+      { ...base, id: 'badDaysRange', daysOfWeek: [1, 7] },
+      { ...base, id: 'badByDayEntry', recurrenceByDay: [{ day: 9 }] },
+      { ...base, id: 'badByDayShape', recurrenceByDay: [1, 2] },
+      { ...base, id: 'badMonthDayZero', recurrenceByMonthDay: [0] },
+      { ...base, id: 'badMonthDayRange', recurrenceByMonthDay: [32] },
+      { ...base, id: 'badSetPosZero', recurrenceBySetPos: [0] },
+      { ...base, id: 'badByMonthLong', recurrenceByMonth: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1] },
+    ];
+    const manager = new MeetingManager(createMockContext([validMeeting, ...corruptItems] as any));
+
+    const meetings = manager.getMeetings();
+    assert.strictEqual(meetings.length, 1);
+    assert.strictEqual(meetings[0].id, 'ok1');
   });
 });
 
@@ -571,5 +613,21 @@ suite('MeetingManager - save ordering', () => {
     await assert.rejects(failedSave, /storage unavailable/);
     await successfulSave;
     assert.strictEqual(updateCount, 2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test suite: dateTime fallback for invalid stored time zones
+// ---------------------------------------------------------------------------
+
+suite('dateTime - invalid time zone fallback', () => {
+
+  test('getZonedDateParts falls back to local time instead of throwing for an invalid time zone', () => {
+    const date = new Date('2026-10-10T10:00:00.000Z');
+    let parts;
+    assert.doesNotThrow(() => {
+      parts = getZonedDateParts(date, 'Not/AZone');
+    });
+    assert.deepStrictEqual(parts, getZonedDateParts(date, undefined));
   });
 });

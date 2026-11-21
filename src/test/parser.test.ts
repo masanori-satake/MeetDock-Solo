@@ -114,7 +114,8 @@ Meeting link: Weekly Standup | Microsoft Teams | Meetup-Join
     assert.strictEqual(parsed.organizer, '田中 太郎');
     assert.strictEqual(parsed.title, '第2四半期事業計画レビュー');
     assert.strictEqual(parsed.meetingId, '9384444462126');
-    assert.strictEqual(parsed.passcode, 'qc3zR3');
+    // The passcode feeds isEnterprise but is not retained.
+    assert.strictEqual((parsed as any).passcode, undefined);
     assert.strictEqual(parsed.isEnterprise, true);
     assert.ok(parsed.startTime);
     assert.ok(parsed.endTime);
@@ -137,7 +138,7 @@ Click here to join the meeting
     assert.strictEqual(parsed.organizer, 'John Rainaldi');
     assert.strictEqual(parsed.title, 'CCMC Committee Meeting');
     assert.strictEqual(parsed.meetingId, '9348201981104');
-    assert.strictEqual(parsed.passcode, '9888Um');
+    assert.strictEqual((parsed as any).passcode, undefined);
     assert.strictEqual(parsed.isEnterprise, true);
     assert.ok(parsed.startTime);
     assert.ok(parsed.endTime);
@@ -332,7 +333,8 @@ Passcode: abc123
     `);
 
     assert.strictEqual(parsed.meetingId, undefined);
-    assert.strictEqual(parsed.passcode, 'abc123');
+    assert.strictEqual((parsed as any).passcode, undefined);
+    assert.strictEqual(parsed.isEnterprise, true);
   });
 
   test('rejects Safe Links whose decoded target is not a Teams host', () => {
@@ -469,7 +471,7 @@ Passcode: abc123
     assert.strictEqual(parsed.title, 'A'.repeat(200));
   });
 
-  test('sanitizes and truncates organizer, meetingId, and passcode fields', () => {
+  test('sanitizes and truncates organizer and meetingId fields', () => {
     const sample = `
     Alice\x00Bob Microsoft Teams 会議に招待されました。
     テスト会議
@@ -482,9 +484,9 @@ Passcode: abc123
     assert.strictEqual(parsed.organizer, 'Alice Bob');
     assert.ok(parsed.meetingId);
     assert.ok(parsed.meetingId.length <= 50);
-    assert.ok(parsed.passcode);
-    assert.ok(parsed.passcode.length <= 50);
-    assert.strictEqual(parsed.passcode.includes('\x07'), false);
+    // The passcode is detected (isEnterprise) but never retained.
+    assert.strictEqual(parsed.isEnterprise, true);
+    assert.strictEqual((parsed as any).passcode, undefined);
   });
 
   test('safely truncates oversized input text exceeding MAX_PARSER_TEXT_LENGTH without throwing', () => {

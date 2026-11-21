@@ -335,7 +335,6 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     for (const line of uriLines) {
       let filePath = line;
       let uriKey = line;
-      const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(line);
 
       if (line.startsWith('file://')) {
         try {
@@ -346,8 +345,13 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
           filePath = line.replace(/^file:\/\//i, '');
           uriKey = filePath;
         }
-      } else if (hasScheme) {
-        // Skip non-file schemes (e.g. http://, https://) so they fall back to text registration
+      } else {
+        // Accept only explicit file:// URIs here (DataTransferFile entries
+        // are handled above). Non-file schemes (e.g. http://, https://) fall
+        // back to text registration, and scheme-less raw local paths are
+        // rejected: dropped text is controlled by the drop source, so it
+        // must not be able to make the extension probe arbitrary local
+        // paths for readability.
         continue;
       }
 
@@ -458,14 +462,11 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
               recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
               organizer: info.organizer,
               meetingId: info.meetingId,
-              passcode: info.passcode,
               isEnterprise: info.isEnterprise,
               uid: info.uid,
               sequence: info.sequence,
               status: info.status,
               location: info.location,
-              description: info.description,
-              attendees: info.attendees,
               alarmMinutes: info.alarmMinutes,
             };
 
@@ -549,16 +550,19 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
     // If droppedText contains raw BEGIN:VCALENDAR or BEGIN:VEVENT
     let icsContent = droppedText;
     const cleanText = droppedText.trim().replace(/^["']|["']$/g, '');
-    if (/^file:\/\//i.test(cleanText) || cleanText.endsWith('.ics')) {
+    if (/^file:\/\//i.test(cleanText)) {
       const lines = droppedText.split(/\r?\n/).map(l => l.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
       for (const line of lines) {
+        // Only file:// URIs may trigger a file read; scheme-less raw local
+        // paths in dropped text are never followed (see the uri-list path).
+        if (!/^file:\/\//i.test(line)) {
+          continue;
+        }
         let filePath = line;
-        if (line.startsWith('file://')) {
-          try {
-            filePath = vscode.Uri.parse(line).fsPath;
-          } catch {
-            filePath = line.replace(/^file:\/\//i, '');
-          }
+        try {
+          filePath = vscode.Uri.parse(line).fsPath;
+        } catch {
+          filePath = line.replace(/^file:\/\//i, '');
         }
         if (filePath.endsWith('.ics')) {
           try {
@@ -635,14 +639,11 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
             recurrenceEndDate: info.recurrenceEndDate ? info.recurrenceEndDate.toISOString() : undefined,
             organizer: info.organizer,
             meetingId: info.meetingId,
-            passcode: info.passcode,
             isEnterprise: info.isEnterprise,
             uid: info.uid,
             sequence: info.sequence,
             status: info.status,
             location: info.location,
-            description: info.description,
-            attendees: info.attendees,
             alarmMinutes: info.alarmMinutes,
           };
 
@@ -859,7 +860,6 @@ export class MeetingTreeDataProvider implements vscode.TreeDataProvider<vscode.T
       ...recurrenceFields,
       organizer: parsed.organizer,
       meetingId: parsed.meetingId,
-      passcode: parsed.passcode,
       isEnterprise: parsed.isEnterprise,
     };
 

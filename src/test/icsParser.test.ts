@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as vscode from 'vscode';
 import { pathToFileURL } from 'url';
-import { parseIcsContent, parseIcsDuration, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue } from '../icsParser';
+import { parseIcsContent, parseIcsDuration, unfoldIcsContent, parseIcsLine, parseParameters, unescapeIcsText, unescapeParamValue, MAX_PARSED_MEETINGS, MAX_VEVENTS_PER_FILE } from '../icsParser';
 import { normalizeTimeZone } from '../dateTime';
 import { decodeIcsBytes, MAX_ICS_CONTENT_SIZE, readIcsFile } from '../icsContentReader';
 import { MeetingManager } from '../meetingManager';
@@ -211,7 +211,11 @@ END:VCALENDAR`;
     assert.strictEqual(res[0].url, 'https://teams.microsoft.com/meet/226316127041374?p=0FSrfCT5yJkIJ5fHnN');
     assert.strictEqual(res[0].organizer, 'Taro Yamada');
     assert.strictEqual(res[0].meetingId, '226316127041374');
-    assert.strictEqual(res[0].passcode, 'B56Q6pu6');
+    // The passcode in the description feeds isEnterprise but is not retained.
+    assert.strictEqual(res[0].isEnterprise, true);
+    assert.strictEqual((res[0] as any).passcode, undefined);
+    assert.strictEqual((res[0] as any).description, undefined);
+    assert.strictEqual((res[0] as any).attendees, undefined);
   });
 
   test('uses a later valid meeting ID when an earlier candidate is too long', () => {
@@ -1074,5 +1078,87 @@ END:VCALENDAR`;
     assert.strictEqual(res[0].recurrence, 'yearly');
     assert.strictEqual(res[0].recurrenceInterval, 11);
     assert.strictEqual(res[0].recurrenceEndDate?.toISOString(), '2037-09-13T16:00:00.000Z');
+  });
+
+  test('37. Caps the number of VEVENTs processed and meetings returned per file', () => {
+    const totalEvents = MAX_VEVENTS_PER_FILE + 100;
+    const events: string[] = [];
+    for (let i = 0; i < totalEvents; i++) {
+      events.push([
+        'BEGIN:VEVENT',
+        `UID:bulk-${i}@example.invalid`,
+        'DTSTART:20261005T100000Z',
+        'DTEND:20261005T103000Z',
+        `SUMMARY:Bulk Meeting ${i}`,
+        `URL:https://teams.microsoft.com/meet/${1000 + i}`,
+        'END:VEVENT',
+      ].join('\n'));
+    }
+    const ics = `BEGIN:VCALENDAR\nVERSION:2.0\n${events.join('\n')}\nEND:VCALENDAR`;
+
+    const res = parseIcsContent(ics, new Date('2026-10-01T00:00:00Z'));
+    assert.strictEqual(res.length, MAX_PARSED_MEETINGS);
+  });
+
+  test('38. Bounds the total recurrence expansion work across a whole file', () => {
+    // Each event asks for 999 getNextOccurrence calls to expand its
+    // COUNT. Without a file-wide budget, 10 events would need ~10,000
+    // calls; the budget must truncate the later series' end dates
+    // gracefully while still returning the earlier series in full.
+    const events: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      events.push([
+        'BEGIN:VEVENT',
+        `UID:budget-${i}@example.invalid`,
+        'DTSTART:20261001T100000Z',
+        'DTEND:20261001T103000Z',
+        'RRULE:FREQ=DAILY;COUNT=1000',
+        `SUMMARY:Budget Meeting ${i}`,
+        `URL:https://teams.microsoft.com/meet/${2000 + i}`,
+        'END:VEVENT',
+      ].join('\n'));
+    }
+    const ics = `BEGIN:VCALENDAR\nVERSION:2.0\n${events.join('\n')}\nEND:VCALENDAR`;
+
+    const res = parseIcsContent(ics, new Date('2026-10-01T00:00:00Z'));
+    assert.ok(res.length >= 1);
+    const fullSpanMs = 999 * 24 * 60 * 60 * 1000;
+    const totalSpanMs = res.reduce((sum, r) => {
+      const start = r.startTime ? r.startTime.getTime() : 0;
+      const end = r.recurrenceEndDate ? r.recurrenceEndDate.getTime() : start;
+      return sum + (end - start);
+    }, 0);
+    // The first series expands fully, but the aggregate span stays far
+    // below what 10 full expansions would produce.
+    assert.ok(res.some(r => r.recurrenceEndDate && r.startTime
+      && r.recurrenceEndDate.getTime() - r.startTime.getTime() === fullSpanMs));
+    assert.ok(totalSpanMs < 10 * fullSpanMs);
+  });
+
+  test('39. Rejects scheme-less raw local paths in drag-and-drop', async () => {
+    const store: Record<string, any> = {};
+    const mockContext: any = {
+      globalState: {
+        get: (key: string, defaultVal: any) => store[key] ?? defaultVal,
+        update: async (key: string, val: any) => { store[key] = val; }
+      }
+    };
+    const manager = new MeetingManager(mockContext);
+    const provider = new MeetingTreeDataProvider(manager, () => new Date('2026-10-01T00:00:00Z'));
+    const fixturePath = path.join(process.cwd(), 'src', 'test', 'fixtures', 'single_en.ics');
+
+    // 39a. text/uri-list carrying a raw local path (no file:// scheme)
+    const uriListDrop = {
+      get: (mime: string) => mime === 'text/uri-list' ? { asString: async () => fixturePath } : null
+    } as any;
+    await provider.handleDrop(undefined, uriListDrop, {} as any);
+    assert.strictEqual(manager.getMeetings().length, 0);
+
+    // 39b. text/plain carrying a raw local path
+    const textDrop = {
+      get: (mime: string) => mime === 'text/plain' ? { asString: async () => fixturePath } : null
+    } as any;
+    await provider.handleDrop(undefined, textDrop, {} as any);
+    assert.strictEqual(manager.getMeetings().length, 0);
   });
 });

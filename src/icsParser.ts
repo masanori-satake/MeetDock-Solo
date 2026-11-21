@@ -5,6 +5,30 @@ import { getNextOccurrence } from './meetingManager';
 import { MAX_ICS_CONTENT_SIZE } from './icsContentReader';
 
 export const MAX_RRULE_COUNT = 1000;
+// Total work budget for a single parseIcsContent call. One
+// getNextOccurrence call can scan up to ~3,660 candidate days (daily /
+// weekly rules) or 400 years of periods (monthly / yearly rules), so the
+// product of "VEVENT count x COUNT x scan length" has to be bounded as a
+// whole, not per event. Once the budget is exhausted, expansion stops
+// gracefully: series keep the occurrences resolved so far and remaining
+// events are skipped, instead of aborting the whole import.
+export const MAX_TOTAL_OCCURRENCE_CALLS = 5000;
+// Upper bound on VEVENT components processed from a single file.
+export const MAX_VEVENTS_PER_FILE = 500;
+// Upper bound on meetings a single parse returns (and therefore stores).
+export const MAX_PARSED_MEETINGS = 500;
+
+interface ParseBudget {
+  occurrenceCalls: number;
+}
+
+function getNextOccurrenceWithinBudget(budget: ParseBudget, meeting: Meeting, from: Date): Date | null {
+  if (budget.occurrenceCalls >= MAX_TOTAL_OCCURRENCE_CALLS) {
+    return null;
+  }
+  budget.occurrenceCalls++;
+  return getNextOccurrence(meeting, from);
+}
 
 export interface IcsProperty {
   name: string;
@@ -394,28 +418,6 @@ export function extractOrganizerFromIcs(prop: IcsProperty | undefined): string |
   return val || undefined;
 }
 
-/**
- * Extracts attendees list from ATTENDEE properties.
- */
-export function extractAttendeesFromIcs(properties: IcsProperty[]): string[] {
-  const attendees: string[] = [];
-  for (const prop of properties.filter(p => p.name === 'ATTENDEE')) {
-    const cn = prop.params['CN'];
-    if (cn) {
-      attendees.push(unescapeParamValue(cn));
-    } else {
-      let val = prop.value.trim();
-      if (val.toLowerCase().startsWith('mailto:')) {
-        val = val.substring(7);
-      }
-      if (val) {
-        attendees.push(val);
-      }
-    }
-  }
-  return attendees;
-}
-
 const DAY_MAP: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
 
 export interface ParsedRrule {
@@ -566,8 +568,10 @@ function cleanIcsField(val: string | undefined, maxLen: number): string | undefi
  */
 export function parseSingleVEvent(
   vevent: IcsComponent,
-  timeZoneAliasMap: Map<string, string>
+  timeZoneAliasMap: Map<string, string>,
+  budget?: ParseBudget
 ): ParsedMeetingInfo {
+  const workBudget: ParseBudget = budget ?? { occurrenceCalls: 0 };
   const getProp = (name: string) => vevent.properties.find(p => p.name === name);
   const getProps = (name: string) => vevent.properties.filter(p => p.name === name);
 
@@ -628,10 +632,14 @@ export function parseSingleVEvent(
   // 5. Teams Join URL
   const url = extractTeamsUrlFromIcsProperties(vevent.properties) || '';
 
-  // 6. Organizer & Attendees & Location & Description
+  // 6. Organizer & Location & Description
+  // The description text is only used transiently below (Teams URL
+  // extraction happens separately from the raw properties, and the
+  // meeting ID / passcode scan reads it to derive meetingId and
+  // isEnterprise). It is never stored: neither are attendees or the
+  // passcode itself, which no display or logic reads back.
   const rawOrganizer = extractOrganizerFromIcs(getProp('ORGANIZER'));
   const organizer = cleanIcsField(rawOrganizer, 100);
-  const attendees = extractAttendeesFromIcs(vevent.properties);
   const locationProp = getProp('LOCATION');
   const location = cleanIcsField(locationProp ? unescapeIcsText(locationProp.value) : undefined, 200);
 
@@ -738,7 +746,7 @@ export function parseSingleVEvent(
         let countEnd = startTime;
         const effectiveCount = Math.min(pr.count, MAX_RRULE_COUNT);
         for (let occurrence = 1; occurrence < effectiveCount; occurrence++) {
-          const next = getNextOccurrence(recurrenceTemplate, new Date(countEnd.getTime() + duration + 1));
+          const next = getNextOccurrenceWithinBudget(workBudget, recurrenceTemplate, new Date(countEnd.getTime() + duration + 1));
           if (!next) {
             break;
           }
@@ -749,7 +757,8 @@ export function parseSingleVEvent(
     }
   }
 
-  // Meeting ID & Passcode checks
+  // Meeting ID & Passcode checks. The passcode value itself is not kept;
+  // only its presence feeds the isEnterprise flag.
   const fullText = `${description || ''}\n${title}`;
   const rawMeetingId = Array.from(
     fullText.matchAll(/(?:会議\s*ID|Meeting\s*ID):\s*([\d\s]{9,25})/gi),
@@ -768,7 +777,6 @@ export function parseSingleVEvent(
     timeZone,
     organizer,
     meetingId,
-    passcode,
     isEnterprise,
     recurrence,
     recurrenceInterval,
@@ -785,8 +793,6 @@ export function parseSingleVEvent(
     sequence,
     status,
     location,
-    description,
-    attendees,
     alarmMinutes,
   };
 }
@@ -808,10 +814,13 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
   const vtimezoneComps = vcalendar.subComponents.filter(c => c.name === 'VTIMEZONE');
   const timeZoneAliasMap = buildTimeZoneAliasMap(vtimezoneComps);
 
-  const vevents = vcalendar.subComponents.filter(c => c.name === 'VEVENT');
-  if (vevents.length === 0) {
+  const allVevents = vcalendar.subComponents.filter(c => c.name === 'VEVENT');
+  if (allVevents.length === 0) {
     return [];
   }
+  // Bound the per-file work: extra VEVENTs beyond the cap are ignored.
+  const vevents = allVevents.slice(0, MAX_VEVENTS_PER_FILE);
+  const budget: ParseBudget = { occurrenceCalls: 0 };
 
   // Separate base series VEVENTs (no RECURRENCE-ID) and exception VEVENTs (has RECURRENCE-ID)
   const baseEvents: IcsComponent[] = [];
@@ -830,7 +839,10 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
   const matchedExceptionEvents = new Set<IcsComponent>();
 
   for (const baseVevent of baseEvents) {
-    const baseInfo = parseSingleVEvent(baseVevent, timeZoneAliasMap);
+    if (results.length >= MAX_PARSED_MEETINGS) {
+      break;
+    }
+    const baseInfo = parseSingleVEvent(baseVevent, timeZoneAliasMap, budget);
 
     // Filter out CANCELLED base event
     if (baseInfo.status === 'CANCELLED') {
@@ -898,7 +910,6 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
       recurrenceEndDate: baseInfo.recurrenceEndDate ? baseInfo.recurrenceEndDate.toISOString() : undefined,
       organizer: baseInfo.organizer,
       meetingId: baseInfo.meetingId,
-      passcode: baseInfo.passcode,
       isEnterprise: baseInfo.isEnterprise,
     };
 
@@ -915,7 +926,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
       let candidate: Date | null = null;
 
       for (let attempt = 0; attempt < 50; attempt++) {
-        candidate = getNextOccurrence(meetingTemplate, checkCursor);
+        candidate = getNextOccurrenceWithinBudget(budget, meetingTemplate, checkCursor);
         if (!candidate) {
           break;
         }
@@ -936,7 +947,7 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
         });
 
         if (excForCand) {
-          const excInfo = parseSingleVEvent(excForCand, timeZoneAliasMap);
+          const excInfo = parseSingleVEvent(excForCand, timeZoneAliasMap, budget);
           if (excInfo.status === 'CANCELLED') {
             checkCursor = new Date(candidate.getTime() + duration + 1000);
             continue;
@@ -965,6 +976,9 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
 
     // Process additional RDATE occurrences if present and in the future
     for (const rdate of rdates) {
+      if (results.length >= MAX_PARSED_MEETINGS) {
+        break;
+      }
       if (rdate >= now) {
         const alreadyAdded = results.some(r => r.startTime && Math.abs(r.startTime.getTime() - rdate.getTime()) < 1000);
         if (!alreadyAdded) {
@@ -979,7 +993,10 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
 
     // Also include non-cancelled exceptions that are standalone modified occurrences
     for (const exc of relatedExceptions) {
-      const excInfo = parseSingleVEvent(exc, timeZoneAliasMap);
+      if (results.length >= MAX_PARSED_MEETINGS) {
+        break;
+      }
+      const excInfo = parseSingleVEvent(exc, timeZoneAliasMap, budget);
       const recIdProp = exc.properties.find(p => p.name === 'RECURRENCE-ID');
       const recIdDate = recIdProp ? parseIcsDateTime(recIdProp, timeZoneAliasMap).date : undefined;
 
@@ -995,10 +1012,13 @@ export function parseIcsContent(icsContent: string, now: Date = new Date()): Par
 
   // Process standalone orphan exception VEVENTs (no matching base VEVENT in baseEvents)
   for (const exc of exceptionEvents) {
+    if (results.length >= MAX_PARSED_MEETINGS) {
+      break;
+    }
     if (matchedExceptionEvents.has(exc)) {
       continue;
     }
-    const excInfo = parseSingleVEvent(exc, timeZoneAliasMap);
+    const excInfo = parseSingleVEvent(exc, timeZoneAliasMap, budget);
     const excStart = excInfo.startTime;
     if (excInfo.status !== 'CANCELLED' && excStart) {
       const alreadyAdded = results.some(r =>
